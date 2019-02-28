@@ -75,8 +75,7 @@ struct QSFit
     function QSFit(name, z, ebv; log="", cosmo=qsfit_cosmology())
         @assert z > 0
         @assert ebv > 0
-        ld = luminosity_dist(cosmo, float(z))
-        #ld = 1 * UnitfulAstro.Gpc
+        ld = luminosity_dist(cosmo, float(z)) # * UnitfulAstro.Gpc
         ld = uconvert(u"cm", ld)
         flux2lum = 4pi * ld^2 * unit_flux() / unit_lum()
         @assert typeof(flux2lum) == Float64
@@ -153,10 +152,12 @@ function run(qsfit::QSFit)
     
     # First dataset have a special meaning
     λ = qsfit.domain[1][1]
-    L = qsfit.data[1].val
 
     # Prepare model
     model = Model()
+    for ii in 1:length(qsfit.domain)
+        add_dom!(model, qsfit.domain[ii])
+    end
 
     # List of component names
     cnames = Dict{Symbol,   Vector{Symbol}}()
@@ -165,12 +166,84 @@ function run(qsfit::QSFit)
     cnames[:broad_lines]  = Vector{Symbol}()
     cnames[:unknown]      = Vector{Symbol}()
 
-    # Add continuum components
-    let
-        l0 = median(λ)
-        addcomp!(model, :continuum => powerlaw(l0))
-        model.continuum.norm.val = interpol(L, λ, l0)
+    # AGN continuum
+    addcomp!(model, :continuum => powerlaw(median(λ)))
+    push!(cnames[:broadband], :continuum)
 
+    # Host galaxy (disabled when z > qsfit.options.galaxy_enabled_z)
+    if qsfit.options.use_galaxy  &&  (qsfit.z > qsfit.options.galaxy_enabled_z)
+        println(qsfit.log, "Galaxy component is disabled")
+        qsfit.options.use_galaxy = false
+    end
+    if qsfit.options.use_galaxy
+        addcomp!(model, :galaxy => hostgalaxy(qsfit.options.galaxy_template))
+        push!(cnames[:broadband], :galaxy)
+    end
+
+    # Balmer continuum
+    if qsfit.options.use_balmer
+        addcomp!(model, :balmer => balmercont(0.1, 0.5))
+        push!(cnames[:broadband], :balmer)
+    end
+
+    # Iron blended lines
+    if qsfit.options.use_ironuv  &&  (minimum(λ) > 2900)
+        println(qsfit.log, "Iron UV is disabled")
+        qsfit.options.use_ironuv = false
+    end
+    if qsfit.options.use_ironuv
+        addcomp!(model, :ironuv => ironuv(3000))
+        model.ironuv.norm.val = 0.
+        model.ironuv.fixed = true        
+        push!(cnames[:broadband], :ironuv)
+    end
+    if qsfit.options.use_ironopt
+        addcomp!(model, :ironoptbr => ironopt_broad(3000))
+        addcomp!(model, :ironoptna => ironopt_narrow(500))
+        model.ironoptbr.norm.val = 0.
+        model.ironoptbr.fixed = true        
+        model.ironoptna.norm.val = 0.
+        model.ironoptna.fixed = true        
+        push!(cnames[:broadband], :ironoptbr)
+        push!(cnames[:broadband], :ironoptna)
+    end
+    addexpr!(model, :broadband, Meta.parse(join(cnames[:broadband], ".+")), cmp=false)
+
+    # Emission lines
+    for line in qsfit.lines
+        if line.enabled
+            cname = addEmLine(model, line)
+            if     isa(line, NarrowLine)  ||  isa(line, CombinedNarrowLine); push!(cnames[:narrow_lines], cname)
+            elseif isa(line,  BroadLine)  ||  isa(line, CombinedBroadLine ); push!(cnames[:broad_lines] , cname)
+            else
+                error("Unexpected line type: " * string(typeof(line)))
+            end
+            model[cname].norm.val = 0.
+            model[cname].fixed = true
+        end
+    end
+    addexpr!(model, :narrow_lines, Meta.parse(join(cnames[:narrow_lines], ".+")), cmp=false)
+    addexpr!(model, :broad_lines , Meta.parse(join(cnames[:broad_lines] , ".+")), cmp=false)
+    addexpr!(model, :known, :(broadband + narrow_lines + broad_lines), cmp=false)
+
+    # Unknown lines
+    for ii in 1:qsfit.options.unkLines
+        line = UnknownLine(λ[1])
+        line.label = "unk" * string(ii)
+        cname = addEmLine(model, line)
+        push!(cnames[:unknown], cname)
+        model[cname].norm.val = 0
+        model[cname].fixed = true
+    end
+    addexpr!(model, :unknown, Meta.parse(join(cnames[:unknown] , ".+")), cmp=false)
+    addexpr!(model, :all, :(known .+ unknown))
+
+    ##############################################
+
+    # AGN continuum
+    let
+        L = qsfit.data[1].val
+        model.continuum.norm.val = interpol(L, λ, model.continuum.x0.val)
         model.continuum.alpha.val = -1.5
         model.continuum.alpha.low  = -3
         model.continuum.alpha.high = 1 #--> -3, 1 in frequency
@@ -178,59 +251,39 @@ function run(qsfit::QSFit)
             model.continuum.alpha.val = qsfit.options.alpha1_fixed_value
             model.continuum.alpha.fixed = true # avoid degeneracy with galaxy template
         end
-        push!(cnames[:broadband], :continuum)
     end
 
     # Host galaxy
-    let
-        # Galaxy component is disabled when z > qsfit.options.galaxy_enabled_z
-        if qsfit.options.use_galaxy  &&  (qsfit.z > qsfit.options.galaxy_enabled_z)
-            println(qsfit.log, "Galaxy component is disabled")
-            qsfit.options.use_galaxy = false
-        end
+    if qsfit.options.use_galaxy
+        L = qsfit.data[1].val
+        model.galaxy.norm.val = interpol(L, λ, 5500)
 
-        if qsfit.options.use_galaxy
-            addcomp!(model, :galaxy => hostgalaxy(qsfit.options.galaxy_template))
-            model.galaxy.norm.val = interpol(L, λ, 5500)
-
-            # If 5500 is outisde the available range compute value at
-            # the edge (solve problems for e.g., spec-0411-51817-0198)
-            if maximum(λ) < 5500
-                model.galaxy.norm.val = interpol(L, λ, maximum(λ))
-            end
-            (model.galaxy.norm.val < 1e-4)  &&  (model.galaxy.norm.val = 1e-4)
-            push!(cnames[:broadband], :galaxy)
+        # If 5500 is outisde the available range compute value at
+        # the edge (solve problems for e.g., spec-0411-51817-0198)
+        if maximum(λ) < 5500
+            model.galaxy.norm.val = interpol(L, λ, maximum(λ))
         end
+        (model.galaxy.norm.val < 1e-4)  &&  (model.galaxy.norm.val = 1e-4)
     end
-
-    # Add Balmer continuum
-    let
-        if qsfit.options.use_balmer
-            addcomp!(model, :balmer => balmercont(0.1, 0.5))
-            if qsfit.z < qsfit.options.balmer_fixed_z
-                model.balmer.norm.val   = 0.1
-                model.balmer.norm.fixed = false
-                model.balmer.norm.low   = 0
-                model.balmer.norm.high  = 0.5
-                model.balmer.ratio.val   = 0.3
-                model.balmer.ratio.fixed = false
-                model.balmer.ratio.low   = 0.3
-                model.balmer.ratio.high  = 1
-            else
-                model.balmer.norm.val   = 0.1
-                model.balmer.norm.fixed = true
-                model.balmer.ratio.val   = 0.3
-                model.balmer.ratio.fixed = true
-            end
-            push!(cnames[:broadband], :balmer)
+    
+    # Balmer continuum
+    if qsfit.options.use_balmer
+        if qsfit.z < qsfit.options.balmer_fixed_z
+            model.balmer.norm.val   = 0.1
+            model.balmer.norm.fixed = false
+            model.balmer.norm.low   = 0
+            model.balmer.norm.high  = 0.5
+            model.balmer.ratio.val   = 0.3
+            model.balmer.ratio.fixed = false
+            model.balmer.ratio.low   = 0.3
+            model.balmer.ratio.high  = 1
+        else
+            model.balmer.norm.val   = 0.1
+            model.balmer.norm.fixed = true
+            model.balmer.ratio.val   = 0.3
+            model.balmer.ratio.fixed = true
         end
     end
-
-    # Add domain(s) and expression for the first run
-    for ii in 1:length(qsfit.domain)
-        add_dom!(model, qsfit.domain[ii])
-    end
-    addexpr!(model, :broadband, Meta.parse(join(cnames[:broadband], ".+")))
     bestfit = fit!(model, qsfit.data, minimizer=mzer)
 
     # Continuum renormalization
@@ -259,51 +312,35 @@ function run(qsfit::QSFit)
     qsfit.options.use_galaxy  &&  (model.galaxy.fixed = true)
     qsfit.options.use_balmer  &&  (model.balmer.fixed = true)
 
-    # Add Iron
-    let
-        if qsfit.options.use_ironuv  &&  (minimum(λ) > 2900)
-            println(qsfit.log, "Iron UV is disabled")
-            qsfit.options.use_ironuv = false
-        end
-        if qsfit.options.use_ironuv
-            addcomp!(model, :ironuv => ironuv(3000))
-            push!(cnames[:broadband], :ironuv)
-        end
-        if qsfit.options.use_ironopt
-            addcomp!(model, :ironoptbr => ironopt_broad(3000))
-            addcomp!(model, :ironoptna => ironopt_narrow(500))
-            push!(cnames[:broadband], :ironoptbr)
-            push!(cnames[:broadband], :ironoptna)
-        end
-        
-        replaceexpr!(model, :broadband, Meta.parse(join(cnames[:broadband], ".+")))
-        bestfit = fit!(model, qsfit.data, minimizer=mzer)
-        qsfit.options.use_ironuv    &&  (model.ironuv.fixed = true)
-        qsfit.options.use_ironopt   &&  (model.ironoptbr.fixed = true)
-        qsfit.options.use_ironopt   &&  (model.ironoptna.fixed = true)
+    if qsfit.options.use_ironuv
+        model.ironuv.norm.val = 1.
+        model.ironuv.fixed = false
     end
+    if qsfit.options.use_ironopt
+        model.ironoptbr.norm.val = 1.
+        model.ironoptbr.fixed = false
+        model.ironoptna.norm.val = 1.
+        model.ironoptna.fixed = false
+    end
+    bestfit = fit!(model, qsfit.data, minimizer=mzer)
+    qsfit.options.use_ironuv    &&  (model.ironuv.fixed = true)
+    qsfit.options.use_ironopt   &&  (model.ironoptbr.fixed = true)
+    qsfit.options.use_ironopt   &&  (model.ironoptna.fixed = true)
 
-    # Add emission lines
+    # Emission lines
     let
         x = model(:domain)
         y = qsfit.data[1].val - model(:broadband)
-
         for line in qsfit.lines
             if line.enabled
-                cname = addEmLine(model, line)
-                if     isa(line, NarrowLine)  ||  isa(line, CombinedNarrowLine); push!(cnames[:narrow_lines], cname)
-                elseif isa(line,  BroadLine)  ||  isa(line, CombinedBroadLine ); push!(cnames[:broad_lines] , cname)
-                else
-                    error("Unexpected line type: " * string(typeof(line)))
-                end
                 yatline = interpol(y, x, line.λ)
-                model[cname].norm.val *= abs(yatline) / maxvalue(model[cname])
+                cname = Symbol(line.label)
+                model[cname].norm.val = 1.
+                model[cname].norm.val = abs(yatline) / maxvalue(model[cname])
+                model[cname].fixed = false
             end
         end
-        addexpr!(model, :narrow_lines, Meta.parse(join(cnames[:narrow_lines], ".+")), cmp=false)
-        addexpr!(model, :broad_lines , Meta.parse(join(cnames[:broad_lines] , ".+")), cmp=false)
-        setflag!(model, :broadband, false)
-        addexpr!(model, :known, :(broadband + narrow_lines + broad_lines))
+
         bestfit = fit!(model, qsfit.data, minimizer=mzer)
 
         for line in qsfit.lines
@@ -312,25 +349,10 @@ function run(qsfit::QSFit)
         end
     end
 
-    # Add unknown lines
+    # Unknown lines
     let
         # Set "unknown" line center wavelength where there is a
         # maximum in the fit residuals, and re-run a fit.
-
-        # First add all unknown lines
-        for ii in 1:qsfit.options.unkLines
-            line = UnknownLine(λ[1])
-            line.label = "unk" * string(ii)
-            cname = addEmLine(model, line)
-            push!(cnames[:unknown], cname)
-            model[cname].norm.val = 0
-            model[cname].fixed = true
-        end
-        addexpr!(model, :unknown, Meta.parse(join(cnames[:unknown] , ".+")), cmp=false)
-        setflag!(model, :known, false)
-        addexpr!(model, :all, :(known .+ unknown))
-
-        # Now set the appropriate wavelength
         iadd = Vector{Int}()
         run = true
         while run
@@ -368,7 +390,7 @@ function run(qsfit::QSFit)
             model[cname].fixed = true
         end
     end
-
+    
     # Last run with all parameters free
     model.continuum.fixed = false
     qsfit.options.use_galaxy  &&  (model.galaxy.fixed = false)
