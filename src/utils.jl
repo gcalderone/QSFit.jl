@@ -83,14 +83,28 @@ function convol(v, _k)
 end
 
 function interpol(y, x, X)
+    out = fill(0., length(X))
     itp = interpolate((x,), y, Gridded(Linear()))
     ii = findall(minimum(x) .<= X .<= maximum(x))
-    out = fill(0., length(X))
     out[ii] .= itp(X[ii])
     return out
 end
-
 interpol(y, x, X::Number) = interpol(y, x, [X])[1]
+
+function interpol1(y, x, X)
+    out = fill(0., length(X))
+    itp = interpolate((x,), y, Gridded(Linear()))
+    ii = findall(minimum(x) .<= X .<= maximum(x))
+    out[ii] .= itp(X[ii])
+    etp = extrapolate(itp, Interpolations.Line())
+    ii = findall(minimum(x) .> X)
+    out[ii] .= etp(X[ii])
+    ii = findall(maximum(x) .< X)
+    out[ii] .= etp(X[ii])
+    return out
+end
+interpol1(y, x, X::Number) = interpol1(y, x, [X])[1]
+
 
 
 #=

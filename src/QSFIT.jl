@@ -11,6 +11,7 @@ using Cosmology, Unitful, UnitfulAstro, FITSIO, Parameters
 DataFitting.@enable_CMPFit
 
 include("utils.jl")
+include("ccm_unred.jl")
 include("components/emline.jl")
 include("components/powerlaw.jl")
 include("components/hostgalaxy.jl")
@@ -20,6 +21,7 @@ include("components/balmercont.jl")
 #include("components/test_components.jl")
 
 qsfit_cosmology() = cosmology(h=0.70, OmegaM=0.3)   #S11
+const showstep = false
 
 unit_λ() = UnitfulAstro.angstrom
 unit_flux() = 1.e-17 * UnitfulAstro.erg / UnitfulAstro.s / UnitfulAstro.cm^2
@@ -95,9 +97,11 @@ function adddata!(qsfit::QSFit, data::QSFitData)
         @error "Good fraction < 0.5"
     end
 
-    ii = findall(data.λ .> qsfit.options.min_wavelength)
-    if length(ii) != length(data.λ)
-        mm = fill(false, length(data.λ))
+    λ = data.λ ./ (1 + qsfit.z)
+    
+    ii = findall(λ .> qsfit.options.min_wavelength)
+    if length(ii) != length(λ)
+        mm = fill(false, length(λ))
         mm[data.good] .= true
         mm[ii] .= true
         empty!(data.good)
@@ -107,7 +111,7 @@ function adddata!(qsfit::QSFit, data::QSFitData)
     # Ignore lines on missing data
     let
         # Perform 3-5th test
-        mm = fill(false, length(data.λ))
+        mm = fill(false, length(λ))
         mm[data.good] .= true
         println(qsfit.log, "Good samples before 3/5th test: ", length(data.good))
         for line in qsfit.lines
@@ -117,14 +121,16 @@ function adddata!(qsfit::QSFit, data::QSFitData)
                 δ = (λrange[2] - λrange[1]) / 5.
                 count = 0
                 for ii in 1:5
-                    jj = findall((ii-1)*δ .<=  (data.λ .- λrange[1])  .< ii*δ)
+                    jj = findall((ii-1)*δ .<=  (λ .- λrange[1])  .< ii*δ)
                     (length(jj) > 0)  &&  (count += 1)
                 end
                 if count < 3
                     println(qsfit.log, "Disabling line: ", line.label)
                     line.enabled = false # Disable line and ignore data
-                    ii = findall(λrange[1] .<= data.λ .< λrange[2])
+                    ii = findall(λrange[1] .<= λ .< λrange[2])
                     mm[ii] .= false
+                else
+                    println(qsfit.log, " Enabling line: ", line.label)
                 end
             end
         end
@@ -132,9 +138,14 @@ function adddata!(qsfit::QSFit, data::QSFitData)
         append!(data.good, findall(mm))
         println(qsfit.log, "Good samples after  3/5th test: ", length(data.good))
     end
-    dom = Domain(data.λ ./ (1 + qsfit.z))
-    lum = Measures(data.flux .* qsfit.flux2lum .* (1 + qsfit.z),
-                   data.err  .* qsfit.flux2lum .* (1 + qsfit.z))
+
+    dered = ccm_unred([1450, 3000, 5100.], qsfit.ebv)
+    println(qsfit.log, "Dereddening factors @ 1450, 3000, 5100 AA: ", dered)
+    dered = ccm_unred(data.λ, qsfit.ebv)
+    
+    dom = Domain(data.λ[data.good] ./ (1 + qsfit.z))
+    lum = Measures(data.flux[data.good] .* dered[data.good] .* qsfit.flux2lum .* (1 + qsfit.z),
+                   data.err[ data.good] .* dered[data.good] .* qsfit.flux2lum .* (1 + qsfit.z))
     push!(qsfit.domain, dom)
     push!(qsfit.data, lum)
 end
@@ -224,7 +235,7 @@ function run(qsfit::QSFit)
     end
     addexpr!(model, :narrow_lines, Meta.parse(join(cnames[:narrow_lines], ".+")), cmp=false)
     addexpr!(model, :broad_lines , Meta.parse(join(cnames[:broad_lines] , ".+")), cmp=false)
-    addexpr!(model, :known, :(broadband + narrow_lines + broad_lines), cmp=false)
+    addexpr!(model, :known, :(broadband .+ narrow_lines .+ broad_lines), cmp=false)
 
     # Unknown lines
     for ii in 1:qsfit.options.unkLines
@@ -254,37 +265,42 @@ function run(qsfit::QSFit)
     end
 
     # Host galaxy
-    if qsfit.options.use_galaxy
-        L = qsfit.data[1].val
-        model.galaxy.norm.val = interpol(L, λ, 5500)
+    let
+        if qsfit.options.use_galaxy
+            L = qsfit.data[1].val
+            model.galaxy.norm.val = interpol(L, λ, 5500)
 
-        # If 5500 is outisde the available range compute value at
-        # the edge (solve problems for e.g., spec-0411-51817-0198)
-        if maximum(λ) < 5500
-            model.galaxy.norm.val = interpol(L, λ, maximum(λ))
+            # If 5500 is outisde the available range compute value at
+            # the edge (solve problems for e.g., spec-0411-51817-0198)
+            if maximum(λ) < 5500
+                model.galaxy.norm.val = interpol(L, λ, maximum(λ))
+            end
+            (model.galaxy.norm.val < 1e-4)  &&  (model.galaxy.norm.val = 1e-4)
         end
-        (model.galaxy.norm.val < 1e-4)  &&  (model.galaxy.norm.val = 1e-4)
     end
     
     # Balmer continuum
     if qsfit.options.use_balmer
         if qsfit.z < qsfit.options.balmer_fixed_z
             model.balmer.norm.val   = 0.1
+            model.balmer.norm.expr = "balmer_norm * Main.interpol1(continuum, domain[1], 3000.)"            
             model.balmer.norm.fixed = false
             model.balmer.norm.low   = 0
             model.balmer.norm.high  = 0.5
-            model.balmer.ratio.val   = 0.3
+            model.balmer.ratio.val   = 0.5
             model.balmer.ratio.fixed = false
             model.balmer.ratio.low   = 0.3
-            model.balmer.ratio.high  = 1
+            model.balmer.ratio.high  = 1000
         else
             model.balmer.norm.val   = 0.1
+            model.balmer.norm.expr = "balmer_norm * Main.interpol1(continuum, domain[1], 3000.)"            
             model.balmer.norm.fixed = true
             model.balmer.ratio.val   = 0.3
             model.balmer.ratio.fixed = true
         end
     end
     bestfit = fit!(model, qsfit.data, minimizer=mzer)
+    showstep  &&   (plot(qsfit, model); show(model); show(bestfit); readline())
 
     # Continuum renormalization
     let
@@ -317,12 +333,14 @@ function run(qsfit::QSFit)
         model.ironuv.fixed = false
     end
     if qsfit.options.use_ironopt
-        model.ironoptbr.norm.val = 1.
+        model.ironoptbr.norm.val = 10.
         model.ironoptbr.fixed = false
-        model.ironoptna.norm.val = 1.
+        model.ironoptna.norm.val = 10.
         model.ironoptna.fixed = false
     end
+    evaluate!(model)
     bestfit = fit!(model, qsfit.data, minimizer=mzer)
+    showstep  &&   (plot(qsfit, model); show(model); show(bestfit); readline())
     qsfit.options.use_ironuv    &&  (model.ironuv.fixed = true)
     qsfit.options.use_ironopt   &&  (model.ironoptbr.fixed = true)
     qsfit.options.use_ironopt   &&  (model.ironoptna.fixed = true)
@@ -342,7 +360,7 @@ function run(qsfit::QSFit)
         end
 
         bestfit = fit!(model, qsfit.data, minimizer=mzer)
-
+        showstep  &&   (plot(qsfit, model); show(model); show(bestfit); readline())
         for line in qsfit.lines
             cname = Symbol(line.label)
             line.enabled  &&  (model[cname].fixed = true)
@@ -390,6 +408,7 @@ function run(qsfit::QSFit)
             model[cname].fixed = true
         end
     end
+    showstep  &&   (plot(qsfit, model); show(model); show(bestfit); readline())
     
     # Last run with all parameters free
     model.continuum.fixed = false
@@ -418,9 +437,9 @@ end
 #qsfit = QSFit("dd", 0.3806, 0.06846);
 #adddata!(qsfit, read_sdss_dr10("spec-0752-52251-0323.fits"));
 
-qsfit = QSFit("dd", 0.178064, 0.02);
+qsfit = QSFit("spec-1959-53440-0066.fits", 0.178064, 0.02);
 adddata!(qsfit, read_sdss_dr10("spec-1959-53440-0066.fits"));
-(model, res) = run(qsfit);  # 8.0 s
-plot(qsfit, model)
+(model, bestfit) = run(qsfit);
+showstep  &&  (plot(qsfit, model); show(model); show(bestfit); readline())
 
 # end  # module

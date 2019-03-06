@@ -1,5 +1,7 @@
 function plot(qsfit, model)
-    @gp "set bars 0" :-
+    @gp "set bars 0" "set grid" xr=extrema(model(:domain)) :-
+    @gp :- title=qsfit.name * ", z=" * string(qsfit.z) * ", E(B-V)=" * string(qsfit.ebv) :-
+    @gp :- xlabel="Rest frame wavelength [A]" ylabel="Lum. density [10^{42} erg s^{-1} A^{-1}]" :-
     @gp :- qsfit.domain[1][1] qsfit.data[1].val qsfit.data[1].unc "w yerr t 'Data' pt 0 lc rgb 'black'" :-
     @gp :- model(:domain) model() "w l t 'Model' lw 2 lc rgb 'red'" :-
     @gp :- model(:domain) model(:continuum) "w l t 'Cont'" :-
