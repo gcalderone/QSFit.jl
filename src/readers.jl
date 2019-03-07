@@ -7,10 +7,10 @@ function read_sdss_dr10(file::AbstractString)
     close(f)
     
     ndrop = 100
-    λ = λ[ndrop:end-ndrop]
-    flux = flux[ndrop:end-ndrop]
-    ivar = ivar[ndrop:end-ndrop]
-    mask = mask[ndrop:end-ndrop]
+    λ = λ[ndrop+1:end-ndrop]
+    flux = flux[ndrop+1:end-ndrop]
+    ivar = ivar[ndrop+1:end-ndrop]
+    mask = mask[ndrop+1:end-ndrop]
 
     igood =  findall((mask .== 0)  .&
                      (ivar .> 0)   .&

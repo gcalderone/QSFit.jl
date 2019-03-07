@@ -68,7 +68,7 @@ function eval_balmer_pseudocont(Temp, Ne, fwhm)
     λ = 10 .^range(log10(3400.), stop=log10(4300), length=500) # Angstrom
     cont = fill(0., length(λ))       # Lum. density (arbitrary units)
     
-    # Broadening of high order Balmer lines ==> psuedo-continuum    
+    # Broadening of high order Balmer lines ==> pseudo-continuum
     σ = (fwhm / 3.e5) .* wave ./ 2.35
     for i in 1:length(wave)
         cont += norm[i] * gauss.(λ, wave[i], σ[i])

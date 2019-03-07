@@ -4,11 +4,14 @@ import DataFitting: AbstractDomain, Domain_1D, Domain_2D,
     Parameter, AbstractComponent, AbstractComponentData,
     cdata, evaluate!
 
+export QSFit, adddata!, read_sdss_dr10, run, plot
+
 using CMPFit, DataFitting, Gnuplot, ReusePatterns
 using Serialization, Statistics, DataFrames, FFTW, DelimitedFiles, Interpolations, Printf
 using Cosmology, Unitful, UnitfulAstro, FITSIO, Parameters
 
 DataFitting.@enable_CMPFit
+DataFitting.showsettings.fixedpars = false
 
 include("utils.jl")
 include("ccm_unred.jl")
@@ -235,6 +238,14 @@ function run(qsfit::QSFit)
                 model[cname].voff.val = 0
                 model[cname].voff.fixed = true
             end
+            if cname == :na_OIII_4959
+                model[cname].voff.expr = "na_OIII_5007_voff"
+                model[cname].voff.fixed = true
+            end
+            if cname == :na_OIII_5007_bw
+                model[cname].fwhm.expr = "na_OIII_5007_fwhm + na_OIII_5007_bw_fwhm"
+                model[cname].voff.expr = "na_OIII_5007_voff + na_OIII_5007_bw_voff"
+            end
         end
     end
     addexpr!(model, :narrow_lines, Meta.parse(join(cnames[:narrow_lines], ".+")), cmp=false)
@@ -399,7 +410,6 @@ function run(qsfit::QSFit)
                 printf(qsfit.log, "No residual is greater than 0, skip searching further residuals.")
                 break
             end
-
             push!(iadd, imax)
             println(qsfit.log, "Adding \"unknown\" emission line at " * string(λ[imax]))
             cname = Symbol("unk", length(iadd))
@@ -439,15 +449,4 @@ function run(qsfit::QSFit)
     # end
 end
 
-
-#qsfit = QSFit("dd", 0.3806, 0.06846);
-#adddata!(qsfit, read_sdss_dr10("spec-0752-52251-0323.fits"));
-if false
-    DataFitting.showsettings.fixedpars = false
-    qsfit = QSFit("spec-1959-53440-0066.fits", 0.178064, 0.02);
-    adddata!(qsfit, read_sdss_dr10("spec-1959-53440-0066.fits"));
-    (model, bestfit) = run(qsfit);
-    showstep  &&  (plot(qsfit, model); show(model); show(bestfit); readline())
-end
-
-# end  # module
+#end  # module
