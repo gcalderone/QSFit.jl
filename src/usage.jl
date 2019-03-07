@@ -8,6 +8,6 @@ include("QSFIT.jl")
 qsfit = QSFit("spec-1959-53440-0066.fits", 0.178064, 0.02);
 adddata!(qsfit, read_sdss_dr10("spec-1959-53440-0066.fits"));
 (model, bestfit) = run(qsfit);
-plot(qsfit, model); show(model); show(bestfit);
+show(model); show(bestfit); plot(qsfit, model);
 
 

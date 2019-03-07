@@ -20,7 +20,12 @@ function plot(qsfit, model)
     nn = length(resid)
     @gp :- :resid qsfit.domain[1][1] resid fill(1., nn) "w p t 'Data' pt 0 lc rgb 'black'" :-
     @gp :- :resid [extrema(qsfit.domain[1][1])...] [0,0] "w line notitle dt 2 lw 2 lt rgb 'orange'" :-
-    fs = cumsum(resid.^2) / (nn - length(DataFitting.getparamvalues(model)))
+
+    params = collect(values(DataFitting.getparams(DataFitting.wrappee(model))))
+    ifree = findall(.! getfield.(params, :cfixed))
+    dof = nn - length(ifree)
+    fs = cumsum(resid.^2) / dof
+    @info "DOF=" dof
     @gp :- :resid "set y2label 'Cumulative {/Symbol c}^2_{red}'" :-
     @gp :- :resid "set ytics nomirror" :-
     @gp :- :resid "set y2tics" :-

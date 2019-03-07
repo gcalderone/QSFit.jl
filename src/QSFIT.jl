@@ -315,7 +315,7 @@ function run(qsfit::QSFit)
         end
     end
     bestfit = fit!(model, qsfit.data, minimizer=mzer)
-    showstep  &&   (plot(qsfit, model); show(model); show(bestfit); readline())
+    showstep  &&   (show(model); show(bestfit); plot(qsfit, model); readline())
 
     # Continuum renormalization
     let
@@ -339,7 +339,7 @@ function run(qsfit::QSFit)
         println(qsfit.log, "Cont. norm. (after) : ", model.continuum.norm.val)
     end
     evaluate!(model)
-    showstep  &&   (plot(qsfit, model); show(model); show(bestfit); readline())
+    showstep  &&   (show(model); show(bestfit); plot(qsfit, model); readline())
     model.continuum.fixed = true
     qsfit.options.use_galaxy  &&  (model.galaxy.fixed = true)
     qsfit.options.use_balmer  &&  (model.balmer.fixed = true)
@@ -356,7 +356,7 @@ function run(qsfit::QSFit)
     end
     evaluate!(model)
     bestfit = fit!(model, qsfit.data, minimizer=mzer)
-    showstep  &&   (plot(qsfit, model); show(model); show(bestfit); readline())
+    showstep  &&   (show(model); show(bestfit); plot(qsfit, model); readline())
     qsfit.options.use_ironuv    &&  (model.ironuv.fixed = true)
     qsfit.options.use_ironopt   &&  (model.ironoptbr.fixed = true)
     qsfit.options.use_ironopt   &&  (model.ironoptna.fixed = true)
@@ -376,7 +376,7 @@ function run(qsfit::QSFit)
         end
 
         bestfit = fit!(model, qsfit.data, minimizer=mzer)
-        showstep  &&   (plot(qsfit, model); show(model); show(bestfit); readline())
+        showstep  &&   (show(model); show(bestfit); plot(qsfit, model); readline())
         for line in qsfit.lines
             cname = Symbol(line.label)
             line.enabled  &&  (model[cname].fixed = true)
@@ -422,7 +422,7 @@ function run(qsfit::QSFit)
             model[cname].fixed = true
         end
     end
-    showstep  &&   (plot(qsfit, model); show(model); show(bestfit); readline())
+    showstep  &&   (show(model); show(bestfit); plot(qsfit, model); readline())
 
     # Last run with all parameters free
     model.continuum.fixed = false

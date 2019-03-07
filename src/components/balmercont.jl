@@ -83,7 +83,7 @@ function eval_balmer_continuum(Temp, Tau, fwhm)
     ryd = (1 / c.R_inf / c.A).val    # Rydberg in A
     edge = 4 * ryd                   # Balmer (2^2=4) edge in Angstrom
 
-    λ = 10 .^range(log10(911.), stop=log10(5000), length=600) .* 1e-8 # cm
+    λ = 10 .^range(log10(912.), stop=log10(5000), length=600) .* 1e-8 # cm
     
     # Planck function
     b = planck(λ, Temp)
