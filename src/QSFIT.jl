@@ -21,7 +21,7 @@ include("components/balmercont.jl")
 #include("components/test_components.jl")
 
 qsfit_cosmology() = cosmology(h=0.70, OmegaM=0.3)   #S11
-const showstep = false
+const showstep = true
 
 unit_λ() = UnitfulAstro.angstrom
 unit_flux() = 1.e-17 * UnitfulAstro.erg / UnitfulAstro.s / UnitfulAstro.cm^2
@@ -98,7 +98,7 @@ function adddata!(qsfit::QSFit, data::QSFitData)
     end
 
     λ = data.λ ./ (1 + qsfit.z)
-    
+
     ii = findall(λ .> qsfit.options.min_wavelength)
     if length(ii) != length(λ)
         mm = fill(false, length(λ))
@@ -142,7 +142,7 @@ function adddata!(qsfit::QSFit, data::QSFitData)
     dered = ccm_unred([1450, 3000, 5100.], qsfit.ebv)
     println(qsfit.log, "Dereddening factors @ 1450, 3000, 5100 AA: ", dered)
     dered = ccm_unred(data.λ, qsfit.ebv)
-    
+
     dom = Domain(data.λ[data.good] ./ (1 + qsfit.z))
     lum = Measures(data.flux[data.good] .* dered[data.good] .* qsfit.flux2lum .* (1 + qsfit.z),
                    data.err[ data.good] .* dered[data.good] .* qsfit.flux2lum .* (1 + qsfit.z))
@@ -160,7 +160,7 @@ function run(qsfit::QSFit)
     mzer.config.ftol = 1.e-6
     mzer.config.gtol = 1.e-6
     mzer.config.xtol = 1.e-6
-    
+
     # First dataset have a special meaning
     λ = qsfit.domain[1][1]
 
@@ -178,7 +178,7 @@ function run(qsfit::QSFit)
     cnames[:unknown]      = Vector{Symbol}()
 
     # AGN continuum
-    addcomp!(model, :continuum => powerlaw(median(λ)))
+    addcomp!(model, :continuum => powerlaw((minimum(λ) + maximum(λ)) / 2.))
     push!(cnames[:broadband], :continuum)
 
     # Host galaxy (disabled when z > qsfit.options.galaxy_enabled_z)
@@ -205,16 +205,16 @@ function run(qsfit::QSFit)
     if qsfit.options.use_ironuv
         addcomp!(model, :ironuv => ironuv(3000))
         model.ironuv.norm.val = 0.
-        model.ironuv.fixed = true        
+        model.ironuv.fixed = true
         push!(cnames[:broadband], :ironuv)
     end
     if qsfit.options.use_ironopt
         addcomp!(model, :ironoptbr => ironopt_broad(3000))
         addcomp!(model, :ironoptna => ironopt_narrow(500))
         model.ironoptbr.norm.val = 0.
-        model.ironoptbr.fixed = true        
+        model.ironoptbr.fixed = true
         model.ironoptna.norm.val = 0.
-        model.ironoptna.fixed = true        
+        model.ironoptna.fixed = true
         push!(cnames[:broadband], :ironoptbr)
         push!(cnames[:broadband], :ironoptna)
     end
@@ -231,6 +231,10 @@ function run(qsfit::QSFit)
             end
             model[cname].norm.val = 0.
             model[cname].fixed = true
+            if cname == :br_Ha_base
+                model[cname].voff.val = 0
+                model[cname].voff.fixed = true
+            end
         end
     end
     addexpr!(model, :narrow_lines, Meta.parse(join(cnames[:narrow_lines], ".+")), cmp=false)
@@ -278,22 +282,22 @@ function run(qsfit::QSFit)
             (model.galaxy.norm.val < 1e-4)  &&  (model.galaxy.norm.val = 1e-4)
         end
     end
-    
+
     # Balmer continuum
     if qsfit.options.use_balmer
         if qsfit.z < qsfit.options.balmer_fixed_z
             model.balmer.norm.val   = 0.1
-            model.balmer.norm.expr = "balmer_norm * Main.interpol1(continuum, domain[1], 3000.)"            
+            model.balmer.norm.expr = "balmer_norm * Main.interpol1(continuum, domain[1], 3000.) / continuum_norm"
             model.balmer.norm.fixed = false
             model.balmer.norm.low   = 0
             model.balmer.norm.high  = 0.5
             model.balmer.ratio.val   = 0.5
             model.balmer.ratio.fixed = false
             model.balmer.ratio.low   = 0.3
-            model.balmer.ratio.high  = 1000
+            model.balmer.ratio.high  = 1
         else
             model.balmer.norm.val   = 0.1
-            model.balmer.norm.expr = "balmer_norm * Main.interpol1(continuum, domain[1], 3000.)"            
+            model.balmer.norm.expr = "balmer_norm * Main.interpol1(continuum, domain[1], 3000.)"
             model.balmer.norm.fixed = true
             model.balmer.ratio.val   = 0.3
             model.balmer.ratio.fixed = true
@@ -324,6 +328,7 @@ function run(qsfit::QSFit)
         println(qsfit.log, "Cont. norm. (after) : ", model.continuum.norm.val)
     end
     evaluate!(model)
+    showstep  &&   (plot(qsfit, model); show(model); show(bestfit); readline())
     model.continuum.fixed = true
     qsfit.options.use_galaxy  &&  (model.galaxy.fixed = true)
     qsfit.options.use_balmer  &&  (model.balmer.fixed = true)
@@ -333,10 +338,10 @@ function run(qsfit::QSFit)
         model.ironuv.fixed = false
     end
     if qsfit.options.use_ironopt
-        model.ironoptbr.norm.val = 10.
+        model.ironoptbr.norm.val = 0.1
         model.ironoptbr.fixed = false
-        model.ironoptna.norm.val = 10.
-        model.ironoptna.fixed = false
+        model.ironoptna.norm.val = 0.
+        model.ironoptna.norm.fixed = true # will be freed during last run
     end
     evaluate!(model)
     bestfit = fit!(model, qsfit.data, minimizer=mzer)
@@ -389,7 +394,6 @@ function run(qsfit::QSFit)
             # of light = 0.02).
             Δ[findall((λ .< minimum(λ)*1.02)  .|
                       (λ .> maximum(λ)*0.98))] .= 0.
-
             imax = argmax(Δ)
             if Δ[imax] <= 0
                 printf(qsfit.log, "No residual is greater than 0, skip searching further residuals.")
@@ -402,14 +406,14 @@ function run(qsfit::QSFit)
             model[cname].norm.val = 1
             model[cname].center.val  = λ[imax]
             model[cname].center.low  = λ[imax] - 100
-            model[cname].center.high = λ[imax] + 100            
+            model[cname].center.high = λ[imax] + 100
             model[cname].fixed = false
             bestfit = fit!(model, qsfit.data, minimizer=mzer)
             model[cname].fixed = true
         end
     end
     showstep  &&   (plot(qsfit, model); show(model); show(bestfit); readline())
-    
+
     # Last run with all parameters free
     model.continuum.fixed = false
     qsfit.options.use_galaxy  &&  (model.galaxy.fixed = false)
@@ -417,6 +421,8 @@ function run(qsfit::QSFit)
     qsfit.options.use_ironuv  &&  (model.ironuv.fixed = false)
     qsfit.options.use_ironopt &&  (model.ironoptbr.fixed = false)
     qsfit.options.use_ironopt &&  (model.ironoptna.fixed = false)
+    qsfit.options.use_ironopt &&  (model.ironoptna.norm.fixed = false)
+
     for cname in cnames[:narrow_lines];  model[cname].fixed = false;  end
     for cname in cnames[:broad_lines] ;  model[cname].fixed = false;  end
     for cname in cnames[:unknown]     ;  model[cname].fixed = false;  end
@@ -436,10 +442,12 @@ end
 
 #qsfit = QSFit("dd", 0.3806, 0.06846);
 #adddata!(qsfit, read_sdss_dr10("spec-0752-52251-0323.fits"));
-
-qsfit = QSFit("spec-1959-53440-0066.fits", 0.178064, 0.02);
-adddata!(qsfit, read_sdss_dr10("spec-1959-53440-0066.fits"));
-(model, bestfit) = run(qsfit);
-showstep  &&  (plot(qsfit, model); show(model); show(bestfit); readline())
+if false
+    DataFitting.showsettings.fixedpars = false
+    qsfit = QSFit("spec-1959-53440-0066.fits", 0.178064, 0.02);
+    adddata!(qsfit, read_sdss_dr10("spec-1959-53440-0066.fits"));
+    (model, bestfit) = run(qsfit);
+    showstep  &&  (plot(qsfit, model); show(model); show(bestfit); readline())
+end
 
 # end  # module

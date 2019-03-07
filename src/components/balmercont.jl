@@ -93,17 +93,20 @@ function eval_balmer_continuum(Temp, Tau, fwhm)
     cont = b .* (1. .- exp.(-(Tau .* (λ ./ edge).^3.)))
     cont[findall(λ .>= edge)] .= 0.
     cont ./= maximum(cont)
-    
+
     # Broadening
     σ = fwhm / 3.e5 / 2.35 * edge
+    σ = 2.51705 * 6
+    @info σ
     kernel = gauss(λ, mean(λ), σ)
     kernel = kernel[findall(kernel .> maximum(kernel) / 1e3)]
     (mod(length(kernel), 2) == 0)  &&  (push!(kernel, 0.))
     cont = convol(cont, kernel)
 
-    # Normalize Balmer continuum at edge
-    cont ./= interpol(cont, λ, edge)
-    return (λ, cont)
+    # Normalize Balmer continuum at 3000A
+    cont ./= interpol1(cont, λ, 3000.)
+    contAtEdge = interpol1(cont, λ, edge)
+    return (λ, cont, contAtEdge)
 end
 
 
@@ -124,19 +127,21 @@ end
 mutable struct balmercont_cdata <: AbstractComponentData
     c1::Vector{Float64}
     c2::Vector{Float64}
-    c3000::Float64
 end
 
 function cdata(comp::balmercont, domain::AbstractDomain)
     T = 15000.
     Ne = 1e9
     Tau = 1.
-    fwhm = 5000.
-    (λ1, c1) = eval_balmer_pseudocont(T, Ne, fwhm)
-    (λ2, c2) = eval_balmer_continuum(T, Tau, fwhm)
-    return balmercont_cdata(interpol(c1, λ1, domain[1]),
-                                 interpol(c2, λ2, domain[1]),
-                                 interpol(c2, λ2, 3000.))
+    fwhm = 5040.8 # 5000.
+    (λ1, c1, contAtEdge) = eval_balmer_continuum(T, Tau, fwhm)
+    (λ2, c2) = eval_balmer_pseudocont(T, Ne, fwhm)
+    c2 .*= contAtEdge
+    out = balmercont_cdata(interpol1(c1, λ1, domain[1]),
+                           interpol1(c2, λ2, domain[1]))
+    out.c1[findall(out.c1 .< 0.)] .= 0.
+    out.c2[findall(out.c2 .< 0.)] .= 0.
+    return out
 end
 
 function evaluate!(cdata::balmercont_cdata, output::Vector{Float64}, domain::Domain_1D,
@@ -144,3 +149,24 @@ function evaluate!(cdata::balmercont_cdata, output::Vector{Float64}, domain::Dom
     output .= norm .* (cdata.c1 .+ ratio .* cdata.c2)
     return output
 end
+
+
+
+#=
+m = Model(:c => balmercont(0.1, 0.5))
+n = DataFitting.wrappee(m)
+add_dom!(m, 1000.:4500)
+addexpr!(m, :c)
+evaluate!(m)
+
+@gp "set grid" yr=(0, 1.1) :-
+@gp :- xlab="Wavelength [A]" ylab="Lum. density [arb.units]" :-
+@gp :- 3645.07.*[1,1] [0, 1.1] "w l dt 4 lc rgb 'black'" :-
+m.c.norm.val = 1
+m.c.ratio.val = 1
+evaluate!(m)
+@gp :- m(:domain) m() "w l lw 2 lc rgb 'red'"
+m.c.ratio.val = 0.5
+evaluate!(m)
+@gp :- m(:domain) m() "w l lw 2 lc rgb 'blue'"
+=#

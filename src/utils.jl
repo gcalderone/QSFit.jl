@@ -66,7 +66,7 @@ function planck(λ, T)
     c = gpc()
     b = 2 * c.h.val * c.c.val^2. ./ (λ.^5.)
     d = c.h.val * c.c.val ./ (λ .* c.k.val .* T)
-    return b ./ exp.(d .- 1.)
+    return b ./ (exp.(d) .- 1)
 end
   
 function convol(v, _k)
