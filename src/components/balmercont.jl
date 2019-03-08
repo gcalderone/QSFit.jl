@@ -96,8 +96,7 @@ function eval_balmer_continuum(Temp, Tau, fwhm)
 
     # Broadening
     σ = fwhm / 3.e5 / 2.35 * edge
-    σ = 2.51705 * 6
-    @info σ
+    σ = 2.51705 * 6 # TODO: this is to match IDL results, above formula is the correct one
     kernel = gauss(λ, mean(λ), σ)
     kernel = kernel[findall(kernel .> maximum(kernel) / 1e3)]
     (mod(length(kernel), 2) == 0)  &&  (push!(kernel, 0.))

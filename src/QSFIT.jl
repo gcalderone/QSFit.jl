@@ -35,30 +35,29 @@ struct QSFitData
     λ::Vector{Float64}
     flux::Vector{Float64}
     err::Vector{Float64}
-    good::Vector{Int}
+    good::Vector{Bool}
     goodfraction::Float64
     median_flux::Float64
     median_err::Float64
     meta::Dict{Symbol, Any}
     function QSFitData(λ::Vector{T}, flux::Vector{T}, err::Vector{T},
-                       igood::Union{Nothing, Vector{Int}}=nothing; label="") where T <: AbstractFloat
-        if igood == nothing
-            igood = collect(1:length(λ))
+                       good::Union{Nothing, Vector{Bool}}=nothing; label="") where T <: AbstractFloat
+        if good == nothing
+            good = fill(true, length(λ))
         end
-        @assert length(λ) == length(flux) == length(err)
-        @assert (minimum(igood) >= 1)  &&  (maximum(igood) <= length(λ))
-        @assert length(unique(igood)) == length(igood)
-        ii = sortperm(λ)
-        new(label, λ[ii], flux[ii], err[ii], sort(igood), length(igood)/length(λ),
-            median(flux), median(err), Dict{Symbol, Any}())
+        @assert length(λ) == length(flux) == length(err) == length(good)
+        @assert issorted(λ)
+        igood = findall(good)
+        new(label, λ, flux, err, good, length(igood)/length(λ),
+            median(flux[igood]), median(err[igood]), Dict{Symbol, Any}())
     end
 end
 
-QSFitData(wave::Vector{Quantity}, flux::Vector{Quantity}, err::Vector{Quantity}, igood=nothing; label="") =
+QSFitData(wave::Vector{Quantity}, flux::Vector{Quantity}, err::Vector{Quantity}, good=nothing; label="") =
     QSFitData(getproperty.(uconvert.(Ref(unit_λ())   , wave), :val),
               getproperty.(uconvert.(Ref(unit_flux()), flux), :val),
               getproperty.(uconvert.(Ref(unit_flux()), err ), :val),
-              igood, label=label)
+              good, label=label)
 
 include("readers.jl")
 include("lines.jl")
@@ -102,25 +101,18 @@ function adddata!(qsfit::QSFit, data::QSFitData)
 
     λ = data.λ ./ (1 + qsfit.z)
 
-    ii = findall(λ .> qsfit.options.min_wavelength)
-    if length(ii) != length(λ)
-        mm = fill(false, length(λ))
-        mm[data.good] .= true
-        mm[ii] .= true
-        empty!(data.good)
-        append!(data.good, findall(mm))
-    end
+    ii = findall(λ .<= qsfit.options.min_wavelength)
+    data.good[ii] .= false
 
     # Ignore lines on missing data
     let
         # Perform 3-5th test
-        mm = fill(false, length(λ))
-        mm[data.good] .= true
-        println(qsfit.log, "Good samples before 3/5th test: ", length(data.good))
+        println(qsfit.log, "Good samples before 3/5th test: ", length(findall(data.good)))
         for line in qsfit.lines
             line.enabled  ||  continue
             if isa(line, EmissionLine)
-                λrange = line.λ .* (1 .+ [-1, 1] .* line.fwhm / 3.e5)
+                fwhm = (isa(line, NarrowLine)  ?  1e3  :  1.2e4) / 2.  # TODO: use current line FWHM
+                λrange = line.λ .* (1 .+ [-1, 1] .* fwhm / 3.e5)
                 δ = (λrange[2] - λrange[1]) / 5.
                 count = 0
                 for ii in 1:5
@@ -131,24 +123,23 @@ function adddata!(qsfit::QSFit, data::QSFitData)
                     println(qsfit.log, "Disabling line: ", line.label)
                     line.enabled = false # Disable line and ignore data
                     ii = findall(λrange[1] .<= λ .< λrange[2])
-                    mm[ii] .= false
+                    data.good[ii] .= false
                 else
                     println(qsfit.log, " Enabling line: ", line.label)
                 end
             end
         end
-        empty!(data.good)
-        append!(data.good, findall(mm))
-        println(qsfit.log, "Good samples after  3/5th test: ", length(data.good))
+        println(qsfit.log, "Good samples after  3/5th test: ", length(findall(data.good)))
     end
 
     dered = ccm_unred([1450, 3000, 5100.], qsfit.ebv)
     println(qsfit.log, "Dereddening factors @ 1450, 3000, 5100 AA: ", dered)
     dered = ccm_unred(data.λ, qsfit.ebv)
 
-    dom = Domain(data.λ[data.good] ./ (1 + qsfit.z))
-    lum = Measures(data.flux[data.good] .* dered[data.good] .* qsfit.flux2lum .* (1 + qsfit.z),
-                   data.err[ data.good] .* dered[data.good] .* qsfit.flux2lum .* (1 + qsfit.z))
+    igood = findall(data.good)
+    dom = Domain(data.λ[igood] ./ (1 + qsfit.z))
+    lum = Measures(data.flux[igood] .* dered[igood] .* qsfit.flux2lum .* (1 + qsfit.z),
+                   data.err[ igood] .* dered[igood] .* qsfit.flux2lum .* (1 + qsfit.z))
     push!(qsfit.domain, dom)
     push!(qsfit.data, lum)
 end
