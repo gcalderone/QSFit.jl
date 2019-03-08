@@ -107,6 +107,17 @@ interpol1(y, x, X::Number) = interpol1(y, x, [X])[1]
 
 
 
+function smooth(y, n)
+    out = y .* 1.
+    @assert mod(n, 2) == 1
+    @assert n >= 3
+    h = div(n-1, 2)
+    for i in 1+h:length(y)-h
+        out[i] = mean(y[i-h:i+h])
+    end
+    return out
+end
+
 #=
 function boole_int(x, f)
     @assert length(x) == length(f)

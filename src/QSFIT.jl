@@ -12,6 +12,7 @@ using Cosmology, Unitful, UnitfulAstro, FITSIO, Parameters
 
 DataFitting.@enable_CMPFit
 DataFitting.showsettings.fixedpars = false
+const showstep = true
 
 include("utils.jl")
 include("ccm_unred.jl")
@@ -24,7 +25,6 @@ include("components/balmercont.jl")
 #include("components/test_components.jl")
 
 qsfit_cosmology() = cosmology(h=0.70, OmegaM=0.3)   #S11
-const showstep = true
 
 unit_λ() = UnitfulAstro.angstrom
 unit_flux() = 1.e-17 * UnitfulAstro.erg / UnitfulAstro.s / UnitfulAstro.cm^2
@@ -160,9 +160,7 @@ function run(qsfit::QSFit)
     @assert length(qsfit.domain) == length(qsfit.data)
 
     mzer = cmpfit()
-    mzer.config.ftol = 1.e-6
-    mzer.config.gtol = 1.e-6
-    mzer.config.xtol = 1.e-6
+    mzer.config.ftol = mzer.config.gtol = mzer.config.xtol = 1.e-6
 
     # First dataset have a special meaning
     λ = qsfit.domain[1][1]
@@ -393,13 +391,14 @@ function run(qsfit::QSFit)
             (length(iadd) >= qsfit.options.unkLines)  &&  break
             run  ||  break
             evaluate!(model)
-            Δ = (qsfit.data[1].val - model(:known)) ./ qsfit.data[1].unc
+            Δ = (qsfit.data[1].val - model()) ./ qsfit.data[1].unc
             @assert length(λ) == length(Δ)
             if length(iadd) > 0
                 # Avoid considering again the same residuals and those
                 # in the 2 neighbour samples
                 Δ[vcat([i.+iadd for i in -2:2]...)] .= 0.
             end
+
             # Do not add lines within 6000 km/s from the edges since
             # these may influence continuum fitting (6000 km/s / speed
             # of light = 0.02).
@@ -413,11 +412,18 @@ function run(qsfit::QSFit)
             push!(iadd, imax)
             println(qsfit.log, "Adding \"unknown\" emission line at " * string(λ[imax]))
             cname = Symbol("unk", length(iadd))
-            model[cname].norm.val = 1
+            model[cname].norm.val = 1.
             model[cname].center.val  = λ[imax]
-            model[cname].center.low  = λ[imax] - 100
-            model[cname].center.high = λ[imax] + 100
+            model[cname].center.low  = λ[imax] - λ[imax]/10. # allow to move 10%
+            model[cname].center.high = λ[imax] + λ[imax]/10.
             model[cname].fixed = false
+            if false
+                plot(qsfit, model)
+                @gp :-        λ[imax]*[1,1] [0, 0.6] "w l lw 2"
+                @gp :- :resid λ[imax]*[1,1] [-10, 10] "w l lw 2"
+                @gp :- :resid [λ[1], λ[end]] Δ[imax]*[1, 1] "w l lw 2"
+                sleep(0.3)
+            end
             bestfit = fit!(model, qsfit.data, minimizer=mzer)
             model[cname].fixed = true
         end
@@ -436,9 +442,15 @@ function run(qsfit::QSFit)
     for cname in cnames[:narrow_lines];  model[cname].fixed = false;  end
     for cname in cnames[:broad_lines] ;  model[cname].fixed = false;  end
     for cname in cnames[:unknown]     ;  model[cname].fixed = false;  end
+    @info "last run"
     bestfit = fit!(model, qsfit.data, minimizer=mzer)
+    bestfit = fit!(model, qsfit.data, minimizer=mzer)
+    bestfit = fit!(model, qsfit.data, minimizer=mzer)
+    showstep  &&   (show(model); show(bestfit); plot(qsfit, model); readline())
+
     elapsed = time() - elapsed
     @info elapsed
+    showstep  &&   (show(model); show(bestfit); plot(qsfit, model); readline())
     return (model, bestfit)
     # catch err
     # finally

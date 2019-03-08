@@ -13,19 +13,20 @@ function plot(qsfit, model)
     @gp :- model(:domain) model(:broad_lines) "w l t 'Broad' lw 2 lc rgb 'blue'" :-
     @gp :- model(:domain) model(:narrow_lines) "w l t 'Narrow' lw 2 lc rgb 'brown'" :-
     @gp :- model(:domain) model(:unknown) "w l t 'Unknown' lc rgb 'purple'"
+
+
     @gp    :resid "set bars 0" "set grid" xr=extrema(model(:domain)) :-
     @gp :- :resid title=qsfit.name * ", z=" * string(qsfit.z) * ", E(B-V)=" * string(qsfit.ebv) :-
     @gp :- :resid xlabel="Rest frame wavelength [A]" ylabel="Residuals [{/Symbol s}]" :-
     resid = (qsfit.data[1].val .- model()) ./ qsfit.data[1].unc
     nn = length(resid)
-    @gp :- :resid qsfit.domain[1][1] resid fill(1., nn) "w p t 'Data' pt 0 lc rgb 'black'" :-
+    @gp :- :resid qsfit.domain[1][1] resid fill(1., nn) "w p t 'Data' lc rgb 'black'" :-
     @gp :- :resid [extrema(qsfit.domain[1][1])...] [0,0] "w line notitle dt 2 lw 2 lt rgb 'orange'" :-
 
     params = collect(values(DataFitting.getparams(DataFitting.wrappee(model))))
     ifree = findall(.! getfield.(params, :cfixed))
     dof = nn - length(ifree)
     fs = cumsum(resid.^2) / dof
-    @info "DOF=" dof
     @gp :- :resid "set y2label 'Cumulative {/Symbol c}^2_{red}'" :-
     @gp :- :resid "set ytics nomirror" :-
     @gp :- :resid "set y2tics" :-
