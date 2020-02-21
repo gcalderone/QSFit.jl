@@ -15,8 +15,8 @@ DataFitting.@enable_CMPFit
 DataFitting.showsettings.fixedpars = false
 const showstep = true
 
-include("utils.jl")
-include("ccm_unred.jl")
+include("common/utils.jl")
+include("common/ccm_unred.jl")
 include("components/emline.jl")
 include("components/powerlaw.jl")
 include("components/hostgalaxy.jl")
@@ -24,8 +24,8 @@ include("components/ironopt.jl")
 include("components/ironuv.jl")
 include("components/balmercont.jl")
 #include("components/test_components.jl")
-include("cosmology.jl")
-include("readers.jl")
+include("common/cosmology.jl")
+include("common/QSFitData.jl")
 include("lines.jl")
 
 @with_kw mutable struct QSFitOptions

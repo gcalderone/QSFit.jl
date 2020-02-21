@@ -51,10 +51,11 @@ function qsfitversion()
     return v"0.0.1"
 end
 
+
 function qsfitpath()
     #dirname(pathof(QSFIT))
     (file, line) = functionloc(qsfitversion, ())
-    return dirname(file)
+    return dirname(dirname(file))
 end
 
 
