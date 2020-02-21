@@ -1,3 +1,40 @@
+using FITSIO
+
+unit_λ() = UnitfulAstro.angstrom
+unit_flux() = 1.e-17 * UnitfulAstro.erg / UnitfulAstro.s / UnitfulAstro.cm^2
+unit_lum() =  1.e42  * UnitfulAstro.erg / UnitfulAstro.s
+
+struct QSFitData
+    label::String
+    λ::Vector{Float64}
+    flux::Vector{Float64}
+    err::Vector{Float64}
+    good::Vector{Bool}
+    goodfraction::Float64
+    median_flux::Float64
+    median_err::Float64
+    meta::Dict{Symbol, Any}
+    function QSFitData(λ::Vector{T}, flux::Vector{T}, err::Vector{T},
+                       good::Union{Nothing, Vector{Bool}}=nothing; label="") where T <: AbstractFloat
+        if good == nothing
+            good = fill(true, length(λ))
+        end
+        @assert length(λ) == length(flux) == length(err) == length(good)
+        @assert issorted(λ)
+        igood = findall(good)
+        new(label, λ, flux, err, good, length(igood)/length(λ),
+            median(flux[igood]), median(err[igood]), Dict{Symbol, Any}())
+    end
+end
+
+QSFitData(wave::Vector{Quantity}, flux::Vector{Quantity}, err::Vector{Quantity}, good=nothing; label="") =
+    QSFitData(getproperty.(uconvert.(Ref(unit_λ())   , wave), :val),
+              getproperty.(uconvert.(Ref(unit_flux()), flux), :val),
+              getproperty.(uconvert.(Ref(unit_flux()), err ), :val),
+              good, label=label)
+
+
+
 function read_sdss_dr10(file::AbstractString)
     f = FITS(file)
     λ = 10 .^read(f[2], "loglam")
