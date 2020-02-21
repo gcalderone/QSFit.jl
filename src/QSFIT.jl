@@ -4,11 +4,12 @@ import DataFitting: AbstractDomain, Domain_1D, Domain_2D,
     Parameter, AbstractComponent, AbstractComponentData,
     cdata, evaluate!
 
-export QSFit, adddata!, read_sdss_dr10, run, plot
+export QSFit, add_data!, read_sdss_dr10, run, plot
 
 using CMPFit, DataFitting, Gnuplot, ReusePatterns
-using Serialization, Statistics, DataFrames, FFTW, DelimitedFiles, Interpolations, Printf
+using Serialization, Statistics, DataFrames, DelimitedFiles, Interpolations, Printf
 using Cosmology, Unitful, UnitfulAstro, FITSIO, Parameters
+#using FFTW
 
 DataFitting.@enable_CMPFit
 DataFitting.showsettings.fixedpars = false
@@ -92,7 +93,7 @@ struct QSFit
 end
 
 
-function adddata!(qsfit::QSFit, data::QSFitData)
+function add_data!(qsfit::QSFit, data::QSFitData)
     println(qsfit.log, "New data: " * data.label)
     println(qsfit.log, "  good fraction:: " * string(data.goodfraction))
     if data.goodfraction < 0.5
@@ -170,7 +171,7 @@ function run(qsfit::QSFit)
     cnames[:unknown]      = Vector{Symbol}()
 
     # AGN continuum
-    addcomp!(model, :continuum => powerlaw((minimum(λ) + maximum(λ)) / 2.))
+    add_comp!(model, :continuum => powerlaw((minimum(λ) + maximum(λ)) / 2.))
     push!(cnames[:broadband], :continuum)
 
     # Host galaxy (disabled when z > qsfit.options.galaxy_enabled_z)
@@ -179,13 +180,13 @@ function run(qsfit::QSFit)
         qsfit.options.use_galaxy = false
     end
     if qsfit.options.use_galaxy
-        addcomp!(model, :galaxy => hostgalaxy(qsfit.options.galaxy_template))
+        add_comp!(model, :galaxy => hostgalaxy(qsfit.options.galaxy_template))
         push!(cnames[:broadband], :galaxy)
     end
 
     # Balmer continuum
     if qsfit.options.use_balmer
-        addcomp!(model, :balmer => balmercont(0.1, 0.5))
+        add_comp!(model, :balmer => balmercont(0.1, 0.5))
         push!(cnames[:broadband], :balmer)
     end
 
@@ -195,14 +196,14 @@ function run(qsfit::QSFit)
         qsfit.options.use_ironuv = false
     end
     if qsfit.options.use_ironuv
-        addcomp!(model, :ironuv => ironuv(3000))
+        add_comp!(model, :ironuv => ironuv(3000))
         model.ironuv.norm.val = 0.
         model.ironuv.fixed = true
         push!(cnames[:broadband], :ironuv)
     end
     if qsfit.options.use_ironopt
-        addcomp!(model, :ironoptbr => ironopt_broad(3000))
-        addcomp!(model, :ironoptna => ironopt_narrow(500))
+        add_comp!(model, :ironoptbr => ironopt_broad(3000))
+        add_comp!(model, :ironoptna => ironopt_narrow(500))
         model.ironoptbr.norm.val = 0.
         model.ironoptbr.fixed = true
         model.ironoptna.norm.val = 0.
@@ -210,7 +211,7 @@ function run(qsfit::QSFit)
         push!(cnames[:broadband], :ironoptbr)
         push!(cnames[:broadband], :ironoptna)
     end
-    addexpr!(model, :broadband, Meta.parse(join(cnames[:broadband], ".+")), cmp=false)
+    add_expr!(model, :broadband, Meta.parse(join(cnames[:broadband], ".+")), cmp=false)
 
     # Emission lines
     for line in qsfit.lines
@@ -237,9 +238,9 @@ function run(qsfit::QSFit)
             end
         end
     end
-    addexpr!(model, :narrow_lines, Meta.parse(join(cnames[:narrow_lines], ".+")), cmp=false)
-    addexpr!(model, :broad_lines , Meta.parse(join(cnames[:broad_lines] , ".+")), cmp=false)
-    addexpr!(model, :known, :(broadband .+ narrow_lines .+ broad_lines), cmp=false)
+    add_expr!(model, :narrow_lines, Meta.parse(join(cnames[:narrow_lines], ".+")), cmp=false)
+    add_expr!(model, :broad_lines , Meta.parse(join(cnames[:broad_lines] , ".+")), cmp=false)
+    add_expr!(model, :known, :(broadband .+ narrow_lines .+ broad_lines), cmp=false)
 
     # Unknown lines
     for ii in 1:qsfit.options.unkLines
@@ -250,8 +251,8 @@ function run(qsfit::QSFit)
         model[cname].norm.val = 0
         model[cname].fixed = true
     end
-    addexpr!(model, :unknown, Meta.parse(join(cnames[:unknown] , ".+")), cmp=false)
-    addexpr!(model, :all, :(known .+ unknown))
+    add_expr!(model, :unknown, Meta.parse(join(cnames[:unknown] , ".+")), cmp=false)
+    add_expr!(model, :all, :(known .+ unknown))
 
     ##############################################
 
@@ -352,7 +353,7 @@ function run(qsfit::QSFit)
 
     # Emission lines
     let
-        x = model(:domain)
+        x = domain(model)
         y = qsfit.data[1].val - model(:broadband)
         for line in qsfit.lines
             if line.enabled
@@ -434,8 +435,6 @@ function run(qsfit::QSFit)
     for cname in cnames[:broad_lines] ;  model[cname].fixed = false;  end
     for cname in cnames[:unknown]     ;  model[cname].fixed = false;  end
     @info "last run"
-    bestfit = fit!(model, qsfit.data, minimizer=mzer)
-    bestfit = fit!(model, qsfit.data, minimizer=mzer)
     bestfit = fit!(model, qsfit.data, minimizer=mzer)
     showstep  &&   (show(model); show(bestfit); plot(qsfit, model); readline())
 

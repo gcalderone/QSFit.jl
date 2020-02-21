@@ -4,18 +4,18 @@
 function ironopt_read(file)
     a = readdlm(file, '\t', comments=true)
     df = DataFrame()
-    df[:line] = string.(a[:,1])
-    df[:transition] = string.(a[:,2])
+    df[!, :line] = string.(a[:,1])
+    df[!, :transition] = string.(a[:,2])
     ii = findall(typeof.(a[:,3]) .== Float64)
-    df[:ul] = NaN; df[ii, :ul] = float.(a[ii,3])
+    df[!, :ul] .= NaN; df[ii, :ul] = float.(a[ii,3])
     ii = findall(typeof.(a[:,4]) .== Float64)
-    df[:wavelength] = NaN; df[ii, :wavelength] = float.(a[ii,4])
+    df[!, :wavelength] .= NaN; df[ii, :wavelength] = float.(a[ii,4])
     ii = findall(typeof.(a[:,5]) .== Float64)
-    df[:aat] = NaN; df[ii, :aat] = float.(a[ii,5])
+    df[!, :aat] .= NaN; df[ii, :aat] = float.(a[ii,5])
     ii = findall(typeof.(a[:,6]) .== Float64)
-    df[:wht] = NaN; df[ii, :wht] = float.(a[ii,6])
+    df[!, :wht] .= NaN; df[ii, :wht] = float.(a[ii,6])
             
-    ii = findall(isfinite.(df[:wavelength])  .&  isfinite.(df[:wht]))
+    ii = findall(isfinite.(df[:, :wavelength])  .&  isfinite.(df[:, :wht]))
     df = df[ii,:]
     return df
 end
@@ -36,9 +36,9 @@ mutable struct ironopt <: AbstractComponent
     function ironopt(file::String, fwhm::Number)
         df = ironopt_read(file)
         # Drop Balmer lines (they are accounted for in the main QSFIT code)
-        ii = findall(getindex.(df[:line], Ref(1:2)) .!= "H\$")
+        ii = findall(getindex.(df[:, :line], Ref(1:2)) .!= "H\$")
         df = df[ii,:]
-        out = new(Parameter(1), df[:wavelength], df[:wht], float(fwhm))
+        out = new(Parameter(1), df[:, :wavelength], df[:, :wht], float(fwhm))
         out.norm.low = 0
         return out
     end

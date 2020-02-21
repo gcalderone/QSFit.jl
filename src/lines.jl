@@ -92,7 +92,7 @@ end
 
 function addEmLine(model, line::EmissionLine)
     cname = Symbol(line.label)
-    addcomp!(model, cname => emline(line.λ))
+    add_comp!(model, cname => emline(line.λ))
     model[cname].fwhm.val  = line.fwhm
     model[cname].fwhm.low  = line.fwhm_limits[1]
     model[cname].fwhm.high = line.fwhm_limits[2]
@@ -104,7 +104,7 @@ end
 
 function addEmLine(model, line::UnknownLine)
     cname = Symbol(line.label)
-    addcomp!(model, cname => emline(line.λ))
+    add_comp!(model, cname => emline(line.λ))
     model[cname].fwhm.val  = line.fwhm
     model[cname].fwhm.low  = line.fwhm_limits[1]
     model[cname].fwhm.high = line.fwhm_limits[2]
