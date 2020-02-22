@@ -25,7 +25,7 @@ include("components/ironuv.jl")
 include("components/balmercont.jl")
 #include("components/test_components.jl")
 include("common/cosmology.jl")
-include("common/QSFitData.jl")
+include("common/Spectrum.jl")
 include("lines.jl")
 
 @with_kw mutable struct QSFitOptions
@@ -114,10 +114,10 @@ struct QSFit
 end
 
 
-function add_data!(qsfit::QSFit, data::QSFitData)
+function add_data!(qsfit::QSFit, data::Spectrum)
     println(qsfit.log, "New data: " * data.label)
-    println(qsfit.log, "  good fraction:: " * string(data.goodfraction))
-    if data.goodfraction < 0.5
+    println(qsfit.log, "  good fraction:: " * string(goodfraction(data)))
+    if goodfraction(data) < 0.5
         @error "Good fraction < 0.5"
     end
 
