@@ -1,10 +1,10 @@
-@quasiabstract struct Line
+@quasiabstract struct SpectralLine
     label::String
     λ::Float64
     enabled::Bool
 end
 
-@quasiabstract struct EmissionLine <: Line
+@quasiabstract struct EmissionLine <: SpectralLine
     fwhm::Float64
     fwhm_limits::NTuple{2, Float64}
     voff_limits::NTuple{2, Float64}
@@ -30,7 +30,7 @@ end
         new(label,        λ, true,  5000, (900, 1.5e4), 3000 .* (-1,1))
 end
 
-@quasiabstract mutable struct UnknownLine <: Line
+@quasiabstract mutable struct UnknownLine <: SpectralLine
     fwhm::Float64
     fwhm_limits::NTuple{2, Float64}
     λ_limits::NTuple{2, Float64}
@@ -44,8 +44,8 @@ end
 end
 
 
-function qsfit_lines()
-    out = Vector{Line}()
+function known_lines()
+    out = Vector{SpectralLine}()
     l = CombinedNarrowLine("na_Lyb"         , 1026.0  );  push!(out, l)
     l = CombinedBroadLine( "br_Lyb"         , 1026.0  );  push!(out, l)
     l = CombinedNarrowLine("na_Lya"         , 1215.24 );  push!(out, l)
@@ -85,7 +85,7 @@ function qsfit_lines()
 end
 
 
-function qsfit_lines_linkparameters(model::DataFitting.UI{Model})
+function known_lines_linkparameters(model::DataFitting.UI{Model})
     model.na_OIII_4959.voff.expr = "na_OIII_5007_voff"
 end
 
