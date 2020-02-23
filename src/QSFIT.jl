@@ -1,19 +1,18 @@
-#module QSFIT
+module QSFIT
+
+export QSFit, add_data!, read_sdss_dr10, fit!, plot
 
 import DataFitting: AbstractDomain, Domain_1D, Domain_2D,
     Parameter, AbstractComponent, AbstractComponentData,
     cdata, evaluate!
 
-export QSFit, add_data!, read_sdss_dr10, run, plot
-
-using CMPFit, DataFitting, Gnuplot, ReusePatterns
-using Serialization, Statistics, DataFrames, DelimitedFiles, Interpolations, Printf
+using CMPFit, DataFitting, Gnuplot, ReusePatterns, StructC14N
+using Statistics, DataFrames, DelimitedFiles, Interpolations, Printf
 using Unitful, UnitfulAstro, Parameters
 #using FFTW
 
 DataFitting.@enable_CMPFit
 DataFitting.showsettings.fixedpars = false
-const showstep = true
 
 include("utils.jl")
 include("ccm_unred.jl")
@@ -27,6 +26,7 @@ include("components/balmercont.jl")
 include("cosmology.jl")
 include("Spectrum.jl")
 include("spectral_lines.jl")
+include("plot.jl")
 
 @quasiabstract mutable struct Options
     # The wavelength range used to for fitting.  Wavelengths outside
@@ -65,7 +65,9 @@ end
 
 
 add_data!(qsfit::QSFit, data::Spectrum) = error("No recipe for a generic `QSFit` object")
-
 fit!(qsfit::QSFit) = error("No recipe for a generic `QSFit` object")
 
-#end  # module
+include("recipes/TypeI/general/module.jl")
+
+
+end  # module
