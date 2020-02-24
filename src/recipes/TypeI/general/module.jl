@@ -2,7 +2,7 @@ import DataFitting: fit!
 
 const showstep = true
 
-mutable struct TypeIgeneral_Options
+mutable struct TypeI_Options
     # The wavelength range used to for fitting.  Wavelengths outside
     # the range are ignored.
     λ_range::NTuple{2, Float64}
@@ -57,7 +57,7 @@ mutable struct TypeIgeneral_Options
     # residuals occur.
     unkLines::Int
 
-    function TypeIgeneral_Options()
+    function TypeI_Options()
         return new(
             (1210., 1e5), #λ_range
             0.9,    #cont_negative_fraction
@@ -79,16 +79,16 @@ end
 
 
 
-@quasiabstract struct TypeIgeneral <: QSFit
-    options::TypeIgeneral_Options
-    function TypeIgeneral(args...; kw...)
+@quasiabstract struct TypeI <: QSFit
+    options::TypeI_Options
+    function TypeI(args...; kw...)
         tmp = QSFit(args...; kw...)
-        return new(getfield.(Ref(tmp), fieldnames(typeof(tmp)))..., TypeIgeneral_Options())
+        return new(getfield.(Ref(tmp), fieldnames(typeof(tmp)))..., TypeI_Options())
     end
 end
 
 
-function add_data!(qsfit::TypeIgeneral, data::Spectrum)
+function add_spec!(qsfit::TypeI, data::Spectrum)
     println(qsfit.log, "New data: " * data.label)
     println(qsfit.log, "  good fraction:: " * string(goodfraction(data)))
     if goodfraction(data) < 0.5
@@ -141,7 +141,7 @@ function add_data!(qsfit::TypeIgeneral, data::Spectrum)
 end
 
 
-function fit!(qsfit::TypeIgeneral)
+function fit!(qsfit::TypeI)
     # try
     elapsed = time()
     @assert length(qsfit.domain) == length(qsfit.data)

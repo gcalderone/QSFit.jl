@@ -32,30 +32,50 @@ Spectrum(wave::Vector{Quantity}, flux::Vector{Quantity}, err::Vector{Quantity},
 
 goodfraction(d::Spectrum) = length(findall(d.good)) / length(d.good)
 
-function read_sdss_dr10(file::AbstractString)
-    f = FITS(file)
-    λ = 10 .^read(f[2], "loglam")
-    flux = float.(read(f[2], "flux"))
-    ivar = float.(read(f[2], "ivar"))
-    mask = read(f[2], "and_mask")
-    close(f)
+function Spectrum(source::Symbol, file::AbstractString)
+    if source == :SDSS_DR10
+        f = FITS(file)
+        λ = 10 .^read(f[2], "loglam")
+        flux = float.(read(f[2], "flux"))
+        ivar = float.(read(f[2], "ivar"))
+        mask = read(f[2], "and_mask")
+        close(f)
     
-    ndrop = 100
-    λ    =    λ[ndrop+1:end-ndrop]
-    flux = flux[ndrop+1:end-ndrop]
-    ivar = ivar[ndrop+1:end-ndrop]
-    mask = mask[ndrop+1:end-ndrop]
+        ndrop = 100
+        λ    =    λ[ndrop+1:end-ndrop]
+        flux = flux[ndrop+1:end-ndrop]
+        ivar = ivar[ndrop+1:end-ndrop]
+        mask = mask[ndrop+1:end-ndrop]
 
-    ii = sortperm(λ)
-    λ    =    λ[ii]
-    flux = flux[ii]
-    ivar = ivar[ii]
-    mask = mask[ii]
+        ii = sortperm(λ)
+        λ    =    λ[ii]
+        flux = flux[ii]
+        ivar = ivar[ii]
+        mask = mask[ii]
 
-    good = convert(Vector{Bool}, ((mask .== 0)  .&
-                                  (ivar .> 0)   .&
-                                  (flux .> 0)))
+        good = convert(Vector{Bool}, ((mask .== 0)  .&
+                                      (ivar .> 0)   .&
+                                      (flux .> 0)))
 
-    d = Spectrum(λ, flux, sqrt.(1 ./ ivar), good, label="SDSS-DR10: " * file)
-    return d
+        out = Spectrum(λ, flux, sqrt.(1 ./ ivar), good, label="SDSS-DR10: " * file)
+        return out
+    elseif source == :ASCII
+        λ    = Vector{Float64}()
+        flux = Vector{Float64}()
+        unc  = Vector{Float64}()
+        for l in readlines(file)
+            l = strip(strip(l))
+            (l[1] == '#')  &&  continue
+            s = string.(split(l, " ", keepempty=false))
+            @assert length(s) >= 3
+            push!(λ   , Meta.parse(s[1]))
+            push!(flux, Meta.parse(s[2]))
+            push!(unc , Meta.parse(s[3]))
+        end
+        good = fill(true, length(λ))
+        out = Spectrum(λ, flux, unc, good, label="ASCII: " * file)
+        return out
+    else
+        error("Unexpected source: $source")
+    end
 end

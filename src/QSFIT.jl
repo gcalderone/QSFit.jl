@@ -1,6 +1,6 @@
 module QSFIT
 
-export QSFit, add_data!, read_sdss_dr10, fit!, plot
+export QSFit, Spectrum, add_spec!, fit!, plot
 
 import DataFitting: AbstractDomain, Domain_1D, Domain_2D,
     Parameter, AbstractComponent, AbstractComponentData,
@@ -54,7 +54,7 @@ include("plot.jl")
 end
 
 
-add_data!(qsfit::QSFit, data::Spectrum) = error("No recipe for a generic `QSFit` object")
+add_spec!(qsfit::QSFit, data::Spectrum) = error("No recipe for a generic `QSFit` object")
 fit!(qsfit::QSFit) = error("No recipe for a generic `QSFit` object")
 
 include("recipes/TypeI/general/module.jl")
