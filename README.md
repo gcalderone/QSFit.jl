@@ -1,4 +1,4 @@
-# QSFIT
+# QSFit
 
 Quasar Spectral FITting package - http://qsfit.inaf.it/
 

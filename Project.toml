@@ -1,0 +1,4 @@
+name = "QSFit"
+uuid = "b666826d-b8bf-4eb0-8c0b-40764485594e"
+authors = ["Giorgio Calderone <giorgio.calderone@gmail.com>"]
+version = "0.1.0"
