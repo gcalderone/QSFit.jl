@@ -1,6 +1,6 @@
 module QSFit
 
-export QSFit, Spectrum, add_spec!, fit!, plot
+export Source, Spectrum, add_spec!, fit!, plot
 
 import DataFitting: AbstractDomain, Domain_1D, Domain_2D,
     Parameter, AbstractComponent, AbstractComponentData,
@@ -28,7 +28,7 @@ include("Spectrum.jl")
 include("spectral_lines.jl")
 include("plot.jl")
 
-@quasiabstract struct QSFit
+@quasiabstract struct Source
     name::String
     z::Float64
     ebv::Float64
@@ -38,7 +38,7 @@ include("plot.jl")
     domain::Vector{DataFitting.Domain_1D}
     data::Vector{DataFitting.Measures_1D}
 
-    function QSFit(name, z, ebv; log="", cosmo=qsfit_cosmology())
+    function Source(name, z, ebv; log="", cosmo=qsfit_cosmology())
         @assert z > 0
         @assert ebv > 0
         ld = luminosity_dist(cosmo, float(z)) # * UnitfulAstro.Gpc
@@ -54,8 +54,8 @@ include("plot.jl")
 end
 
 
-add_spec!(qsfit::QSFit, data::Spectrum) = error("No recipe for a generic `QSFit` object")
-fit!(qsfit::QSFit) = error("No recipe for a generic `QSFit` object")
+add_spec!(qsfit::Source, data::Spectrum) = error("No recipe for a generic `Source` object")
+fit!(qsfit::Source) = error("No recipe for a generic `Source` object")
 
 include("recipes/TypeI/general/module.jl")
 

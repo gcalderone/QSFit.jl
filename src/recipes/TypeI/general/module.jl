@@ -79,10 +79,10 @@ end
 
 
 
-@quasiabstract struct TypeI <: QSFit
+@quasiabstract struct TypeI <: Source
     options::TypeI_Options
     function TypeI(args...; kw...)
-        tmp = QSFit(args...; kw...)
+        tmp = Source(args...; kw...)
         return new(getfield.(Ref(tmp), fieldnames(typeof(tmp)))..., TypeI_Options())
     end
 end
@@ -283,7 +283,7 @@ function fit!(qsfit::TypeI)
     if qsfit.options.use_balmer
         if qsfit.z < qsfit.options.balmer_fixed_z
             model.balmer.norm.val   = 0.1
-            model.balmer.norm.expr = "balmer_norm * Main.QSFIT.interpol1(continuum, domain[1], 3000.) / continuum_norm"
+            model.balmer.norm.expr = "balmer_norm * Main.QSFit.interpol1(continuum, domain[1], 3000.) / continuum_norm"
             model.balmer.norm.fixed = false
             model.balmer.norm.low   = 0
             model.balmer.norm.high  = 0.5
@@ -293,7 +293,7 @@ function fit!(qsfit::TypeI)
             model.balmer.ratio.high  = 1
         else
             model.balmer.norm.val   = 0.1
-            model.balmer.norm.expr = "balmer_norm * Main.QSFIT.interpol1(continuum, domain[1], 3000.)"
+            model.balmer.norm.expr = "balmer_norm * Main.QSFit.interpol1(continuum, domain[1], 3000.)"
             model.balmer.norm.fixed = true
             model.balmer.ratio.val   = 0.3
             model.balmer.ratio.fixed = true
