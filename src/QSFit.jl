@@ -1,4 +1,4 @@
-module QSFIT
+module QSFit
 
 export QSFit, Spectrum, add_spec!, fit!, plot
 

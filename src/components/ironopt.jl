@@ -35,7 +35,7 @@ mutable struct ironopt <: AbstractComponent
     
     function ironopt(file::String, fwhm::Number)
         df = ironopt_read(file)
-        # Drop Balmer lines (they are accounted for in the main QSFIT code)
+        # Drop Balmer lines (they are accounted for in the main QSFit code)
         ii = findall(getindex.(df[:, :line], Ref(1:2)) .!= "H\$")
         df = df[ii,:]
         out = new(Parameter(1), df[:, :wavelength], df[:, :wht], float(fwhm))

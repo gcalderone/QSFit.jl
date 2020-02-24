@@ -53,7 +53,7 @@ end
 
 
 function qsfitpath()
-    #dirname(pathof(QSFIT))
+    #dirname(pathof(QSFit))
     (file, line) = functionloc(qsfitversion, ())
     return dirname(file)
 end
