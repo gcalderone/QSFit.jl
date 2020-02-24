@@ -38,6 +38,17 @@ end
 
 
 function add_spec!(source::MCG0358007, data::Spectrum)
+    empty!(source.lines)
+    l = NarrowLine(        "na_NeIII_3869"  , 3869.81 );  push!(source.lines, l)
+    l = NarrowLine(        "na_Hb"          , 4862.68 );  push!(source.lines, l)
+    l = NarrowLine(        "na_OIII_4959"   , 4960.295);  push!(source.lines, l)
+    l = NarrowLine(        "na_OIII_5007"   , 5008.240);  push!(source.lines, l)
+    l = NarrowLine(        "na_OIII_5007_bw", 5008.240);  l.fwhm = 500; l.fwhm_limits = (1e2, 1e3); l.voff_limits = (0, 2e3); push!(source.lines, l)
+    l = NarrowLine(        "na_NII_6549"    , 6549.86 );  push!(source.lines, l)
+    l = NarrowLine(        "na_Ha"          , 6564.61 );  push!(source.lines, l)
+    l = NarrowLine(        "na_NII_6583"    , 6585.27 );  push!(source.lines, l)
+    l = NarrowLine(        "na_SII_6716"    , 6718.29 );  push!(source.lines, l)
+    l = NarrowLine(        "na_SII_6731"    , 6732.67 );  push!(source.lines, l)
     println(source.log, "New data: " * data.label)
     println(source.log, "  good fraction:: " * string(goodfraction(data)))
     if goodfraction(data) < 0.5
@@ -62,6 +73,7 @@ end
 
 
 function fit!(source::MCG0358007)
+    elapsed = time()
     mzer = cmpfit()
     mzer.config.ftol = mzer.config.gtol = mzer.config.xtol = 1.e-6
 
@@ -87,6 +99,7 @@ function fit!(source::MCG0358007)
     add_comp!(model, :galaxy => hostgalaxy(source.options.galaxy_template))
     push!(cnames[:broadband], :galaxy)
     add_expr!(model, :broadband, Meta.parse(join(cnames[:broadband], ".+")), cmp=false)
+    #add_expr!(model, :broadband, :(continuum .+ galaxy))
 
     # Emission lines
     for line in source.lines
@@ -125,8 +138,6 @@ function fit!(source::MCG0358007)
     let
         L = source.data[1].val
         model.galaxy.norm.val = interpol(L, λ, 5500)
-
-        print(maximum(λ))# < 5500
         model.galaxy.norm.val = interpol(L, λ, maximum(λ))
         (model.galaxy.norm.val < 1e-4)  &&  (model.galaxy.norm.val = 1e-4)
     end
@@ -160,28 +171,29 @@ function fit!(source::MCG0358007)
     model.continuum.fixed = true
     model.galaxy.fixed = true
 
-    evaluate!(model)
-    bestfit = fit!(model, source.data, minimizer=mzer)
-
     # Emission lines
     let
         x = domain(model)
         y = source.data[1].val - model(:broadband)
         for line in source.lines
             if line.enabled
-                yatline = interpol(y, x, line.λ)
-                cname = Symbol(line.label)
-                model[cname].norm.val = 1.
-                model[cname].norm.val = abs(yatline) / maxvalue(model[cname])
-                model[cname].fixed = false
+                if isa(line, NarrowLine)  ||  isa(line, CombinedNarrowLine)
+                    yatline = interpol(y, x, line.λ)
+                    cname = Symbol(line.label)
+                    model[cname].norm.val = 1.
+                    model[cname].norm.val = abs(yatline) / maxvalue(model[cname])
+                    model[cname].fixed = false
+                end
             end
         end
 
         bestfit = fit!(model, source.data, minimizer=mzer)
         showstep  &&   (show(model); show(bestfit); plot(source, model); readline())
         for line in source.lines
-            cname = Symbol(line.label)
-            line.enabled  &&  (model[cname].fixed = true)
+            if isa(line, NarrowLine)  ||  isa(line, CombinedNarrowLine)
+                cname = Symbol(line.label)
+                line.enabled  &&  (model[cname].fixed = true)
+            end
         end
     end
     showstep  &&   (show(model); show(bestfit); plot(source, model); readline())
@@ -209,7 +221,6 @@ end
 
 
 function plot(source::MCG0358007, model)
-    
     @gp "set bars 0" "set grid" "set key horizontal" xr=extrema(domain(model)) :-
     @gp :- title=source.name * ", z=" * string(source.z) * ", E(B-V)=" * string(source.ebv) :-
     @gp :- xlabel="Rest frame wavelength [A]" ylabel="Lum. density [10^{42} erg s^{-1} A^{-1}]" :-
@@ -217,7 +228,7 @@ function plot(source::MCG0358007, model)
     @gp :- domain(model) model() "w l t 'Model' lw 2 lc rgb 'orange'" :-
     @gp :- domain(model) model(:continuum) "w l t 'Cont' dt 2 lc rgb 'red'" :-
     @gp :- domain(model) model(:continuum) .+ model(:galaxy) "w l t 'Cont+Host' lc rgb 'red'" :-
-    @gp :- domain(model) model(:narrow_lines) "w l t 'Narrow' lw 2 lc rgb 'brown'" :-
+    @gp :- domain(model) model(:narrow_lines) "w l t 'Narrow' lw 2 lc rgb 'brown'"
 
 
     @gp    :resid "set bars 0" "set grid" xr=extrema(domain(model)) :-
