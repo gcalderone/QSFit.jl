@@ -17,12 +17,15 @@ mutable struct MCG0358007_Options
     # emission lines
     lorentzian::Bool
 
+    intrinsic_ebv::Float64
+
     function MCG0358007_Options()
         return new(
             (1210., 1e5), #λ_range
             0.9,    #cont_negative_fraction
             "Ell5", #       galaxy_template
-            false)  #            lorentzian
+            false,  #            lorentzian
+            0.1)    #         intrinsic_ebv
     end
 end
 
@@ -98,8 +101,8 @@ function fit!(source::MCG0358007)
     # Host galaxy
     add_comp!(model, :galaxy => hostgalaxy(source.options.galaxy_template))
     push!(cnames[:broadband], :galaxy)
-    add_expr!(model, :broadband, Meta.parse(join(cnames[:broadband], ".+")), cmp=false)
-    #add_expr!(model, :broadband, :(continuum .+ galaxy))
+    #add_expr!(model, :broadband, Meta.parse(join(cnames[:broadband], ".+")), cmp=false)
+    add_expr!(model, :broadband, :(continuum ./ Main.QSFit.ccm_unred(domain[1], $(source.options.intrinsic_ebv)) .+ galaxy), cmp=false)
 
     # Emission lines
     for line in source.lines
@@ -131,7 +134,7 @@ function fit!(source::MCG0358007)
         model.continuum.alpha.val = -1.7
         model.continuum.alpha.low  = -3
         model.continuum.alpha.high = 1 #--> -3, 1 in frequency
-        model.continuum.alpha.fixed = true # avoid degeneracy with galaxy template
+        model.continuum.alpha.fixed = false #set to true to avoid degeneracy with galaxy template
     end
 
     # Host galaxy
