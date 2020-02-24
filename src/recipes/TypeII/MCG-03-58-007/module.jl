@@ -6,7 +6,7 @@ mutable struct MCG0358007_Options
     # The wavelength range used to for fitting.  Wavelengths outside
     # the range are ignored.
     λ_range::NTuple{2, Float64}
-    
+
     # Fraction of negative residuals after continuum re-normalization
     cont_negative_fraction::Float64
 
@@ -48,7 +48,6 @@ function add_spec!(source::MCG0358007, data::Spectrum)
     ii = findall(λ .<= source.options.λ_range[1])
     data.good[ii] .= false
 
-
     dered = ccm_unred([1450, 3000, 5100.], source.ebv)
     println(source.log, "Dereddening factors @ 1450, 3000, 5100 AA: ", dered)
     dered = ccm_unred(data.λ, source.ebv)
@@ -87,12 +86,14 @@ function fit!(source::MCG0358007)
     # Host galaxy
     add_comp!(model, :galaxy => hostgalaxy(source.options.galaxy_template))
     push!(cnames[:broadband], :galaxy)
+    add_expr!(model, :broadband, Meta.parse(join(cnames[:broadband], ".+")), cmp=false)
 
     # Emission lines
     for line in source.lines
         if line.enabled
-            cname = addEmLine(model, line)
-            if     isa(line, NarrowLine)  ||  isa(line, CombinedNarrowLine); push!(cnames[:narrow_lines], cname)
+            if isa(line, NarrowLine)  ||  isa(line, CombinedNarrowLine)
+                cname = addEmLine(model, line)
+                push!(cnames[:narrow_lines], cname)
                 model[cname].norm.val = 0.
                 model[cname].fixed = true
                 if cname == :na_OIII_4959
@@ -108,34 +109,30 @@ function fit!(source::MCG0358007)
     end
     add_expr!(model, :narrow_lines, Meta.parse(join(cnames[:narrow_lines], ".+")), cmp=false)
     add_expr!(model, :known, :(broadband .+ narrow_lines), cmp=false)
+    add_expr!(model, :all, :(known .* 1.))
 
     # AGN continuum
     let
         L = source.data[1].val
         model.continuum.norm.val = interpol(L, λ, model.continuum.x0.val)
-        model.continuum.alpha.val = -1.5
+        model.continuum.alpha.val = -1.7
         model.continuum.alpha.low  = -3
         model.continuum.alpha.high = 1 #--> -3, 1 in frequency
-        if source.z < source.options.alpha1_fixed_z
-            model.continuum.alpha.val = source.options.alpha1_fixed_value
-            model.continuum.alpha.fixed = true # avoid degeneracy with galaxy template
-        end
+        model.continuum.alpha.fixed = true # avoid degeneracy with galaxy template
     end
 
     # Host galaxy
     let
-        if source.options.use_galaxy
-            L = source.data[1].val
-            model.galaxy.norm.val = interpol(L, λ, 5500)
+        L = source.data[1].val
+        model.galaxy.norm.val = interpol(L, λ, 5500)
 
-            # If 5500 is outisde the available range compute value at
-            # the edge (solve problems for e.g., spec-0411-51817-0198)
-            if maximum(λ) < 5500
-                model.galaxy.norm.val = interpol(L, λ, maximum(λ))
-            end
-            (model.galaxy.norm.val < 1e-4)  &&  (model.galaxy.norm.val = 1e-4)
-        end
+        print(maximum(λ))# < 5500
+        model.galaxy.norm.val = interpol(L, λ, maximum(λ))
+        (model.galaxy.norm.val < 1e-4)  &&  (model.galaxy.norm.val = 1e-4)
     end
+    show(model)
+    bestfit = fit!(model, source.data, minimizer=mzer)
+    showstep  &&   (show(model); show(bestfit); plot(source, model); readline())
 
     # Continuum renormalization
     let
@@ -161,7 +158,10 @@ function fit!(source::MCG0358007)
     evaluate!(model)
     showstep  &&   (show(model); show(bestfit); plot(source, model); readline())
     model.continuum.fixed = true
-    source.options.use_galaxy  &&  (model.galaxy.fixed = true)
+    model.galaxy.fixed = true
+
+    evaluate!(model)
+    bestfit = fit!(model, source.data, minimizer=mzer)
 
     # Emission lines
     let
@@ -184,6 +184,7 @@ function fit!(source::MCG0358007)
             line.enabled  &&  (model[cname].fixed = true)
         end
     end
+    showstep  &&   (show(model); show(bestfit); plot(source, model); readline())
 
     # Last run with all parameters free
     model.continuum.fixed = false

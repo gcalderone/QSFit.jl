@@ -88,23 +88,22 @@ end
 end
 
 
-function add_spec!(qsfit::TypeI, data::Spectrum)
-    println(qsfit.log, "New data: " * data.label)
-    println(qsfit.log, "  good fraction:: " * string(goodfraction(data)))
+function add_spec!(source::TypeI, data::Spectrum)
+    println(source.log, "New data: " * data.label)
+    println(source.log, "  good fraction:: " * string(goodfraction(data)))
     if goodfraction(data) < 0.5
         @error "Good fraction < 0.5"
     end
 
-    λ = data.λ ./ (1 + qsfit.z)
-
-    ii = findall(λ .<= qsfit.options.λ_range[1])
+    λ = data.λ ./ (1 + source.z)
+    ii = findall(λ .<= source.options.λ_range[1])
     data.good[ii] .= false
 
     # Ignore lines on missing data
     let
         # Perform 3-5th test
-        println(qsfit.log, "Good samples before 3/5th test: ", length(findall(data.good)))
-        for line in qsfit.lines
+        println(source.log, "Good samples before 3/5th test: ", length(findall(data.good)))
+        for line in source.lines
             line.enabled  ||  continue
             if isa(line, EmissionLine)
                 fwhm = (isa(line, NarrowLine)  ?  1e3  :  1.2e4) / 2.  # TODO: use current line FWHM
@@ -116,46 +115,46 @@ function add_spec!(qsfit::TypeI, data::Spectrum)
                     (length(jj) > 0)  &&  (count += 1)
                 end
                 if count < 3
-                    println(qsfit.log, "Disabling line: ", line.label)
+                    println(source.log, "Disabling line: ", line.label)
                     line.enabled = false # Disable line and ignore data
                     ii = findall(λrange[1] .<= λ .< λrange[2])
                     data.good[ii] .= false
                 else
-                    println(qsfit.log, " Enabling line: ", line.label)
+                    println(source.log, " Enabling line: ", line.label)
                 end
             end
         end
-        println(qsfit.log, "Good samples after  3/5th test: ", length(findall(data.good)))
+        println(source.log, "Good samples after  3/5th test: ", length(findall(data.good)))
     end
 
-    dered = ccm_unred([1450, 3000, 5100.], qsfit.ebv)
-    println(qsfit.log, "Dereddening factors @ 1450, 3000, 5100 AA: ", dered)
-    dered = ccm_unred(data.λ, qsfit.ebv)
+    dered = ccm_unred([1450, 3000, 5100.], source.ebv)
+    println(source.log, "Dereddening factors @ 1450, 3000, 5100 AA: ", dered)
+    dered = ccm_unred(data.λ, source.ebv)
 
     igood = findall(data.good)
-    dom = Domain(data.λ[igood] ./ (1 + qsfit.z))
-    lum = Measures(data.flux[igood] .* dered[igood] .* qsfit.flux2lum .* (1 + qsfit.z),
-                   data.err[ igood] .* dered[igood] .* qsfit.flux2lum .* (1 + qsfit.z))
-    push!(qsfit.domain, dom)
-    push!(qsfit.data, lum)
+    dom = Domain(data.λ[igood] ./ (1 + source.z))
+    lum = Measures(data.flux[igood] .* dered[igood] .* source.flux2lum .* (1 + source.z),
+                   data.err[ igood] .* dered[igood] .* source.flux2lum .* (1 + source.z))
+    push!(source.domain, dom)
+    push!(source.data, lum)
 end
 
 
-function fit!(qsfit::TypeI)
+function fit!(source::TypeI)
     # try
     elapsed = time()
-    @assert length(qsfit.domain) == length(qsfit.data)
+    @assert length(source.domain) == length(source.data)
 
     mzer = cmpfit()
     mzer.config.ftol = mzer.config.gtol = mzer.config.xtol = 1.e-6
 
     # First dataset have a special meaning
-    λ = qsfit.domain[1][1]
+    λ = source.domain[1][1]
 
     # Prepare model
     model = Model()
-    for ii in 1:length(qsfit.domain)
-        add_dom!(model, qsfit.domain[ii])
+    for ii in 1:length(source.domain)
+        add_dom!(model, source.domain[ii])
     end
 
     # List of component names
@@ -169,34 +168,34 @@ function fit!(qsfit::TypeI)
     add_comp!(model, :continuum => powerlaw((minimum(λ) + maximum(λ)) / 2.))
     push!(cnames[:broadband], :continuum)
 
-    # Host galaxy (disabled when z > qsfit.options.galaxy_enabled_z)
-    if qsfit.options.use_galaxy  &&  (qsfit.z > qsfit.options.galaxy_enabled_z)
-        println(qsfit.log, "Galaxy component is disabled")
-        qsfit.options.use_galaxy = false
+    # Host galaxy (disabled when z > source.options.galaxy_enabled_z)
+    if source.options.use_galaxy  &&  (source.z > source.options.galaxy_enabled_z)
+        println(source.log, "Galaxy component is disabled")
+        source.options.use_galaxy = false
     end
-    if qsfit.options.use_galaxy
-        add_comp!(model, :galaxy => hostgalaxy(qsfit.options.galaxy_template))
+    if source.options.use_galaxy
+        add_comp!(model, :galaxy => hostgalaxy(source.options.galaxy_template))
         push!(cnames[:broadband], :galaxy)
     end
 
     # Balmer continuum
-    if qsfit.options.use_balmer
+    if source.options.use_balmer
         add_comp!(model, :balmer => balmercont(0.1, 0.5))
         push!(cnames[:broadband], :balmer)
     end
 
     # Iron blended lines
-    if qsfit.options.use_ironuv  &&  (minimum(λ) > 2900)
-        println(qsfit.log, "Iron UV is disabled")
-        qsfit.options.use_ironuv = false
+    if source.options.use_ironuv  &&  (minimum(λ) > 2900)
+        println(source.log, "Iron UV is disabled")
+        source.options.use_ironuv = false
     end
-    if qsfit.options.use_ironuv
+    if source.options.use_ironuv
         add_comp!(model, :ironuv => ironuv(3000))
         model.ironuv.norm.val = 0.
         model.ironuv.fixed = true
         push!(cnames[:broadband], :ironuv)
     end
-    if qsfit.options.use_ironopt
+    if source.options.use_ironopt
         add_comp!(model, :ironoptbr => ironopt_broad(3000))
         add_comp!(model, :ironoptna => ironopt_narrow(500))
         model.ironoptbr.norm.val = 0.
@@ -209,7 +208,7 @@ function fit!(qsfit::TypeI)
     add_expr!(model, :broadband, Meta.parse(join(cnames[:broadband], ".+")), cmp=false)
 
     # Emission lines
-    for line in qsfit.lines
+    for line in source.lines
         if line.enabled
             cname = addEmLine(model, line)
             if     isa(line, NarrowLine)  ||  isa(line, CombinedNarrowLine); push!(cnames[:narrow_lines], cname)
@@ -238,7 +237,7 @@ function fit!(qsfit::TypeI)
     add_expr!(model, :known, :(broadband .+ narrow_lines .+ broad_lines), cmp=false)
 
     # Unknown lines
-    for ii in 1:qsfit.options.unkLines
+    for ii in 1:source.options.unkLines
         line = UnknownLine(λ[1])
         line.label = "unk" * string(ii)
         cname = addEmLine(model, line)
@@ -253,21 +252,21 @@ function fit!(qsfit::TypeI)
 
     # AGN continuum
     let
-        L = qsfit.data[1].val
+        L = source.data[1].val
         model.continuum.norm.val = interpol(L, λ, model.continuum.x0.val)
         model.continuum.alpha.val = -1.5
         model.continuum.alpha.low  = -3
         model.continuum.alpha.high = 1 #--> -3, 1 in frequency
-        if qsfit.z < qsfit.options.alpha1_fixed_z
-            model.continuum.alpha.val = qsfit.options.alpha1_fixed_value
+        if source.z < source.options.alpha1_fixed_z
+            model.continuum.alpha.val = source.options.alpha1_fixed_value
             model.continuum.alpha.fixed = true # avoid degeneracy with galaxy template
         end
     end
 
     # Host galaxy
     let
-        if qsfit.options.use_galaxy
-            L = qsfit.data[1].val
+        if source.options.use_galaxy
+            L = source.data[1].val
             model.galaxy.norm.val = interpol(L, λ, 5500)
 
             # If 5500 is outisde the available range compute value at
@@ -280,8 +279,8 @@ function fit!(qsfit::TypeI)
     end
 
     # Balmer continuum
-    if qsfit.options.use_balmer
-        if qsfit.z < qsfit.options.balmer_fixed_z
+    if source.options.use_balmer
+        if source.z < source.options.balmer_fixed_z
             model.balmer.norm.val   = 0.1
             model.balmer.norm.expr = "balmer_norm * Main.QSFit.interpol1(continuum, domain[1], 3000.) / continuum_norm"
             model.balmer.norm.fixed = false
@@ -299,16 +298,16 @@ function fit!(qsfit::TypeI)
             model.balmer.ratio.fixed = true
         end
     end
-    bestfit = fit!(model, qsfit.data, minimizer=mzer)
-    showstep  &&   (show(model); show(bestfit); plot(qsfit, model); readline())
+    bestfit = fit!(model, source.data, minimizer=mzer)
+    showstep  &&   (show(model); show(bestfit); plot(source, model); readline())
 
     # Continuum renormalization
     let
-        println(qsfit.log, "Cont. norm. (before): ", model.continuum.norm.val)
+        println(source.log, "Cont. norm. (before): ", model.continuum.norm.val)
         check_fraction = -1.
         last_fraction = check_fraction
-        yy = qsfit.data[1].val
-        ee = qsfit.data[1].unc
+        yy = source.data[1].val
+        ee = source.data[1].unc
         while true
             mm = model(1)
 
@@ -316,41 +315,41 @@ function fit!(qsfit::TypeI)
             check_fraction = length(findall(residuals .< 0)) / length(yy)
             (last_fraction == check_fraction)  &&  break
             last_fraction = check_fraction
-            (check_fraction > qsfit.options.cont_negative_fraction)  &&  break
+            (check_fraction > source.options.cont_negative_fraction)  &&  break
 
             model.continuum.norm.val *= 0.99
             evaluate!(model)
         end
-        println(qsfit.log, "Cont. norm. (after) : ", model.continuum.norm.val)
+        println(source.log, "Cont. norm. (after) : ", model.continuum.norm.val)
     end
     evaluate!(model)
-    showstep  &&   (show(model); show(bestfit); plot(qsfit, model); readline())
+    showstep  &&   (show(model); show(bestfit); plot(source, model); readline())
     model.continuum.fixed = true
-    qsfit.options.use_galaxy  &&  (model.galaxy.fixed = true)
-    qsfit.options.use_balmer  &&  (model.balmer.fixed = true)
+    source.options.use_galaxy  &&  (model.galaxy.fixed = true)
+    source.options.use_balmer  &&  (model.balmer.fixed = true)
 
-    if qsfit.options.use_ironuv
+    if source.options.use_ironuv
         model.ironuv.norm.val = 1.
         model.ironuv.fixed = false
     end
-    if qsfit.options.use_ironopt
+    if source.options.use_ironopt
         model.ironoptbr.norm.val = 0.1
         model.ironoptbr.fixed = false
         model.ironoptna.norm.val = 0.
         model.ironoptna.norm.fixed = true # will be freed during last run
     end
     evaluate!(model)
-    bestfit = fit!(model, qsfit.data, minimizer=mzer)
-    showstep  &&   (show(model); show(bestfit); plot(qsfit, model); readline())
-    qsfit.options.use_ironuv    &&  (model.ironuv.fixed = true)
-    qsfit.options.use_ironopt   &&  (model.ironoptbr.fixed = true)
-    qsfit.options.use_ironopt   &&  (model.ironoptna.fixed = true)
+    bestfit = fit!(model, source.data, minimizer=mzer)
+    showstep  &&   (show(model); show(bestfit); plot(source, model); readline())
+    source.options.use_ironuv    &&  (model.ironuv.fixed = true)
+    source.options.use_ironopt   &&  (model.ironoptbr.fixed = true)
+    source.options.use_ironopt   &&  (model.ironoptna.fixed = true)
 
     # Emission lines
     let
         x = domain(model)
-        y = qsfit.data[1].val - model(:broadband)
-        for line in qsfit.lines
+        y = source.data[1].val - model(:broadband)
+        for line in source.lines
             if line.enabled
                 yatline = interpol(y, x, line.λ)
                 cname = Symbol(line.label)
@@ -360,9 +359,9 @@ function fit!(qsfit::TypeI)
             end
         end
 
-        bestfit = fit!(model, qsfit.data, minimizer=mzer)
-        showstep  &&   (show(model); show(bestfit); plot(qsfit, model); readline())
-        for line in qsfit.lines
+        bestfit = fit!(model, source.data, minimizer=mzer)
+        showstep  &&   (show(model); show(bestfit); plot(source, model); readline())
+        for line in source.lines
             cname = Symbol(line.label)
             line.enabled  &&  (model[cname].fixed = true)
         end
@@ -375,10 +374,10 @@ function fit!(qsfit::TypeI)
         iadd = Vector{Int}()
         run = true
         while run
-            (length(iadd) >= qsfit.options.unkLines)  &&  break
+            (length(iadd) >= source.options.unkLines)  &&  break
             run  ||  break
             evaluate!(model)
-            Δ = (qsfit.data[1].val - model()) ./ qsfit.data[1].unc
+            Δ = (source.data[1].val - model()) ./ source.data[1].unc
             @assert length(λ) == length(Δ)
             if length(iadd) > 0
                 # Avoid considering again the same residuals and those
@@ -393,11 +392,11 @@ function fit!(qsfit::TypeI)
                       (λ .> maximum(λ)*0.98))] .= 0.
             imax = argmax(Δ)
             if Δ[imax] <= 0
-                printf(qsfit.log, "No residual is greater than 0, skip searching further residuals.")
+                printf(source.log, "No residual is greater than 0, skip searching further residuals.")
                 break
             end
             push!(iadd, imax)
-            println(qsfit.log, "Adding \"unknown\" emission line at " * string(λ[imax]))
+            println(source.log, "Adding \"unknown\" emission line at " * string(λ[imax]))
             cname = Symbol("unk", length(iadd))
             model[cname].norm.val = 1.
             model[cname].center.val  = λ[imax]
@@ -405,42 +404,42 @@ function fit!(qsfit::TypeI)
             model[cname].center.high = λ[imax] + λ[imax]/10.
             model[cname].fixed = false
             if false
-                plot(qsfit, model)
+                plot(source, model)
                 @gp :-        λ[imax]*[1,1] [0, 0.6] "w l lw 2"
                 @gp :- :resid λ[imax]*[1,1] [-10, 10] "w l lw 2"
                 @gp :- :resid [λ[1], λ[end]] Δ[imax]*[1, 1] "w l lw 2"
                 sleep(0.3)
             end
-            bestfit = fit!(model, qsfit.data, minimizer=mzer)
+            bestfit = fit!(model, source.data, minimizer=mzer)
             model[cname].fixed = true
         end
     end
-    showstep  &&   (show(model); show(bestfit); plot(qsfit, model); readline())
+    showstep  &&   (show(model); show(bestfit); plot(source, model); readline())
 
     # Last run with all parameters free
     model.continuum.fixed = false
-    qsfit.options.use_galaxy  &&  (model.galaxy.fixed = false)
-    qsfit.options.use_balmer  &&  (model.balmer.fixed = false)
-    qsfit.options.use_ironuv  &&  (model.ironuv.fixed = false)
-    qsfit.options.use_ironopt &&  (model.ironoptbr.fixed = false)
-    qsfit.options.use_ironopt &&  (model.ironoptna.fixed = false)
-    qsfit.options.use_ironopt &&  (model.ironoptna.norm.fixed = false)
+    source.options.use_galaxy  &&  (model.galaxy.fixed = false)
+    source.options.use_balmer  &&  (model.balmer.fixed = false)
+    source.options.use_ironuv  &&  (model.ironuv.fixed = false)
+    source.options.use_ironopt &&  (model.ironoptbr.fixed = false)
+    source.options.use_ironopt &&  (model.ironoptna.fixed = false)
+    source.options.use_ironopt &&  (model.ironoptna.norm.fixed = false)
 
     for cname in cnames[:narrow_lines];  model[cname].fixed = false;  end
     for cname in cnames[:broad_lines] ;  model[cname].fixed = false;  end
     for cname in cnames[:unknown]     ;  model[cname].fixed = false;  end
     @info "last run"
-    bestfit = fit!(model, qsfit.data, minimizer=mzer)
-    showstep  &&   (show(model); show(bestfit); plot(qsfit, model); readline())
+    bestfit = fit!(model, source.data, minimizer=mzer)
+    showstep  &&   (show(model); show(bestfit); plot(source, model); readline())
 
     elapsed = time() - elapsed
     @info elapsed
-    showstep  &&   (show(model); show(bestfit); plot(qsfit, model); readline())
+    showstep  &&   (show(model); show(bestfit); plot(source, model); readline())
     return (model, bestfit)
     # catch err
     # finally
-    #     if qsfit.log != stdout
-    #         close(qsfit.log)
+    #     if source.log != stdout
+    #         close(source.log)
     #     end
     #     return nothing
     # end
