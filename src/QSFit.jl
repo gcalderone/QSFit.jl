@@ -26,7 +26,6 @@ include("components/balmercont.jl")
 include("cosmology.jl")
 include("Spectrum.jl")
 include("spectral_lines.jl")
-include("plot.jl")
 
 @quasiabstract struct Source
     name::String
