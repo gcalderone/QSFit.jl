@@ -4,7 +4,7 @@ export QSFit, add_data!, read_sdss_dr10, fit!, plot
 
 import DataFitting: AbstractDomain, Domain_1D, Domain_2D,
     Parameter, AbstractComponent, AbstractComponentData,
-    cdata, evaluate!
+    cdata, evaluate!, fit!
 
 using CMPFit, DataFitting, Gnuplot, ReusePatterns, StructC14N
 using Statistics, DataFrames, DelimitedFiles, Interpolations, Printf
@@ -28,15 +28,6 @@ include("Spectrum.jl")
 include("spectral_lines.jl")
 include("plot.jl")
 
-@quasiabstract mutable struct Options
-    # The wavelength range used to for fitting.  Wavelengths outside
-    # the range are ignored.
-    λ_range::NTuple{2, Float64}
-    
-    Options(λ_range=(1210., 1e5)) = new(λ_range)
-end
-
-
 @quasiabstract struct QSFit
     name::String
     z::Float64
@@ -44,7 +35,6 @@ end
     flux2lum::Float64
     lines::Vector{SpectralLine}
     log::IO
-    options::concretetype(Options)
     domain::Vector{DataFitting.Domain_1D}
     data::Vector{DataFitting.Measures_1D}
 
@@ -58,7 +48,7 @@ end
         stream = stdout
         (log != "")  &&  (stream = open(log, "w"))
         return new(string(name), float(z), float(ebv), flux2lum,
-                   known_lines(), stream, Options(),
+                   known_lines(), stream,
                    Vector{DataFitting.Domain_1D}(), Vector{DataFitting.Measures_1D}())
     end
 end
