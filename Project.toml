@@ -5,9 +5,11 @@ version = "0.1.0"
 
 [deps]
 CMPFit = "a5944310-3432-5d93-8bb2-e3b5eb62a58f"
+Cosmology = "76746363-e552-5dba-9a5a-cef6fa9cc5ab"
 DataFitting = "2e2c70e5-d463-5cb0-9776-5d0c86956fe9"
 DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
 DelimitedFiles = "8bb1440f-4735-579b-a4ab-409b98df4dab"
+FITSIO = "525bcba6-941b-5504-bd06-fd0dc1a4d2eb"
 Gnuplot = "dc211083-a33a-5b79-959f-2ff34033469d"
 Interpolations = "a98d9a8b-a2ab-59e6-89dd-64a1c18fca59"
 Parameters = "d96e819e-fc66-5662-9728-84c9c7592b0a"

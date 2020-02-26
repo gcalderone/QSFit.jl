@@ -28,10 +28,10 @@ version = "1.0.0"
 uuid = "2a0f44e3-6c83-55bd-87e4-b1978d98bd5f"
 
 [[BinDeps]]
-deps = ["Compat", "Libdl", "SHA", "URIParser"]
-git-tree-sha1 = "12093ca6cdd0ee547c39b1870e0c9c3f154d9ca9"
+deps = ["Libdl", "Pkg", "SHA", "URIParser", "Unicode"]
+git-tree-sha1 = "66158ad56b4bf6cc8413b37d0b7bc52402682764"
 uuid = "9e28174c-4ba2-5203-b857-d8d62c4213ee"
-version = "0.8.10"
+version = "1.0.0"
 
 [[BinaryProvider]]
 deps = ["Libdl", "SHA"]
@@ -41,9 +41,11 @@ version = "0.5.8"
 
 [[CMPFit]]
 deps = ["BinDeps", "Libdl", "Pkg", "Printf", "Test"]
-git-tree-sha1 = "6bc0d8b9ca590f536f1179ee7ebf294e250d2e67"
+git-tree-sha1 = "516ace68300ccbe96076f66a58ee96284e643966"
+repo-rev = "master"
+repo-url = "https://github.com/gcalderone/CMPFit.jl.git"
 uuid = "a5944310-3432-5d93-8bb2-e3b5eb62a58f"
-version = "0.2.1"
+version = "0.1.0"
 
 [[CategoricalArrays]]
 deps = ["Compat", "DataAPI", "Future", "JSON", "Missings", "Printf", "Reexport", "Statistics", "Unicode"]
@@ -75,10 +77,27 @@ git-tree-sha1 = "ed2c4abadf84c53d9e58510b5fc48912c2336fbb"
 uuid = "34da2185-b29b-5c13-b0c7-acf172513d20"
 version = "2.2.0"
 
+[[CompilerSupportLibraries_jll]]
+deps = ["Libdl", "Pkg"]
+git-tree-sha1 = "b57c5d019367c90f234a7bc7e24ff0a84971da5d"
+uuid = "e66e0078-7015-5450-92f7-15fbd957f2ae"
+version = "0.2.0+1"
+
 [[ConstructionBase]]
 git-tree-sha1 = "a2a6a5fea4d6f730ec4c18a76d27ec10e8ec1c50"
 uuid = "187b0558-2788-49d3-abe0-74a17ed4e7c9"
 version = "1.0.0"
+
+[[Cosmology]]
+deps = ["QuadGK", "Unitful", "UnitfulAstro"]
+git-tree-sha1 = "18a9bc27345c108c4317b9c18f3c7bd726f31779"
+uuid = "76746363-e552-5dba-9a5a-cef6fa9cc5ab"
+version = "1.0.0"
+
+[[Crayons]]
+git-tree-sha1 = "cb7a62895da739fe5bb43f1a26d4292baf4b3dc0"
+uuid = "a8cc5b0e-0ffa-5ad4-8c14-923d3ee1735f"
+version = "4.0.1"
 
 [[DataAPI]]
 git-tree-sha1 = "674b67f344687a88310213ddfa8a2b3c76cc4252"
@@ -86,8 +105,10 @@ uuid = "9a962f9c-6df0-11e9-0e5d-c546b8b5ee8a"
 version = "1.1.0"
 
 [[DataFitting]]
-deps = ["LsqFit", "Printf", "Random", "Statistics", "Test"]
-git-tree-sha1 = "ba31ecf5346b5081a040c95510a2b99a3a033368"
+deps = ["DataStructures", "Distributions", "LsqFit", "PrettyTables", "Printf", "Statistics"]
+git-tree-sha1 = "e79525b9b90dada27340eebab16843a41bca1121"
+repo-rev = "master"
+repo-url = "https://github.com/gcalderone/DataFitting.jl.git"
 uuid = "2e2c70e5-d463-5cb0-9776-5d0c86956fe9"
 version = "0.1.0"
 
@@ -99,9 +120,9 @@ version = "0.20.2"
 
 [[DataStructures]]
 deps = ["InteractiveUtils", "OrderedCollections"]
-git-tree-sha1 = "b7720de347734f4716d1815b00ce5664ed6bbfd4"
+git-tree-sha1 = "5a431d46abf2ef2a4d5d00bd0ae61f651cf854c8"
 uuid = "864edb3b-99cc-5e75-8d2d-829cb0a9cfe8"
-version = "0.17.9"
+version = "0.17.10"
 
 [[DataValueInterfaces]]
 git-tree-sha1 = "bfc1187b79289637fa0ef6d4436ebdfe6905cbd6"
@@ -138,6 +159,12 @@ git-tree-sha1 = "6b19601c0e98de3a8964ed33ad73e130c7165b1d"
 uuid = "31c24e10-a181-5473-b8eb-7969acd0382f"
 version = "0.22.4"
 
+[[FITSIO]]
+deps = ["BinaryProvider", "Libdl", "Printf"]
+git-tree-sha1 = "6624bd0cdd03aa82df34d3eac56ab77ff696472e"
+uuid = "525bcba6-941b-5504-bd06-fd0dc1a4d2eb"
+version = "0.14.0"
+
 [[FillArrays]]
 deps = ["LinearAlgebra", "Random", "SparseArrays"]
 git-tree-sha1 = "85c6b57e2680fa28d5c8adc798967377646fbf66"
@@ -155,6 +182,12 @@ git-tree-sha1 = "4aaea64dd0c30ad79037084f8ca2b94348e65eaa"
 uuid = "53c48c17-4a7d-5ca2-90c5-79b7896eea93"
 version = "0.7.1"
 
+[[Formatting]]
+deps = ["Printf"]
+git-tree-sha1 = "a0c901c29c0e7c763342751c0a94211d56c0de5c"
+uuid = "59287772-0a20-5a39-b81b-1366585eb4c0"
+version = "0.4.1"
+
 [[ForwardDiff]]
 deps = ["CommonSubexpressions", "DiffResults", "DiffRules", "NaNMath", "Random", "SpecialFunctions", "StaticArrays"]
 git-tree-sha1 = "88b082d492be6b63f967b6c96b352e25ced1a34c"
@@ -166,10 +199,12 @@ deps = ["Random"]
 uuid = "9fa8497b-333b-5362-9e8d-4d0656e87820"
 
 [[Gnuplot]]
-deps = ["ColorTypes", "Printf", "ReusePatterns", "StatsBase", "StructC14N"]
-git-tree-sha1 = "50ce06a8296acba9a1bdb75978fd80520d45b3fa"
+deps = ["ColorTypes", "DataFrames", "Printf", "ReusePatterns", "StatsBase", "StructC14N"]
+git-tree-sha1 = "994ec0ac220c94d11ad826f63e15f80ad3641f46"
+repo-rev = "master"
+repo-url = "https://github.com/gcalderone/Gnuplot.jl.git"
 uuid = "dc211083-a33a-5b79-959f-2ff34033469d"
-version = "1.0.0"
+version = "1.0.0+"
 
 [[InteractiveUtils]]
 deps = ["Markdown"]
@@ -253,10 +288,10 @@ uuid = "4536629a-c528-5b80-bd46-f80d51c5b363"
 version = "0.3.7+5"
 
 [[OpenSpecFun_jll]]
-deps = ["Libdl", "Pkg"]
-git-tree-sha1 = "65f672edebf3f4e613ddf37db9dcbd7a407e5e90"
+deps = ["CompilerSupportLibraries_jll", "Libdl", "Pkg"]
+git-tree-sha1 = "d110040968b9afe95c6bd9c6233570b0fe8abd22"
 uuid = "efe28fd5-8261-553b-a9e1-b2916fc3738e"
-version = "0.5.3+1"
+version = "0.5.3+2"
 
 [[OptimBase]]
 deps = ["Compat", "NLSolversBase", "Printf", "Reexport", "Test"]
@@ -294,15 +329,21 @@ uuid = "44cfe95a-1eb2-52ea-b672-e2afdf69b78f"
 
 [[Polynomials]]
 deps = ["LinearAlgebra", "RecipesBase"]
-git-tree-sha1 = "ae71c2329790af97b7682b11241b3609e4d48626"
+git-tree-sha1 = "1185511cac8ab9d0b658b663eae34fe9a95d4332"
 uuid = "f27b6e38-b328-58d1-80ce-0feddd5e7a45"
-version = "0.6.0"
+version = "0.6.1"
 
 [[PooledArrays]]
 deps = ["DataAPI"]
 git-tree-sha1 = "b1333d4eced1826e15adbdf01a4ecaccca9d353c"
 uuid = "2dfb63ee-cc39-5dd5-95bd-886bf059d720"
 version = "0.5.3"
+
+[[PrettyTables]]
+deps = ["Crayons", "Formatting", "Parameters", "Reexport", "Tables"]
+git-tree-sha1 = "57b5fc8b9e6d78dea86df4c30b806dd0778c4ee8"
+uuid = "08abe8d2-0d0c-5749-adfa-8a2ac140af0d"
+version = "0.8.4"
 
 [[Printf]]
 deps = ["Unicode"]
@@ -329,9 +370,9 @@ uuid = "c84ed2f1-dad5-54f0-aa8e-dbefe2724439"
 version = "0.3.1"
 
 [[RecipesBase]]
-git-tree-sha1 = "7bdce29bc9b2f5660a6e5e64d64d91ec941f6aa2"
+git-tree-sha1 = "b4ed4a7f988ea2340017916f7c9e5d7560b52cae"
 uuid = "3cdcf5f2-1ef4-517c-9805-6587b60abb01"
-version = "0.7.0"
+version = "0.8.0"
 
 [[Reexport]]
 deps = ["Pkg"]
@@ -410,9 +451,11 @@ version = "0.9.4"
 
 [[StructC14N]]
 deps = ["Test"]
-git-tree-sha1 = "054fbaf965001f031e66ce0e342f756b32f5d288"
+git-tree-sha1 = "962a5a999e36596697d38aeaa4cfa1fc444fd4b9"
+repo-rev = "master"
+repo-url = "https://github.com/gcalderone/StructC14N.jl.git"
 uuid = "d2514e9c-36c4-5b8e-97e2-51e7675c221c"
-version = "0.2.1"
+version = "0.2.1+"
 
 [[SuiteSparse]]
 deps = ["Libdl", "LinearAlgebra", "Serialization", "SparseArrays"]
