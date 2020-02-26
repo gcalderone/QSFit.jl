@@ -48,7 +48,7 @@ function eval_balmer_pseudocont(Temp, Ne, fwhm)
     end
     
     # Read appropriate file
-    path = qsfitpath() * "/components/SH1995/"
+    path = qsfitpath() * "/data/SH1995/"
     file = path * @sprintf("r1b%04d.d", Tavail[iTemp])
     electronDensity = 10^logNeAvail[iNe]
 

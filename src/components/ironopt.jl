@@ -65,5 +65,5 @@ function evaluate!(cdata::ironopt_cdata, output::Vector{Float64}, domain::Domain
     return output
 end
 
-ironopt_broad( fwhm) = ironopt(qsfitpath() * "/components/VC2004/TabA1", fwhm)
-ironopt_narrow(fwhm) = ironopt(qsfitpath() * "/components/VC2004/TabA2", fwhm)
+ironopt_broad( fwhm) = ironopt(qsfitpath() * "/data/VC2004/TabA1", fwhm)
+ironopt_narrow(fwhm) = ironopt(qsfitpath() * "/data/VC2004/TabA2", fwhm)

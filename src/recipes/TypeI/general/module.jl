@@ -278,11 +278,12 @@ function fit!(source::TypeI)
         end
     end
 
+    DataFitting.extfunc[:interpol1] = interpol1
     # Balmer continuum
     if source.options.use_balmer
         if source.z < source.options.balmer_fixed_z
             model.balmer.norm.val   = 0.1
-            model.balmer.norm.expr = "balmer_norm * Main.QSFit.interpol1(continuum, domain[1], 3000.) / continuum_norm"
+            model.balmer.norm.expr = "balmer_norm * extfunc[:interpol1](continuum, domain[1], 3000.) / continuum_norm"
             model.balmer.norm.fixed = false
             model.balmer.norm.low   = 0
             model.balmer.norm.high  = 0.5
@@ -292,14 +293,14 @@ function fit!(source::TypeI)
             model.balmer.ratio.high  = 1
         else
             model.balmer.norm.val   = 0.1
-            model.balmer.norm.expr = "balmer_norm * Main.QSFit.interpol1(continuum, domain[1], 3000.)"
+            model.balmer.norm.expr = "balmer_norm * extfunc[:interpol1](continuum, domain[1], 3000.)"
             model.balmer.norm.fixed = true
             model.balmer.ratio.val   = 0.3
             model.balmer.ratio.fixed = true
         end
     end
     bestfit = fit!(model, source.data, minimizer=mzer)
-    showstep  &&   (show(model); show(bestfit); plot(source, model); readline())
+    showstep  &&   (show(model); show(bestfit); plot(source, model); gpause())
 
     # Continuum renormalization
     let
@@ -323,7 +324,7 @@ function fit!(source::TypeI)
         println(source.log, "Cont. norm. (after) : ", model.continuum.norm.val)
     end
     evaluate!(model)
-    showstep  &&   (show(model); show(bestfit); plot(source, model); readline())
+    showstep  &&   (show(model); show(bestfit); plot(source, model); gpause())
     model.continuum.fixed = true
     source.options.use_galaxy  &&  (model.galaxy.fixed = true)
     source.options.use_balmer  &&  (model.balmer.fixed = true)
@@ -340,7 +341,7 @@ function fit!(source::TypeI)
     end
     evaluate!(model)
     bestfit = fit!(model, source.data, minimizer=mzer)
-    showstep  &&   (show(model); show(bestfit); plot(source, model); readline())
+    showstep  &&   (show(model); show(bestfit); plot(source, model); gpause())
     source.options.use_ironuv    &&  (model.ironuv.fixed = true)
     source.options.use_ironopt   &&  (model.ironoptbr.fixed = true)
     source.options.use_ironopt   &&  (model.ironoptna.fixed = true)
@@ -360,7 +361,7 @@ function fit!(source::TypeI)
         end
 
         bestfit = fit!(model, source.data, minimizer=mzer)
-        showstep  &&   (show(model); show(bestfit); plot(source, model); readline())
+        showstep  &&   (show(model); show(bestfit); plot(source, model); gpause())
         for line in source.lines
             cname = Symbol(line.label)
             line.enabled  &&  (model[cname].fixed = true)
@@ -414,7 +415,7 @@ function fit!(source::TypeI)
             model[cname].fixed = true
         end
     end
-    showstep  &&   (show(model); show(bestfit); plot(source, model); readline())
+    showstep  &&   (show(model); show(bestfit); plot(source, model); gpause())
 
     # Last run with all parameters free
     model.continuum.fixed = false
@@ -430,11 +431,11 @@ function fit!(source::TypeI)
     for cname in cnames[:unknown]     ;  model[cname].fixed = false;  end
     @info "last run"
     bestfit = fit!(model, source.data, minimizer=mzer)
-    showstep  &&   (show(model); show(bestfit); plot(source, model); readline())
+    showstep  &&   (show(model); show(bestfit); plot(source, model); gpause())
 
     elapsed = time() - elapsed
     @info elapsed
-    showstep  &&   (show(model); show(bestfit); plot(source, model); readline())
+    showstep  &&   (show(model); show(bestfit); plot(source, model); gpause())
     return (model, bestfit)
     # catch err
     # finally

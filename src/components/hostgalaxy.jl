@@ -18,7 +18,7 @@ mutable struct hostgalaxy_cdata <: AbstractComponentData
 end
 
 function cdata(comp::hostgalaxy, domain::AbstractDomain)
-    d = readdlm(qsfitpath() * "/components/swire/" * comp.template * "_template_norm.sed")
+    d = readdlm(qsfitpath() * "/data/swire/" * comp.template * "_template_norm.sed")
     @assert typeof(d) == Matrix{Float64}
     itp = interpolate((d[:,1],), d[:,2], Gridded(Linear()))
     base = collect(itp(domain[1]))

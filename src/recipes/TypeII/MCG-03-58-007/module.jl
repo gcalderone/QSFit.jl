@@ -102,7 +102,8 @@ function fit!(source::MCG0358007)
     add_comp!(model, :galaxy => hostgalaxy(source.options.galaxy_template))
     push!(cnames[:broadband], :galaxy)
     #add_expr!(model, :broadband, Meta.parse(join(cnames[:broadband], ".+")), cmp=false)
-    add_expr!(model, :broadband, :(continuum ./ Main.QSFit.ccm_unred(domain[1], $(source.options.intrinsic_ebv)) .+ galaxy), cmp=false)
+    DataFitting.extfunc[:ccm_unred] = ccm_unred
+    add_expr!(model, :broadband, :(continuum ./ extfunc[:ccm_unred](domain[1], $(source.options.intrinsic_ebv)) .+ galaxy), cmp=false)
 
     # Emission lines
     for line in source.lines
@@ -146,7 +147,7 @@ function fit!(source::MCG0358007)
     end
     show(model)
     bestfit = fit!(model, source.data, minimizer=mzer)
-    showstep  &&   (show(model); show(bestfit); plot(source, model); readline())
+    showstep  &&   (show(model); show(bestfit); plot(source, model); gpause())
 
     # Continuum renormalization
     let
@@ -170,7 +171,7 @@ function fit!(source::MCG0358007)
         println(source.log, "Cont. norm. (after) : ", model.continuum.norm.val)
     end
     evaluate!(model)
-    showstep  &&   (show(model); show(bestfit); plot(source, model); readline())
+    showstep  &&   (show(model); show(bestfit); plot(source, model); gpause())
     model.continuum.fixed = true
     model.galaxy.fixed = true
 
@@ -191,7 +192,7 @@ function fit!(source::MCG0358007)
         end
 
         bestfit = fit!(model, source.data, minimizer=mzer)
-        showstep  &&   (show(model); show(bestfit); plot(source, model); readline())
+        showstep  &&   (show(model); show(bestfit); plot(source, model); gpause())
         for line in source.lines
             if isa(line, NarrowLine)  ||  isa(line, CombinedNarrowLine)
                 cname = Symbol(line.label)
@@ -199,7 +200,7 @@ function fit!(source::MCG0358007)
             end
         end
     end
-    showstep  &&   (show(model); show(bestfit); plot(source, model); readline())
+    showstep  &&   (show(model); show(bestfit); plot(source, model); gpause())
 
     # Last run with all parameters free
     model.continuum.fixed = false
@@ -207,11 +208,11 @@ function fit!(source::MCG0358007)
     for cname in cnames[:narrow_lines];  model[cname].fixed = false;  end
     @info "last run"
     bestfit = fit!(model, source.data, minimizer=mzer)
-    showstep  &&   (show(model); show(bestfit); plot(source, model); readline())
+    showstep  &&   (show(model); show(bestfit); plot(source, model); gpause())
 
     elapsed = time() - elapsed
     @info elapsed
-    showstep  &&   (show(model); show(bestfit); plot(source, model); readline())
+    showstep  &&   (show(model); show(bestfit); plot(source, model); gpause())
     return (model, bestfit)
     # catch err
     # finally

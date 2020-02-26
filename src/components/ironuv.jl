@@ -2,11 +2,11 @@
 # ironuv
 #
 function ironuv_read()
-    ia   = readdlm(qsfitpath() * "/components/VW2001/Fe_UVtemplt_A.asc")
-    ib   = readdlm(qsfitpath() * "/components/VW2001/Fe_UVtemplt_B.asc")
-    i34  = readdlm(qsfitpath() * "/components/VW2001/Fe3UV34modelB2.asc")
-    i47  = readdlm(qsfitpath() * "/components/VW2001/Fe3_UV47.asc")
-    i191 = readdlm(qsfitpath() * "/components/VW2001/Fe2_UV191.asc")
+    ia   = readdlm(qsfitpath() * "/data/VW2001/Fe_UVtemplt_A.asc")
+    ib   = readdlm(qsfitpath() * "/data/VW2001/Fe_UVtemplt_B.asc")
+    i34  = readdlm(qsfitpath() * "/data/VW2001/Fe3UV34modelB2.asc")
+    i47  = readdlm(qsfitpath() * "/data/VW2001/Fe3_UV47.asc")
+    i191 = readdlm(qsfitpath() * "/data/VW2001/Fe2_UV191.asc")
 
     lmin, lmax = extrema([ia[:,1]; ib[:,1]; i34[:,1]; i47[:,1]; i191[:,1]])
 

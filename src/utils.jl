@@ -44,7 +44,7 @@
     edd       = 1.26e38                * u"erg" * u"s"^-1 * u"Msun"^-1         # Eddington luminosity (erg s^-1 M_sun^-1)
     r_cm      = 2 * pi^2 * me * e^4 / (h^3) / c                                # Rydberg constant (cm^-1)
     r2_cm     = r_cm / (1 + me/mp)                                             # Rydberg constant (cm^-1, reduced mass)
-    A         = 1.e-8                  * u"cm" / UnitfulAstro.angstrom
+    A         = 1.e-8                  * u"cm" / Unitful.angstrom
 end
 
 function qsfitversion()
@@ -55,7 +55,7 @@ end
 function qsfitpath()
     #dirname(pathof(QSFit))
     (file, line) = functionloc(qsfitversion, ())
-    return dirname(file)
+    return dirname(dirname(file))
 end
 
 
@@ -119,6 +119,10 @@ function smooth(y, n)
     return out
 end
 
+function gpause()
+    printstyled(color=:cyan, "Press ENTER to continue...")
+    readline()
+end
 #=
 function boole_int(x, f)
     @assert length(x) == length(f)
