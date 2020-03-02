@@ -1,7 +1,5 @@
 import DataFitting: fit!
 
-const showstep = true
-
 mutable struct MCG0358007_Options
     # The wavelength range used to for fitting.  Wavelengths outside
     # the range are ignored.
@@ -19,13 +17,16 @@ mutable struct MCG0358007_Options
 
     intrinsic_ebv::Float64
 
+    showsteps::Bool
+
     function MCG0358007_Options()
         return new(
             (1210., 1e5), #λ_range
             0.9,    #cont_negative_fraction
             "Ell5", #       galaxy_template
             false,  #            lorentzian
-            0.1)    #         intrinsic_ebv
+            0.1,    #         intrinsic_ebv
+            false)  #             showsteps
     end
 end
 
@@ -41,17 +42,6 @@ end
 
 
 function add_spec!(source::MCG0358007, data::Spectrum)
-    empty!(source.lines)
-    l = NarrowLine(        "na_NeIII_3869"  , 3869.81 );  push!(source.lines, l)
-    l = NarrowLine(        "na_Hb"          , 4862.68 );  push!(source.lines, l)
-    l = NarrowLine(        "na_OIII_4959"   , 4960.295);  push!(source.lines, l)
-    l = NarrowLine(        "na_OIII_5007"   , 5008.240);  push!(source.lines, l)
-    l = NarrowLine(        "na_OIII_5007_bw", 5008.240);  l.fwhm = 500; l.fwhm_limits = (1e2, 1e3); l.voff_limits = (0, 2e3); push!(source.lines, l)
-    l = NarrowLine(        "na_NII_6549"    , 6549.86 );  push!(source.lines, l)
-    l = NarrowLine(        "na_Ha"          , 6564.61 );  push!(source.lines, l)
-    l = NarrowLine(        "na_NII_6583"    , 6585.27 );  push!(source.lines, l)
-    l = NarrowLine(        "na_SII_6716"    , 6718.29 );  push!(source.lines, l)
-    l = NarrowLine(        "na_SII_6731"    , 6732.67 );  push!(source.lines, l)
     println(source.log, "New data: " * data.label)
     println(source.log, "  good fraction:: " * string(goodfraction(data)))
     if goodfraction(data) < 0.5
@@ -103,9 +93,33 @@ function fit!(source::MCG0358007)
     push!(cnames[:broadband], :galaxy)
     #add_expr!(model, :broadband, Meta.parse(join(cnames[:broadband], ".+")), cmp=false)
     DataFitting.extfunc[:ccm_unred] = ccm_unred
-    add_expr!(model, :broadband, :(continuum ./ extfunc[:ccm_unred](domain[1], $(source.options.intrinsic_ebv)) .+ galaxy), cmp=false)
+    add_expr!(model, :abscont, :(continuum ./ extfunc[:ccm_unred](domain[1], $(source.options.intrinsic_ebv))), cmp=false)
+    add_expr!(model, :broadband, :(abscont .+ galaxy), cmp=false)
 
     # Emission lines
+    empty!(source.lines)
+    l = NarrowLine(        "na_NeIII_3869"  , 3869.81 );  push!(source.lines, l)
+    l = NarrowLine(        "na_Hb"          , 4862.68 );  push!(source.lines, l)
+    l = NarrowLine(        "na_OIII_4959"   , 4960.295);  push!(source.lines, l)
+    l = NarrowLine(        "na_OIII_5007"   , 5008.240);  push!(source.lines, l)
+    l = NarrowLine(        "na_NII_6549"    , 6549.86 );  push!(source.lines, l)
+    l = NarrowLine(        "na_Ha"          , 6564.61 );  push!(source.lines, l)
+    l = NarrowLine(        "na_NII_6583"    , 6585.27 );  push!(source.lines, l)
+    l = NarrowLine(        "na_SII_6716"    , 6718.29 );  push!(source.lines, l)
+    l = NarrowLine(        "na_SII_6731"    , 6732.67 );  push!(source.lines, l)
+
+    l = NarrowLine("na_OIII_4959_bw", 4960.295)
+    l.fwhm = 500;   l.fwhm_limits = (0, 1.5e3);   l.voff_limits = (0, 1e3);
+    push!(source.lines, l)
+
+    l = NarrowLine("na_OIII_4959_bw_bw", 4960.295)
+    l.fwhm = 500;   l.fwhm_limits = (0, 1.5e3);   l.voff_limits = (0, 1e3);
+    push!(source.lines, l)
+
+    l = NarrowLine("na_OIII_5007_bw", 5008.240)
+    l.fwhm = 500;   l.fwhm_limits = (0, 1.5e3);   l.voff_limits = (0, 1e3);
+    push!(source.lines, l)
+
     for line in source.lines
         if line.enabled
             if isa(line, NarrowLine)  ||  isa(line, CombinedNarrowLine)
@@ -113,18 +127,20 @@ function fit!(source::MCG0358007)
                 push!(cnames[:narrow_lines], cname)
                 model[cname].norm.val = 0.
                 model[cname].fixed = true
-                if cname == :na_OIII_4959
-                    model[cname].voff.expr = "na_OIII_5007_voff"
-                    model[cname].voff.fixed = true
-                end
-                if cname == :na_OIII_5007_bw
-                    model[cname].fwhm.expr = "na_OIII_5007_fwhm + na_OIII_5007_bw_fwhm"
-                    model[cname].voff.expr = "na_OIII_5007_voff + na_OIII_5007_bw_voff"
-                end
             end
         end
     end
+
+    model[:na_OIII_4959].voff.expr = "na_OIII_5007_voff"
+    model[:na_OIII_4959].voff.fixed = true
+    model[:na_OIII_4959_bw].fwhm.expr = "na_OIII_4959_fwhm + na_OIII_4959_bw_fwhm"
+    model[:na_OIII_4959_bw].voff.expr = "na_OIII_4959_voff + na_OIII_4959_bw_voff"
+    model[:na_OIII_4959_bw_bw].fwhm.expr = "na_OIII_4959_bw_fwhm + na_OIII_4959_bw_bw_fwhm"
+    model[:na_OIII_4959_bw_bw].voff.expr = "na_OIII_4959_bw_voff + na_OIII_4959_bw_bw_voff"
+    model[:na_OIII_5007_bw].fwhm.expr = "na_OIII_5007_fwhm + na_OIII_5007_bw_fwhm"
+    model[:na_OIII_5007_bw].voff.expr = "na_OIII_5007_voff + na_OIII_5007_bw_voff"
     add_expr!(model, :narrow_lines, Meta.parse(join(cnames[:narrow_lines], ".+")), cmp=false)
+    add_expr!(model, :blue_wings, :(na_OIII_4959_bw_bw .+ na_OIII_4959_bw .+ na_OIII_5007_bw), cmp=false)
     add_expr!(model, :known, :(broadband .+ narrow_lines), cmp=false)
     add_expr!(model, :all, :(known .* 1.))
 
@@ -147,7 +163,7 @@ function fit!(source::MCG0358007)
     end
     show(model)
     bestfit = fit!(model, source.data, minimizer=mzer)
-    showstep  &&   (show(model); show(bestfit); plot(source, model); gpause())
+    source.options.showsteps  &&   (show(model); show(bestfit); plot(source, model); gpause())
 
     # Continuum renormalization
     let
@@ -171,7 +187,7 @@ function fit!(source::MCG0358007)
         println(source.log, "Cont. norm. (after) : ", model.continuum.norm.val)
     end
     evaluate!(model)
-    showstep  &&   (show(model); show(bestfit); plot(source, model); gpause())
+    source.options.showsteps  &&   (show(model); show(bestfit); plot(source, model); gpause())
     model.continuum.fixed = true
     model.galaxy.fixed = true
 
@@ -192,7 +208,7 @@ function fit!(source::MCG0358007)
         end
 
         bestfit = fit!(model, source.data, minimizer=mzer)
-        showstep  &&   (show(model); show(bestfit); plot(source, model); gpause())
+        source.options.showsteps  &&   (show(model); show(bestfit); plot(source, model); gpause())
         for line in source.lines
             if isa(line, NarrowLine)  ||  isa(line, CombinedNarrowLine)
                 cname = Symbol(line.label)
@@ -200,7 +216,7 @@ function fit!(source::MCG0358007)
             end
         end
     end
-    showstep  &&   (show(model); show(bestfit); plot(source, model); gpause())
+    source.options.showsteps  &&   (show(model); show(bestfit); plot(source, model); gpause())
 
     # Last run with all parameters free
     model.continuum.fixed = false
@@ -208,11 +224,11 @@ function fit!(source::MCG0358007)
     for cname in cnames[:narrow_lines];  model[cname].fixed = false;  end
     @info "last run"
     bestfit = fit!(model, source.data, minimizer=mzer)
-    showstep  &&   (show(model); show(bestfit); plot(source, model); gpause())
+    source.options.showsteps  &&   (show(model); show(bestfit); plot(source, model); gpause())
 
     elapsed = time() - elapsed
     @info elapsed
-    showstep  &&   (show(model); show(bestfit); plot(source, model); gpause())
+    source.options.showsteps  &&   (show(model); show(bestfit); plot(source, model); gpause())
     return (model, bestfit)
     # catch err
     # finally
@@ -230,9 +246,10 @@ function plot(source::MCG0358007, model)
     @gp :- xlabel="Rest frame wavelength [A]" ylabel="Lum. density [10^{42} erg s^{-1} A^{-1}]" :-
     @gp :- source.domain[1][1] source.data[1].val source.data[1].unc "w yerr t 'Data' pt 0 lc rgb 'black'" :-
     @gp :- domain(model) model() "w l t 'Model' lw 2 lc rgb 'orange'" :-
-    @gp :- domain(model) model(:continuum) "w l t 'Cont' dt 2 lc rgb 'red'" :-
-    @gp :- domain(model) model(:continuum) .+ model(:galaxy) "w l t 'Cont+Host' lc rgb 'red'" :-
+    #@gp :- domain(model) model(:continuum) "w l t 'Cont' dt 2 lc rgb 'red'" :-
+    @gp :- domain(model) model(:abscont) "w l t 'Abs. Cont' lc rgb 'red'" :-
     @gp :- domain(model) model(:narrow_lines) "w l t 'Narrow' lw 2 lc rgb 'brown'"
+    @gp :- domain(model) model(:blue_wings) "w l t '[OIII] Blue wings' lw 2 lc rgb 'blue'"
 
 
     @gp    :resid "set bars 0" "set grid" xr=extrema(domain(model)) :-
