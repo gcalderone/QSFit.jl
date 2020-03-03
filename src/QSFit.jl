@@ -57,6 +57,5 @@ add_spec!(qsfit::Source, data::Spectrum) = error("No recipe for a generic `Sourc
 fit!(qsfit::Source) = error("No recipe for a generic `Source` object")
 
 include("recipes/TypeI/general/module.jl")
-include("recipes/TypeII/MCG-03-58-007/module.jl")
 
 end  # module
