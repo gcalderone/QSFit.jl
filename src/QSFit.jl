@@ -8,11 +8,11 @@ import DataFitting: AbstractDomain, Domain_1D, Domain_2D,
 
 using CMPFit, DataFitting, Gnuplot, ReusePatterns, StructC14N
 using Statistics, DataFrames, DelimitedFiles, Interpolations, Printf
-using Unitful, UnitfulAstro, Parameters
+using Unitful, UnitfulAstro
 #using FFTW
 
 DataFitting.@enable_CMPFit
-DataFitting.showsettings.fixedpars = false
+# DataFitting.showsettings.fixedpars = true
 
 include("utils.jl")
 include("ccm_unred.jl")

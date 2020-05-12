@@ -1,5 +1,5 @@
 # Reference: http://www.astro.wisc.edu/~dolan/constants.html
-@with_kw_noshow struct gpc
+Base.@kwdef struct gpc
     # Dimensionless or common to both CGS and MKS
     jd_mjd    = 2400000.5              # Offset to change from Julian date to MJD
     NA        = 6.0221367    * 1e23    # Avagadro's number
@@ -54,6 +54,7 @@ end
 
 function qsfitpath()
     #dirname(pathof(QSFit))
+    @info @__DIR__
     (file, line) = functionloc(qsfitversion, ())
     return dirname(dirname(file))
 end
