@@ -10,7 +10,7 @@ import DataFitting: AbstractDomain, Domain_1D, Domain_2D,
 using CMPFit, DataFitting, Gnuplot, ReusePatterns, StructC14N
 using Statistics, DataFrames, DelimitedFiles, Interpolations, Printf
 using Unitful, UnitfulAstro
-
+using FFTW
 
 DataFitting.@enable_CMPFit
 # DataFitting.showsettings.fixedpars = true
@@ -54,7 +54,5 @@ end
 
 add_spec!(qsfit::Source, data::Spectrum) = error("No recipe for a generic `Source` object")
 fit!(qsfit::Source) = error("No recipe for a generic `Source` object")
-
-include("recipes/TypeI/general/module.jl")
 
 end  # module

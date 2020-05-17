@@ -52,13 +52,7 @@ function qsfitversion()
 end
 
 
-function qsfitpath()
-    #dirname(pathof(QSFit))
-    @info @__DIR__
-    (file, line) = functionloc(qsfitversion, ())
-    return dirname(dirname(file))
-end
-
+qsfitpath() = return dirname(@__DIR__)
 
 function gauss(x, μ, σ)
     return exp.(-0.5 .* ((x .- μ) ./ σ).^2) ./ sqrt(2pi) ./ σ
