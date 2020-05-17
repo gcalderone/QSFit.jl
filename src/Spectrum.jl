@@ -26,9 +26,9 @@ end
 Spectrum(wave::Vector{Quantity}, flux::Vector{Quantity}, err::Vector{Quantity},
           good=nothing; label="") =
     Spectrum(getproperty.(uconvert.(Ref(unit_λ())   , wave), :val),
-              getproperty.(uconvert.(Ref(unit_flux()), flux), :val),
-              getproperty.(uconvert.(Ref(unit_flux()), err ), :val),
-              good, label=label)
+             getproperty.(uconvert.(Ref(unit_flux()), flux), :val),
+             getproperty.(uconvert.(Ref(unit_flux()), err ), :val),
+             good, label=label)
 
 goodfraction(d::Spectrum) = length(findall(d.good)) / length(d.good)
 
@@ -67,10 +67,15 @@ function Spectrum(source::Symbol, file::AbstractString)
             l = strip(strip(l))
             (l[1] == '#')  &&  continue
             s = string.(split(l, " ", keepempty=false))
-            @assert length(s) >= 3
+            @assert length(s) >= 2
             push!(λ   , Meta.parse(s[1]))
             push!(flux, Meta.parse(s[2]))
-            push!(unc , Meta.parse(s[3]))
+            if length(s) >= 3
+                push!(unc , Meta.parse(s[3]))
+            else
+                (length(flux) == 1)  &&  @warn("Uncertainty is not given: assuming 10% of flux")
+                push!(unc , abs(0.1 * Meta.parse(s[2])))
+            end
         end
         good = fill(true, length(λ))
         out = Spectrum(λ, flux, unc, good, label="ASCII: " * file)

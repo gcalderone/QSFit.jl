@@ -1,6 +1,7 @@
 module QSFit
 
-export Source, Spectrum, add_spec!, fit!, plot
+export Source, Spectrum, goodfraction, ccm_unred, interpol,
+    add_spec!, add_line!, add_lines!, fit!, plot
 
 import DataFitting: AbstractDomain, Domain_1D, Domain_2D,
     Parameter, AbstractComponent, AbstractComponentData,
@@ -9,7 +10,7 @@ import DataFitting: AbstractDomain, Domain_1D, Domain_2D,
 using CMPFit, DataFitting, Gnuplot, ReusePatterns, StructC14N
 using Statistics, DataFrames, DelimitedFiles, Interpolations, Printf
 using Unitful, UnitfulAstro
-#using FFTW
+
 
 DataFitting.@enable_CMPFit
 # DataFitting.showsettings.fixedpars = true
@@ -32,12 +33,11 @@ include("spectral_lines.jl")
     z::Float64
     ebv::Float64
     flux2lum::Float64
-    lines::Vector{SpectralLine}
     log::IO
     domain::Vector{DataFitting.Domain_1D}
     data::Vector{DataFitting.Measures_1D}
 
-    function Source(name, z, ebv; log="", cosmo=qsfit_cosmology())
+    function Source(name, z; ebv=0., log="", cosmo=qsfit_cosmology())
         @assert z > 0
         @assert ebv > 0
         ld = luminosity_dist(cosmo, float(z)) # * UnitfulAstro.Gpc
@@ -46,8 +46,7 @@ include("spectral_lines.jl")
         @assert typeof(flux2lum) == Float64
         stream = stdout
         (log != "")  &&  (stream = open(log, "w"))
-        return new(string(name), float(z), float(ebv), flux2lum,
-                   known_lines(), stream,
+        return new(string(name), float(z), float(ebv), flux2lum, stream,
                    Vector{DataFitting.Domain_1D}(), Vector{DataFitting.Measures_1D}())
     end
 end
