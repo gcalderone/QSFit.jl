@@ -31,28 +31,24 @@ AbsorptionLine(label, λ)     = AbsorptionLine(label,     λ, false, 1000, (200,
 UnknownLine(label, λ)        = UnknownLine(label,        λ, false, 5000, (600, 1.0e4),  λ .+ 100 .* (-1,1))
 
 
-function add_line!(model, line::SpectralLine, prefix="")
-    cname = Symbol(prefix, line.label)
+function emline(line::SpectralLine)
     comp = emline(line.λ)
     comp.fwhm.val  = line.fwhm
     comp.fwhm.low  = line.fwhm_limits[1]
     comp.fwhm.high = line.fwhm_limits[2]
     if isa(line, KnownLine)
-        comp.center.fixed = true
-        comp.voff.fixed = false
+        comp.center.free = false
+        comp.voff.free = true
         comp.voff.val  = 0.
         comp.voff.low  = line.voff_limits[1]
         comp.voff.high = line.voff_limits[2]
     end
     if  isa(line, UnknownLine)
-        comp.center.fixed = false
+        comp.center.free = true
         comp.center.low  = line.λ_limits[1]
         comp.center.high = line.λ_limits[2]
-        comp.voff.fixed = true
+        comp.voff.free = false
         comp.voff.val = 0.
     end
-    add_comp!(model, cname => comp)
-    return cname
+    return comp
 end
-
-add_lines!(model, lines::Vector{SpectralLine}, prefix="") = [add_line!(model, l, prefix) for l in lines]

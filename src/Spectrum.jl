@@ -66,7 +66,7 @@ function Spectrum(source::Symbol, file::AbstractString)
         for l in readlines(file)
             l = strip(strip(l))
             (l[1] == '#')  &&  continue
-            s = string.(split(l, " ", keepempty=false))
+            s = string.(split(l, keepempty=false))
             @assert length(s) >= 2
             push!(λ   , Meta.parse(s[1]))
             push!(flux, Meta.parse(s[2]))

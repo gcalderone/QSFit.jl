@@ -123,12 +123,12 @@ mutable struct balmercont <: AbstractComponent
     end
 end
 
-mutable struct balmercont_cdata <: AbstractComponentData
+mutable struct balmercont_cdata
     c1::Vector{Float64}
     c2::Vector{Float64}
 end
 
-function cdata(comp::balmercont, domain::AbstractDomain)
+function ceval_data(domain::Domain_1D, comp::balmercont)
     T = 15000.
     Ne = 1e9
     Tau = 1.
@@ -140,13 +140,12 @@ function cdata(comp::balmercont, domain::AbstractDomain)
                            interpol1(c2, λ2, domain[1]))
     out.c1[findall(out.c1 .< 0.)] .= 0.
     out.c2[findall(out.c2 .< 0.)] .= 0.
-    return out
+    return (out, length(domain))
 end
 
-function evaluate!(cdata::balmercont_cdata, output::Vector{Float64}, domain::Domain_1D,
-                   norm, ratio)
-    output .= norm .* (cdata.c1 .+ ratio .* cdata.c2)
-    return output
+function evaluate(c::CompEval{Domain_1D, balmercont},
+                  norm, ratio)
+    c.eval .= norm .* (c.cdata.c1 .+ ratio .* c.cdata.c2)
 end
 
 

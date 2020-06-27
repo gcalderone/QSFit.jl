@@ -7,24 +7,21 @@ mutable struct powerlaw <: AbstractComponent
     alpha::Parameter
 
     function powerlaw(x0::Number)
-        out = new(
-            Parameter(1),
-            Parameter(x0),
-            Parameter(-1))
+        out = new(Parameter(1),
+                  Parameter(x0),
+                  Parameter(-1))
         out.norm.low = 0
         out.x0.low = 0
-        out.x0.fixed = true
+        out.x0.free = false
         out.alpha.low = -5; out.alpha.high = 5
         return out
     end
 end
 
-struct powerlaw_cdata <: AbstractComponentData; end
-cdata(comp::powerlaw, domain::AbstractDomain) = powerlaw_cdata()
+ceval_data(domain::Domain_1D, comp::powerlaw) = (nothing, length(domain))
 
-function evaluate!(cdata::powerlaw_cdata, output::Vector{Float64}, domain::Domain_1D,
+function evaluate(c::CompEval{Domain_1D, powerlaw},
                    norm, x0, alpha)
-    x = domain[1]
-    output .= norm .* (x ./ x0).^alpha
-    return output
+    x = c.domain[1]
+    c.eval .= norm .* (x ./ x0).^alpha
 end

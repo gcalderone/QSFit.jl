@@ -12,22 +12,21 @@ mutable struct hostgalaxy <: AbstractComponent
     end
 end
 
-mutable struct hostgalaxy_cdata <: AbstractComponentData
+mutable struct hostgalaxy_cdata
     template::String
     base::Vector{Float64}
 end
 
-function cdata(comp::hostgalaxy, domain::AbstractDomain)
+function ceval_data(domain::Domain_1D, comp::hostgalaxy)
     d = readdlm(qsfitpath() * "/data/swire/" * comp.template * "_template_norm.sed")
     @assert typeof(d) == Matrix{Float64}
     itp = interpolate((d[:,1],), d[:,2], Gridded(Linear()))
     base = collect(itp(domain[1]))
     base ./= itp(5500.)
-    return hostgalaxy_cdata(comp.template, base)
+    return (hostgalaxy_cdata(comp.template, base), length(domain))
 end
 
-function evaluate!(cdata::hostgalaxy_cdata, output::Vector{Float64}, domain::Domain_1D,
-                   norm)
-    output .= norm .* cdata.base
-    return output
+function evaluate(c::CompEval{Domain_1D, hostgalaxy},
+                  norm)
+    c.eval .= norm .* c.cdata.base
 end

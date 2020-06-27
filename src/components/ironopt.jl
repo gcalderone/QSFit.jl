@@ -21,7 +21,7 @@ function ironopt_read(file)
 end
 
 
-mutable struct ironopt_cdata <: AbstractComponentData
+mutable struct ironopt_cdata
     L::Vector{Float64}
     fwhm::Float64
 end
@@ -44,7 +44,7 @@ mutable struct ironopt <: AbstractComponent
     end
 end
 
-function cdata(comp::ironopt, domain::AbstractDomain)
+function ceval_data(domain::Domain_1D, comp::ironopt)
     σ0 = comp.fwhm / 2.35 / 3.e5
     lmin, lmax = extrema(comp.λ)
     lmin -= 3 * σ0 * lmin
@@ -56,13 +56,12 @@ function cdata(comp::ironopt, domain::AbstractDomain)
     end
     L ./= sum(comp.A)
     out = interpol(L, λ, domain[1])
-    return ironopt_cdata(out, comp.fwhm)
+    return (ironopt_cdata(out, comp.fwhm), length(domain))
 end
 
-function evaluate!(cdata::ironopt_cdata, output::Vector{Float64}, domain::Domain_1D,
-                   norm)
-    output .= norm .* cdata.L
-    return output
+function evaluate(c::CompEval{Domain_1D, ironopt},
+                  norm)
+    c.eval .= norm .* c.cdata.L
 end
 
 ironopt_broad( fwhm) = ironopt(qsfitpath() * "/data/VC2004/TabA1", fwhm)

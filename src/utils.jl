@@ -48,7 +48,7 @@ Base.@kwdef struct gpc
 end
 
 function qsfitversion()
-    return v"0.0.1"
+    return v"0.1.0"
 end
 
 

@@ -23,7 +23,7 @@ function ironuv_read()
 end
 
 
-mutable struct ironuv_cdata <: AbstractComponentData
+mutable struct ironuv_cdata
     L::Vector{Float64}
     fwhm::Float64
 end
@@ -44,7 +44,7 @@ mutable struct ironuv <: AbstractComponent
 end
 
 
-function cdata(comp::ironuv, domain::AbstractDomain)
+function ceval_data(domain::Domain_1D, comp::ironuv)
     @assert comp.fwhm > 900
     σ0 = comp.fwhm / 2.35 / 3.e5
     lmin, lmax = extrema(comp.λ)
@@ -62,12 +62,11 @@ function cdata(comp::ironuv, domain::AbstractDomain)
     conv = [conv[div(length(conv), 2):end]; conv[1:div(length(conv), 2)-1]]
 
     conv = interpol(conv, 10 .^logλ, domain[1])
-    return ironuv_cdata(conv, comp.fwhm)
+    return (ironuv_cdata(conv, comp.fwhm), length(domain))
 end
 
-function evaluate!(cdata::ironuv_cdata, output::Vector{Float64}, domain::Domain_1D,
-                   norm)
-    output .= norm .* cdata.L
-    return output
+function evaluate(c::CompEval{Domain_1D, ironuv},
+                  norm)
+    c.evla .= norm .* c.cdata.L
 end
 
