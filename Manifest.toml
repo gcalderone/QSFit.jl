@@ -47,9 +47,11 @@ version = "0.5.10"
 
 [[CMPFit]]
 deps = ["BinDeps", "Libdl", "Pkg", "Printf", "Test"]
-path = "/home/gcalderone/.julia/dev/CMPFit"
+git-tree-sha1 = "516ace68300ccbe96076f66a58ee96284e643966"
+repo-rev = "master"
+repo-url = "https://github.com/gcalderone/CMPFit.jl"
 uuid = "aa9a17e4-8961-4469-b6cd-7bdbcb602198"
-version = "0.3.0"
+version = "0.1.0"
 
 [[CategoricalArrays]]
 deps = ["DataAPI", "Future", "JSON", "Missings", "Printf", "Statistics", "Unicode"]
@@ -224,7 +226,9 @@ uuid = "9fa8497b-333b-5362-9e8d-4d0656e87820"
 
 [[GFit]]
 deps = ["DataStructures", "Distributions", "ExprTools", "JSON", "LsqFit", "PrettyTables", "Printf", "Random", "Statistics"]
-path = "/home/gcalderone/.julia/dev/GFit"
+git-tree-sha1 = "54547f18d75ee151f4192e99e6d4bcc24179519b"
+repo-rev = "master"
+repo-url = "https://github.com/gcalderone/GFit.jl"
 uuid = "ac42e6ba-c0bf-4fcf-827d-deea44b16255"
 version = "0.1.0"
 
