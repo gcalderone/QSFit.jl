@@ -1,54 +1,77 @@
-@quasiabstract struct SpectralLine
-    label::String
+@quasiabstract mutable struct SpectralLine
     λ::Float64
-    enabled::Bool
     fwhm::Float64
     fwhm_limits::NTuple{2, Float64}
 end
 
-@quasiabstract struct KnownLine <: SpectralLine
+@quasiabstract mutable struct KnownLine <: SpectralLine; end
+
+@quasiabstract mutable struct KnownEmLine <: KnownLine
+    both_brna::Bool
     voff_limits::NTuple{2, Float64}
 end
+
+@quasiabstract mutable struct NarrowLine   <: KnownEmLine;  end
+@quasiabstract mutable struct BroadLine    <: KnownEmLine;  end
+
+mutable struct CombinedLine <: KnownEmLine
+    λ::Float64
+    na::NarrowLine
+    br::BroadLine
+end
+
+NarrowLine(λ) = NarrowLine(λ,  500, (100, 2.0e3), false, 1000 .* (-1,1))
+BroadLine(λ)  = BroadLine( λ, 5000, (900, 1.5e4), false, 3000 .* (-1,1))
+CombinedLine(λ) = CombinedLine(λ,
+    NarrowLine( λ,  500, (100, 1.0e3), true, 1000 .* (-1,1)),
+    BroadLine(  λ, 5000, (900, 1.5e4), true, 3000 .* (-1,1)))
 
 @quasiabstract mutable struct UnknownLine <: SpectralLine
     λ_limits::NTuple{2, Float64}
 end
-
-@quasiabstract struct KnownEmLine  <: KnownLine; end
-@quasiabstract struct KnownAbsLine <: KnownLine; end
-
-@quasiabstract mutable struct NarrowLine         <: KnownEmLine;  end
-@quasiabstract mutable struct BroadLine          <: KnownEmLine;  end
-@quasiabstract mutable struct CombinedNarrowLine <: KnownEmLine;  end
-@quasiabstract mutable struct CombinedBroadLine  <: KnownEmLine;  end
-@quasiabstract mutable struct AbsorptionLine     <: KnownAbsLine; end
-
-NarrowLine(label, λ)         = NarrowLine(label,         λ, true,   500, (100, 2.0e3), 1000 .* (-1,1))
-CombinedNarrowLine(label, λ) = CombinedNarrowLine(label, λ, true,   500, (100, 1.0e3), 1000 .* (-1,1))
-BroadLine(label, λ)          = BroadLine(label,          λ, true,  5000, (900, 1.5e4), 3000 .* (-1,1))
-CombinedBroadLine(label, λ)  = CombinedBroadLine(label,  λ, true,  5000, (900, 1.5e4), 3000 .* (-1,1))
-AbsorptionLine(label, λ)     = AbsorptionLine(label,     λ, false, 1000, (200, 3.0e4),  100 .* (-1,1))
-UnknownLine(label, λ)        = UnknownLine(label,        λ, false, 5000, (600, 1.0e4),  λ .+ 100 .* (-1,1))
+UnknownLine() = UnknownLine(0, 5000, (600, 1.0e4), (0., Inf))
 
 
-function emline(line::SpectralLine)
+#@quasiabstract mutable struct KnownAbsLine <: KnownLine; end
+#@quasiabstract mutable struct AbsorptionLine     <: KnownAbsLine; end
+#AbsorptionLine(λ)     = AbsorptionLine(    1000, (200, 3.0e4),  100 .* (-1,1))
+
+function emline(line::T) where T <: Union{NarrowLine, BroadLine}
     comp = emline(line.λ)
     comp.fwhm.val  = line.fwhm
     comp.fwhm.low  = line.fwhm_limits[1]
     comp.fwhm.high = line.fwhm_limits[2]
-    if isa(line, KnownLine)
-        comp.center.free = false
-        comp.voff.free = true
-        comp.voff.val  = 0.
-        comp.voff.low  = line.voff_limits[1]
-        comp.voff.high = line.voff_limits[2]
-    end
-    if  isa(line, UnknownLine)
-        comp.center.free = true
-        comp.center.low  = line.λ_limits[1]
-        comp.center.high = line.λ_limits[2]
-        comp.voff.free = false
-        comp.voff.val = 0.
-    end
+    comp.center.fixed = true
+    comp.voff.fixed = false
+    comp.voff.val  = 0.
+    comp.voff.low  = line.voff_limits[1]
+    comp.voff.high = line.voff_limits[2]
     return comp
+end
+
+function emline(line::UnknownLine)
+    comp = emline(line.λ)
+    comp.fwhm.val  = line.fwhm
+    comp.fwhm.low  = line.fwhm_limits[1]
+    comp.fwhm.high = line.fwhm_limits[2]
+    comp.center.fixed = false
+    comp.center.low  = line.λ_limits[1]
+    comp.center.high = line.λ_limits[2]
+    comp.voff.fixed = true
+    comp.voff.val = 0.
+    return comp
+end
+
+
+function tocomps(lines::OrderedDict{Symbol, SpectralLine}, prefix="")
+    comps = OrderedDict{Symbol, emline}()
+    for (cname, line) in lines
+        if isa(line, CombinedLine)
+            comps[Symbol(prefix, :na_, cname)] = emline(line.na)
+            comps[Symbol(prefix, :br_, cname)] = emline(line.br)
+        else
+            comps[Symbol(prefix, cname)] = emline(line)
+        end
+    end
+    return comps
 end

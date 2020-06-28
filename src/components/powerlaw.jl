@@ -12,7 +12,7 @@ mutable struct powerlaw <: AbstractComponent
                   Parameter(-1))
         out.norm.low = 0
         out.x0.low = 0
-        out.x0.free = false
+        out.x0.fixed = true
         out.alpha.low = -5; out.alpha.high = 5
         return out
     end

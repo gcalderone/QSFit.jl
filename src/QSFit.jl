@@ -1,7 +1,7 @@
 module QSFit
 
 export Source, Spectrum, goodfraction, ccm_unred, interpol,
-    add_spec!, add_line!, add_lines!, fit!, plot
+    add_spec!, fit!, plot
 
 import GFit: Domain_1D, CompEval,
     Parameter, AbstractComponent, ceval_data, evaluate, fit!
@@ -12,7 +12,7 @@ using Unitful, UnitfulAstro
 using FFTW
 
 GFit.@with_CMPFit
-# GFit.showsettings.fixedpars = true
+# GFit.showsettings.showfixed = true
 
 include("utils.jl")
 include("ccm_unred.jl")
@@ -53,5 +53,6 @@ end
 
 add_spec!(qsfit::Source, data::Spectrum) = error("No recipe for a generic `Source` object")
 fit!(qsfit::Source) = error("No recipe for a generic `Source` object")
+plot(qsfit::Source, model::Model) = error("No recipe for a generic `Source` object")
 
 end  # module

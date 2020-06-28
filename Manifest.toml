@@ -224,7 +224,7 @@ uuid = "9fa8497b-333b-5362-9e8d-4d0656e87820"
 
 [[GFit]]
 deps = ["DataStructures", "Distributions", "ExprTools", "JSON", "LsqFit", "PrettyTables", "Printf", "Random", "Statistics"]
-git-tree-sha1 = "55f33412f20dd943ab62cb7bcca8fd37cac69ef0"
+git-tree-sha1 = "b32644b4eb4d92cf32269675c6d171d446b6b2e1"
 repo-rev = "master"
 repo-url = "https://github.com/gcalderone/GFit.jl"
 uuid = "ac42e6ba-c0bf-4fcf-827d-deea44b16255"
