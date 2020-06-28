@@ -32,9 +32,10 @@ end
 UnknownLine() = UnknownLine(0, 5000, (600, 1.0e4), (0., Inf))
 
 
-#@quasiabstract mutable struct KnownAbsLine <: KnownLine; end
-#@quasiabstract mutable struct AbsorptionLine     <: KnownAbsLine; end
-#AbsorptionLine(λ)     = AbsorptionLine(    1000, (200, 3.0e4),  100 .* (-1,1))
+@quasiabstract mutable struct AbsorptionLine <: SpectralLine;
+    λ_limits::NTuple{2, Float64}
+end
+AbsorptionLine(λ) = AbsorptionLine(0, 1000, (200, 3.0e4), 100 .* (-1,1))
 
 function emline(line::T) where T <: Union{NarrowLine, BroadLine}
     comp = emline(line.λ)
@@ -50,6 +51,20 @@ function emline(line::T) where T <: Union{NarrowLine, BroadLine}
 end
 
 function emline(line::UnknownLine)
+    comp = emline(line.λ)
+    comp.fwhm.val  = line.fwhm
+    comp.fwhm.low  = line.fwhm_limits[1]
+    comp.fwhm.high = line.fwhm_limits[2]
+    comp.center.fixed = false
+    comp.center.low  = line.λ_limits[1]
+    comp.center.high = line.λ_limits[2]
+    comp.voff.fixed = true
+    comp.voff.val = 0.
+    return comp
+end
+
+
+function emline(line::AbsorptionLine)
     comp = emline(line.λ)
     comp.fwhm.val  = line.fwhm
     comp.fwhm.low  = line.fwhm_limits[1]
