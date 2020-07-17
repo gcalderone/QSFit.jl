@@ -67,6 +67,6 @@ end
 
 function evaluate(c::CompEval{Domain_1D, ironuv},
                   norm)
-    c.evla .= norm .* c.cdata.L
+    c.eval .= norm .* c.cdata.L
 end
 

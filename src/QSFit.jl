@@ -18,6 +18,7 @@ include("utils.jl")
 include("ccm_unred.jl")
 include("components/emline.jl")
 include("components/powerlaw.jl")
+include("components/cutoff_powerlaw.jl")
 include("components/hostgalaxy.jl")
 include("components/ironopt.jl")
 include("components/ironuv.jl")
@@ -38,7 +39,7 @@ include("spectral_lines.jl")
 
     function Source(name, z; ebv=0., log="", cosmo=qsfit_cosmology())
         @assert z > 0
-        @assert ebv > 0
+        @assert ebv >= 0
         ld = luminosity_dist(cosmo, float(z)) # * UnitfulAstro.Gpc
         ld = uconvert(u"cm", ld)
         flux2lum = 4pi * ld^2 * unit_flux() / unit_lum()
