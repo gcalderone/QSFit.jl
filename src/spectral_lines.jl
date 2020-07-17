@@ -29,7 +29,7 @@ CombinedLine(λ) = CombinedLine(λ,
 @quasiabstract mutable struct UnknownLine <: SpectralLine
     λ_limits::NTuple{2, Float64}
 end
-UnknownLine() = UnknownLine(0, 5000, (600, 1.0e4), (0., Inf))
+UnknownLine() = UnknownLine(5e3, 5000, (600, 1.0e4), (0., Inf))
 
 
 @quasiabstract mutable struct AbsorptionLine <: SpectralLine;

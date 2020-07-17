@@ -13,16 +13,17 @@ mutable struct emline <: AbstractComponent
                   Parameter(3000),
                   Parameter(0),
                   :Gaussian)
+        @assert center > 0
         out.norm.low = 0
-        out.center.low = 0        
-        out.fwhm.low = 0        
-        out.voff.low = 0        
+        out.center.low = 0
+        out.fwhm.low = 0
+        out.voff.low = 0
         out.center.fixed = true
         return out
     end
 end
 
-ceval_data(domain::Domain_1D, comp::emline) = (nothing, length(domain))
+ceval_data(domain::Domain_1D, comp::emline) = (collect(1:length(domain)), length(domain))
 
 function maxvalue(comp::emline)
     d = Domain([comp.center.val])
@@ -33,23 +34,37 @@ end
 
 function evaluate(c::CompEval{Domain_1D, emline},
                   norm, center, fwhm, voff)
+    c.eval[c.cdata] .= 0.
+    empty!(c.cdata)
+
     x = c.domain[1]
+    x0 = center - (voff / 3.e5) * center
+    hwhm = fwhm / 3.e5 * center / 2  # Note: this is in `center` units
 
     if c.comp.profile == :Lorentzian
-        x0 = center - (voff / 3.e5) * center
-        xx = (x .- x0) ./ (fwhm / 3.e5 * center / 2.)
-        c.eval .= norm ./ (1 .+ xx.^2.)
-        return
+        X = (x .- x0) ./ hwhm
+        i = findall(abs.(X) .< 20)
+        append!(c.cdata, i)
+        c.eval[i] .= (norm / pi / hwhm) ./ (1 .+ X[i].^2.)
+    else
+        @assert c.comp.profile == :Gaussian
+        sigma = hwhm / (2.355 / 2)
+        X = (x .- x0) ./ sigma
+        i = findall(abs.(X) .< 4)
+        append!(c.cdata, i)
+        c.eval[i] .= (norm / sqrt(2pi) / sigma) * exp.(-X[i].^2 ./ 2)
     end
-
-    @assert c.comp.profile == :Gaussian
-    x0 = center - (voff / 3.e5) * center
-    sigma = (fwhm  / 3.e5) * center / 2.35
-    #improve performance (SQRT(10*2.) = 4.4721360)
-    i = findall(abs.(x .- x0) .< 4.4721360 * sigma)
-    ee = ((x[i] .- x0) ./ sigma).^2. ./ 2.
-    line = norm * exp.(-ee) ./ 2.50663 ./ sigma #SQRT(2*!PI) = 2.50663
-    c.eval .= 0.
-    c.eval[i] .= line
 end
 
+
+#=
+    x = Domain(500:1:1500.)
+    comp = QSFit.emline(1000.)
+    comp.fwhm.val = 3e4
+    ceval = GFit.CompEval(x, comp)
+    evaluate(ceval)
+    @gp x[1] ceval.eval ./ maximum(ceval.eval) "w l"
+    comp.profile = :Lorentzian
+    evaluate(ceval)
+    @gp :- x[1] ceval.eval ./ maximum(ceval.eval) "w l"
+=#
