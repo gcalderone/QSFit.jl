@@ -114,10 +114,6 @@ function smooth(y, n)
     return out
 end
 
-function gpause()
-    printstyled(color=:cyan, "Press ENTER to continue...")
-    readline()
-end
 #=
 function boole_int(x, f)
     @assert length(x) == length(f)
