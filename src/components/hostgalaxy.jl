@@ -18,7 +18,7 @@ mutable struct hostgalaxy_cdata
 end
 
 function ceval_data(domain::Domain_1D, comp::hostgalaxy)
-    d = readdlm(qsfitpath() * "/data/swire/" * comp.template * "_template_norm.sed")
+    d = readdlm(qsfit_data() * "/swire/" * comp.template * "_template_norm.sed")
     @assert typeof(d) == Matrix{Float64}
     itp = interpolate((d[:,1],), d[:,2], Gridded(Linear()))
     base = collect(itp(domain[1]))

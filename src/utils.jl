@@ -1,3 +1,5 @@
+using Pkg, Pkg.Artifacts
+
 # Reference: http://www.astro.wisc.edu/~dolan/constants.html
 Base.@kwdef struct gpc
     # Dimensionless or common to both CGS and MKS
@@ -51,8 +53,9 @@ function qsfitversion()
     return v"0.1.0"
 end
 
-
-qsfitpath() = return dirname(@__DIR__)
+# dirname(@__DIR__)
+qsfit_data() = artifact"qsfit_data"
+@info qsfit_data()
 
 function gauss(x, μ, σ)
     return exp.(-0.5 .* ((x .- μ) ./ σ).^2) ./ sqrt(2pi) ./ σ

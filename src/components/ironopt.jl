@@ -64,5 +64,5 @@ function evaluate(c::CompEval{Domain_1D, ironopt},
     c.eval .= norm .* c.cdata.L
 end
 
-ironopt_broad( fwhm) = ironopt(qsfitpath() * "/data/VC2004/TabA1", fwhm)
-ironopt_narrow(fwhm) = ironopt(qsfitpath() * "/data/VC2004/TabA2", fwhm)
+ironopt_broad( fwhm) = ironopt(qsfit_data() * "/VC2004/TabA1", fwhm)
+ironopt_narrow(fwhm) = ironopt(qsfit_data() * "/VC2004/TabA2", fwhm)
