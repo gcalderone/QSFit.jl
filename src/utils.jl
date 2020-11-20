@@ -55,7 +55,6 @@ end
 
 # dirname(@__DIR__)
 qsfit_data() = artifact"qsfit_data"
-@info qsfit_data()
 
 function gauss(x, μ, σ)
     return exp.(-0.5 .* ((x .- μ) ./ σ).^2) ./ sqrt(2pi) ./ σ
