@@ -6,7 +6,7 @@ export Source, Spectrum, goodfraction, ccm_unred, interpol,
 import GFit: Domain_1D, CompEval,
     Parameter, AbstractComponent, ceval_data, evaluate, fit!
 
-using CMPFit, GFit, Gnuplot, ReusePatterns, StructC14N
+using CMPFit, GFit, ReusePatterns, StructC14N
 using Statistics, DataFrames, DelimitedFiles, Interpolations, Printf, DataStructures
 using Unitful, UnitfulAstro
 using FFTW
