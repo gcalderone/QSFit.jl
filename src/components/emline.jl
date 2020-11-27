@@ -23,18 +23,19 @@ mutable struct emline <: AbstractComponent
     end
 end
 
-ceval_data(domain::Domain_1D, comp::emline) = (collect(1:length(domain)), length(domain))
+compeval_cdata(comp::emline, domain::Domain_1D) = collect(1:length(domain))
+compeval_array(comp::emline, domain::Domain_1D) = fill(NaN, length(domain))
 
 function maxvalue(comp::emline)
     d = Domain([comp.center.val])
-    ceval = CompEval(d, comp)
+    ceval = CompEval(comp, d)
     evaluate(ceval, comp.norm.val, comp.center.val, comp.fwhm.val, comp.voff.val)
-    return ceval.eval[1]
+    return ceval.buffer[1]
 end
 
-function evaluate(c::CompEval{Domain_1D, emline},
+function evaluate(c::CompEval{emline, Domain_1D},
                   norm, center, fwhm, voff)
-    c.eval[c.cdata] .= 0.
+    c.buffer[c.cdata] .= 0.
     empty!(c.cdata)
 
     x = c.domain[1]
@@ -45,14 +46,14 @@ function evaluate(c::CompEval{Domain_1D, emline},
         X = (x .- x0) ./ hwhm
         i = findall(abs.(X) .< 20)
         append!(c.cdata, i)
-        c.eval[i] .= (norm / pi / hwhm) ./ (1 .+ X[i].^2.)
+        c.buffer[i] .= (norm / pi / hwhm) ./ (1 .+ X[i].^2.)
     else
         @assert c.comp.profile == :Gaussian
         sigma = hwhm / (2.355 / 2)
         X = (x .- x0) ./ sigma
         i = findall(abs.(X) .< 4)
         append!(c.cdata, i)
-        c.eval[i] .= (norm / sqrt(2pi) / sigma) * exp.(-X[i].^2 ./ 2)
+        c.buffer[i] .= (norm / sqrt(2pi) / sigma) * exp.(-X[i].^2 ./ 2)
     end
 end
 
@@ -63,8 +64,8 @@ end
     comp.fwhm.val = 3e4
     ceval = GFit.CompEval(x, comp)
     evaluate(ceval)
-    @gp x[1] ceval.eval ./ maximum(ceval.eval) "w l"
+    @gp x[1] ceval.buffer ./ maximum(ceval.buffer) "w l"
     comp.profile = :Lorentzian
     evaluate(ceval)
-    @gp :- x[1] ceval.eval ./ maximum(ceval.eval) "w l"
+    @gp :- x[1] ceval.buffer ./ maximum(ceval.buffer) "w l"
 =#

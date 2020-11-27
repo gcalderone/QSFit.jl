@@ -44,7 +44,7 @@ mutable struct ironuv <: AbstractComponent
 end
 
 
-function ceval_data(domain::Domain_1D, comp::ironuv)
+function compeval_cdata(comp::ironuv, domain::Domain_1D)
     @assert comp.fwhm > 900
     σ0 = comp.fwhm / 2.35 / 3.e5
     lmin, lmax = extrema(comp.λ)
@@ -62,11 +62,12 @@ function ceval_data(domain::Domain_1D, comp::ironuv)
     conv = [conv[div(length(conv), 2):end]; conv[1:div(length(conv), 2)-1]]
 
     conv = interpol(conv, 10 .^logλ, domain[1])
-    return (ironuv_cdata(conv, comp.fwhm), length(domain))
+    return ironuv_cdata(conv, comp.fwhm)
 end
+compeval_array(comp::ironuv, domain::Domain_1D) = fill(NaN, length(domain))
 
-function evaluate(c::CompEval{Domain_1D, ironuv},
+function evaluate(c::CompEval{ironuv, Domain_1D},
                   norm)
-    c.eval .= norm .* c.cdata.L
+    c.buffer .= norm .* c.cdata.L
 end
 

@@ -17,16 +17,17 @@ mutable struct hostgalaxy_cdata
     base::Vector{Float64}
 end
 
-function ceval_data(domain::Domain_1D, comp::hostgalaxy)
+function compeval_cdata(comp::hostgalaxy, domain::Domain_1D)
     d = readdlm(qsfit_data() * "/swire/" * comp.template * "_template_norm.sed")
     @assert typeof(d) == Matrix{Float64}
     itp = interpolate((d[:,1],), d[:,2], Gridded(Linear()))
     base = collect(itp(domain[1]))
     base ./= itp(5500.)
-    return (hostgalaxy_cdata(comp.template, base), length(domain))
+    return hostgalaxy_cdata(comp.template, base)
 end
+compeval_array(comp::hostgalaxy, domain::Domain_1D) = fill(NaN, length(domain))
 
-function evaluate(c::CompEval{Domain_1D, hostgalaxy},
+function evaluate(c::CompEval{hostgalaxy, Domain_1D},
                   norm)
-    c.eval .= norm .* c.cdata.base
+    c.buffer .= norm .* c.cdata.base
 end

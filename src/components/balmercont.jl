@@ -128,7 +128,7 @@ mutable struct balmercont_cdata
     c2::Vector{Float64}
 end
 
-function ceval_data(domain::Domain_1D, comp::balmercont)
+function compeval_cdata(comp::balmercont, domain::Domain_1D)
     T = 15000.
     Ne = 1e9
     Tau = 1.
@@ -140,12 +140,13 @@ function ceval_data(domain::Domain_1D, comp::balmercont)
                            interpol1(c2, λ2, domain[1]))
     out.c1[findall(out.c1 .< 0.)] .= 0.
     out.c2[findall(out.c2 .< 0.)] .= 0.
-    return (out, length(domain))
+    return out
 end
+compeval_array(comp::balmercont, domain::Domain_1D) = fill(NaN, length(domain))
 
-function evaluate(c::CompEval{Domain_1D, balmercont},
+function evaluate(c::CompEval{balmercont, Domain_1D},
                   norm, ratio)
-    c.eval .= norm .* (c.cdata.c1 .+ ratio .* c.cdata.c2)
+    c.buffer .= norm .* (c.cdata.c1 .+ ratio .* c.cdata.c2)
 end
 
 

@@ -44,7 +44,7 @@ mutable struct ironopt <: AbstractComponent
     end
 end
 
-function ceval_data(domain::Domain_1D, comp::ironopt)
+function compeval_cdata(comp::ironopt, domain::Domain_1D)
     σ0 = comp.fwhm / 2.35 / 3.e5
     lmin, lmax = extrema(comp.λ)
     lmin -= 3 * σ0 * lmin
@@ -56,12 +56,13 @@ function ceval_data(domain::Domain_1D, comp::ironopt)
     end
     L ./= sum(comp.A)
     out = interpol(L, λ, domain[1])
-    return (ironopt_cdata(out, comp.fwhm), length(domain))
+    return ironopt_cdata(out, comp.fwhm)
 end
+compeval_array(comp::ironopt, domain::Domain_1D) = fill(NaN, length(domain))
 
-function evaluate(c::CompEval{Domain_1D, ironopt},
+function evaluate(c::CompEval{ironopt, Domain_1D},
                   norm)
-    c.eval .= norm .* c.cdata.L
+    c.buffer .= norm .* c.cdata.L
 end
 
 ironopt_broad( fwhm) = ironopt(qsfit_data() * "/VC2004/TabA1", fwhm)

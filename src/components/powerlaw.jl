@@ -18,10 +18,11 @@ mutable struct powerlaw <: AbstractComponent
     end
 end
 
-ceval_data(domain::Domain_1D, comp::powerlaw) = (nothing, length(domain))
+compeval_cdata(comp::powerlaw, domain::Domain_1D) = nothing
+compeval_array(comp::powerlaw, domain::Domain_1D) = fill(NaN, length(domain))
 
-function evaluate(c::CompEval{Domain_1D, powerlaw},
+function evaluate(c::CompEval{powerlaw, Domain_1D},
                    norm, x0, alpha)
     x = c.domain[1]
-    c.eval .= norm .* (x ./ x0).^alpha
+    c.buffer .= norm .* (x ./ x0).^alpha
 end
