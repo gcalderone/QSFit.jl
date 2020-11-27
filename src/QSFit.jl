@@ -1,7 +1,7 @@
 module QSFit
 
 export Source, Spectrum, goodfraction, ccm_unred, interpol,
-    add_spec!, fit!, plot
+    add_spec!, fit!
 
 import GFit: Domain_1D, CompEval,
     Parameter, AbstractComponent, compeval_cdata, compeval_array, evaluate, fit!
@@ -54,6 +54,5 @@ end
 
 add_spec!(qsfit::Source, data::Spectrum) = error("No recipe for a generic `Source` object")
 fit!(qsfit::Source) = error("No recipe for a generic `Source` object")
-plot(qsfit::Source, model::Model) = error("No recipe for a generic `Source` object")
 
 end  # module
