@@ -42,7 +42,7 @@ include("spectral_lines.jl")
     function Source(name, z; ebv=0., log="", cosmo=qsfit_cosmology())
         @assert z > 0
         @assert ebv >= 0
-        ld = luminosity_dist(cosmo, float(z)) # * UnitfulAstro.Gpc
+        ld = luminosity_dist(cosmo, float(z))
         ld = uconvert(u"cm", ld)
         flux2lum = 4pi * ld^2 * unit_flux() / unit_lum()
         @assert typeof(flux2lum) == Float64

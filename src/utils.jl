@@ -1,14 +1,11 @@
 using Pkg, Pkg.Artifacts
 using Interpolations, QuadGK
 
-
-
 qsfitversion() = v"0.1.0"
 qsfit_data() = artifact"qsfit_data"
 
-function gauss(x, μ, σ)
-    return exp.(-0.5 .* ((x .- μ) ./ σ).^2) ./ sqrt(2pi) ./ σ
-end
+gauss(x, μ, σ) = exp.(-0.5 .* ((x .- μ) ./ σ).^2) ./ sqrt(2pi) ./ σ
+
 
 function planck(λ, T)
     h = 6.6260755  * 1e-27  # Planck's constant [erg s]
@@ -18,7 +15,8 @@ function planck(λ, T)
     d = h * c ./ (λ .* k .* T)
     return b ./ (exp.(d) .- 1)
 end
-  
+
+
 function convol(v, _k)
     k = reverse(_k)
     nk = length(k)
@@ -32,28 +30,23 @@ function convol(v, _k)
     return out ./ sum(abs.(k))
 end
 
-function interpol(y, x, X)
-    out = fill(0., length(X))
-    itp = interpolate((x,), y, Gridded(Linear()))
-    ii = findall(minimum(x) .<= X .<= maximum(x))
-    out[ii] .= itp(X[ii])
-    return out
-end
-interpol(y, x, X::Number) = interpol(y, x, [X])[1]
 
-function interpol1(y, x, X)
-    out = fill(0., length(X))
+function interpol(y, x, newX; allow_extrapolations=false)
+    out = fill(0., length(newX))  # TODO: Initialize with NaN, not zero...
     itp = interpolate((x,), y, Gridded(Linear()))
-    ii = findall(minimum(x) .<= X .<= maximum(x))
-    out[ii] .= itp(X[ii])
-    etp = extrapolate(itp, Interpolations.Line())
-    ii = findall(minimum(x) .> X)
-    out[ii] .= etp(X[ii])
-    ii = findall(maximum(x) .< X)
-    out[ii] .= etp(X[ii])
+    ii = findall(minimum(x) .<= newX .<= maximum(x))
+    out[ii] .= itp(newX[ii])
+
+    if allow_extrapolations
+        etp = extrapolate(itp, Interpolations.Line())
+        ii = findall(newX .< minimum(x))
+        out[ii] .= etp(newX[ii])
+        ii = findall(maximum(x) .< newX)
+        out[ii] .= etp(newX[ii])
+    end
     return out
 end
-interpol1(y, x, X::Number) = interpol1(y, x, [X])[1]
+interpol(y, x, newX::Real; kw...) = interpol(y, x, [newX]; kw...)[1]
 
 
 function estimate_fwhm(λ, f)

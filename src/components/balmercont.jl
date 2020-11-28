@@ -101,8 +101,8 @@ function eval_balmer_continuum(Temp, Tau, fwhm)
     cont = convol(cont, kernel)
 
     # Normalize Balmer continuum at 3000A
-    cont ./= interpol1(cont, λ, 3000.)
-    contAtEdge = interpol1(cont, λ, edge)
+    cont ./= interpol(cont, λ, 3000., allow_extrapolations=true)
+    contAtEdge = interpol(cont, λ, edge, allow_extrapolations=true)
     return (λ, cont, contAtEdge)
 end
 
@@ -134,8 +134,8 @@ function compeval_cdata(comp::balmercont, domain::Domain_1D)
     (λ1, c1, contAtEdge) = eval_balmer_continuum(T, Tau, fwhm)
     (λ2, c2) = eval_balmer_pseudocont(T, Ne, fwhm)
     c2 .*= contAtEdge
-    out = balmercont_cdata(interpol1(c1, λ1, domain[1]),
-                           interpol1(c2, λ2, domain[1]))
+    out = balmercont_cdata(interpol(c1, λ1, domain[1], allow_extrapolations=true),
+                           interpol(c2, λ2, domain[1], allow_extrapolations=true))
     out.c1[findall(out.c1 .< 0.)] .= 0.
     out.c2[findall(out.c2 .< 0.)] .= 0.
     return out

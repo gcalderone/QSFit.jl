@@ -28,7 +28,7 @@ compeval_array(comp::SpecLineAsymmGauss, domain::Domain_1D) = fill(NaN, length(d
 
 function maxvalue(comp::SpecLineAsymmGauss)
     ceval = CompEval(comp, Domain([comp.center.val]))
-    evaluate_cached(ceval)
+    GFit.evaluate_cached(ceval)
     return ceval.buffer[1]
 end
 

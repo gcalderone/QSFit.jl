@@ -26,7 +26,7 @@ compeval_array(comp::SpecLineLorentz, domain::Domain_1D) = fill(NaN, length(doma
 
 function maxvalue(comp::SpecLineLorentz)
     ceval = CompEval(comp, Domain([comp.center.val]))
-    evaluate_cached(ceval)
+    GFit.evaluate_cached(ceval)
     return ceval.buffer[1]
 end
 

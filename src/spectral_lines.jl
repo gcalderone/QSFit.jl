@@ -37,8 +37,8 @@ UnknownLine() = UnknownLine(5e3, 5000, (600, 1.0e4), (0., Inf))
 end
 AbsorptionLine(λ) = AbsorptionLine(0, 1000, (200, 3.0e4), 100 .* (-1,1))
 
-function emline(line::T) where T <: Union{NarrowLine, BroadLine}
-    comp = emline(line.λ)
+function SpecLineGauss(line::T) where T <: Union{NarrowLine, BroadLine}
+    comp = SpecLineGauss(line.λ)
     comp.fwhm.val  = line.fwhm
     comp.fwhm.low  = line.fwhm_limits[1]
     comp.fwhm.high = line.fwhm_limits[2]
@@ -50,8 +50,8 @@ function emline(line::T) where T <: Union{NarrowLine, BroadLine}
     return comp
 end
 
-function emline(line::UnknownLine)
-    comp = emline(line.λ)
+function SpecLineGauss(line::UnknownLine)
+    comp = SpecLineGauss(line.λ)
     comp.fwhm.val  = line.fwhm
     comp.fwhm.low  = line.fwhm_limits[1]
     comp.fwhm.high = line.fwhm_limits[2]
@@ -64,8 +64,8 @@ function emline(line::UnknownLine)
 end
 
 
-function emline(line::AbsorptionLine)
-    comp = emline(line.λ)
+function SpecLineGauss(line::AbsorptionLine)
+    comp = SpecLineGauss(line.λ)
     comp.fwhm.val  = line.fwhm
     comp.fwhm.low  = line.fwhm_limits[1]
     comp.fwhm.high = line.fwhm_limits[2]
@@ -79,13 +79,13 @@ end
 
 
 function tocomps(lines::OrderedDict{Symbol, SpectralLine}, prefix="")
-    comps = OrderedDict{Symbol, emline}()
+    comps = OrderedDict{Symbol, SpecLineGauss}()
     for (cname, line) in lines
         if isa(line, CombinedLine)
-            comps[Symbol(prefix, :na_, cname)] = emline(line.na)
-            comps[Symbol(prefix, :br_, cname)] = emline(line.br)
+            comps[Symbol(prefix, :na_, cname)] = SpecLineGauss(line.na)
+            comps[Symbol(prefix, :br_, cname)] = SpecLineGauss(line.br)
         else
-            comps[Symbol(prefix, cname)] = emline(line)
+            comps[Symbol(prefix, cname)] = SpecLineGauss(line)
         end
     end
     return comps
