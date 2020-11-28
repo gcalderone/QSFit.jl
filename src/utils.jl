@@ -1,4 +1,6 @@
 using Pkg, Pkg.Artifacts
+using Interpolations, QuadGK
+
 
 # Reference: http://www.astro.wisc.edu/~dolan/constants.html
 Base.@kwdef struct gpc
@@ -146,3 +148,19 @@ function boole_int(x, f)
                        7  * F[5])
 end
 =#
+
+function estimate_fwhm(λ, f)
+    i = argmax(f)
+    maxv = f[i]
+    i = findall(f .>= (maxv/2))
+    (i1, i2) = extrema(i)
+    fwhm = λ[i2] - λ[i1]
+    return fwhm
+end
+
+function estimate_area(λ, f, from=nothing, to=nothing)
+    isnothing(from)  &&  (from = λ[1])
+    isnothing(to  )  &&  (to   = λ[end])
+    itp = interpolate((λ,), f, Gridded(Linear()));
+    return quadgk(itp, from, to)
+end
