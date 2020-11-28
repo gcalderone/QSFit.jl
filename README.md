@@ -41,3 +41,18 @@ GFit.evaluate_cached(ceval);
 @info "Area=" QSFit.estimate_area(x[1], ceval.buffer)
 
 ```
+
+```julia
+using Revise, GFit, QSFit
+
+cd("/home/gcalderone/my/work/2020/ChangingLook/CL_1ES_1927p654")
+source = QSO{QSFit.T1_generic}("1ES 1927+654", 0.019422, ebv=0.077)
+add_spec!(source, Spectrum(Val(:ASCII), "AT2018zf/AT2018zf_optspec_20180514.dat", columns=[1,2]))
+for id in 1:length(source.domain)
+    source.data[id].unc .= 0.05 .* source.data[id].val;
+    source.data[id].val .*= 1e17;
+    source.data[id].unc .*= 1e17;
+end
+
+(model, bestfit) = fit!(source)
+```

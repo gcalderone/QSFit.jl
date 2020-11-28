@@ -1,20 +1,20 @@
 module QSFit
 
-export Source, Spectrum, goodfraction, ccm_unred, interpol,
-    add_spec!, fit!
+export QSO, Spectrum, add_spec!, fit!
 
 import GFit: Domain_1D, CompEval,
     Parameter, AbstractComponent, compeval_cdata, compeval_array, evaluate, fit!
 
-using CMPFit, GFit, ReusePatterns, StructC14N
-using Statistics, DataFrames, DelimitedFiles, Interpolations, Printf, DataStructures
+using CMPFit, GFit
+using Pkg, Pkg.Artifacts
+using Statistics, DelimitedFiles, DataFrames, FFTW, Interpolations, QuadGK, Printf, DataStructures
 using Unitful, UnitfulAstro
-using FFTW
 
 GFit.@with_CMPFit
 # GFit.showsettings.showfixed = true
 
 include("utils.jl")
+include("cosmology.jl")
 include("ccm_unred.jl")
 include("components/powerlaw.jl")
 include("components/cutoff_powerlaw.jl")
@@ -25,36 +25,94 @@ include("components/balmercont.jl")
 include("components/SpecLineGauss.jl")
 include("components/SpecLineAsymmGauss.jl")
 include("components/SpecLineLorentz.jl")
-#include("components/test_components.jl")
-include("cosmology.jl")
 include("Spectrum.jl")
-include("spectral_lines.jl")
+#include("spectral_lines.jl")
 
-@quasiabstract struct Source
+abstract type AbstractSource end
+struct T1_generic <: AbstractSource end
+
+struct QSO{T <: AbstractSource}
     name::String
     z::Float64
-    ebv::Float64
+    mw_ebv::Float64
+    cosmo::Cosmology.AbstractCosmology
     flux2lum::Float64
     log::IO
     domain::Vector{GFit.Domain_1D}
     data::Vector{GFit.Measures_1D}
+    broad_lines::Vector{OrderedDict{Symbol, AbstractComponent}}
+    narrow_lines::Vector{OrderedDict{Symbol, AbstractComponent}}
 
-    function Source(name, z; ebv=0., log="", cosmo=qsfit_cosmology())
+    function QSO{T}(name, z; ebv=0., logfile="", cosmo=default_cosmology())  where T <: AbstractSource
         @assert z > 0
         @assert ebv >= 0
-        ld = luminosity_dist(cosmo, float(z))
-        ld = uconvert(u"cm", ld)
+        ld = uconvert(u"cm", luminosity_dist(cosmo, float(z)))
         flux2lum = 4pi * ld^2 * unit_flux() / unit_lum()
-        @assert typeof(flux2lum) == Float64
-        stream = stdout
-        (log != "")  &&  (stream = open(log, "w"))
-        return new(string(name), float(z), float(ebv), flux2lum, stream,
-                   Vector{GFit.Domain_1D}(), Vector{GFit.Measures_1D}())
+        log = stdout
+        (logfile != "")  &&  (log = open(logfile, "w"))
+        return new{T}(string(name), float(z), float(ebv), cosmo, flux2lum, log,
+                   Vector{GFit.Domain_1D}(), Vector{GFit.Measures_1D}(),
+                   Vector{OrderedDict{Symbol, AbstractComponent}}(),
+                   Vector{OrderedDict{Symbol, AbstractComponent}}())
     end
 end
 
+function add_spec!(source::QSO, data::Spectrum)
+    @assert length(source.data) == 0
 
-add_spec!(qsfit::Source, data::Spectrum) = error("No recipe for a generic `Source` object")
-fit!(qsfit::Source) = error("No recipe for a generic `Source` object")
+    println(source.log, "New spectrum: " * data.label)
+    println(source.log, "  good fraction:: ", goodfraction(data))
+    if goodfraction(data) < 0.5
+        @error "Good fraction < 0.5"
+    end
+
+    λ = data.λ ./ (1 + source.z)
+    data.good[findall(λ .< 1215)]  .= false
+    data.good[findall(λ .> 7.3e3)] .= false
+
+    narrow_lines = OrderedDict{Symbol, AbstractComponent}()
+    broad_lines  = OrderedDict{Symbol, AbstractComponent}()
+
+    # Ignore lines on missing data (3/5 test)
+    println(source.log, "Good samples before 3/5th test: ", length(findall(data.good)))
+    for (lname, (ltype, lwave)) in default_known_lines(source)
+        if ltype == :Narrow
+            comp = default_narrowline(source, lwave)
+        elseif ltype == :Broad
+            comp = default_broadline(source, lwave)
+        else
+            @error "Unexpected line type: $ltype"
+        end
+        (λmin, λmax, good) = line_covered(λ .* data.good, comp.center.val, comp.fwhm.val)
+        if good
+            println(source.log, " Using line: ", lname)
+            if ltype == :Narrow
+                narrow_lines[lname] = comp
+            elseif ltype == :Broad
+                broad_lines[lname] = comp
+            end
+        else
+            println(source.log, "Neglecting line: ", lname)
+            ii = findall(λmin .<= λ .< λmax)
+            data.good[ii] .= false
+        end
+    end
+    println(source.log, "Good samples after  3/5th test: ", length(findall(data.good)))
+
+    dered = ccm_unred([1450, 3000, 5100.], source.mw_ebv)
+    println(source.log, "Dereddening factors @ 1450, 3000, 5100 AA: ", dered)
+    dered = ccm_unred(data.λ, source.mw_ebv)
+
+    ii = findall(data.good)
+    dom = Domain(data.λ[ii] ./ (1 + source.z))
+    lum = Measures(data.flux[ii] .* dered[ii] .* source.flux2lum .* (1 + source.z),
+                   data.err[ ii] .* dered[ii] .* source.flux2lum .* (1 + source.z))
+    push!(source.domain, dom)
+    push!(source.data, lum)
+    push!(source.narrow_lines, narrow_lines)
+    push!(source.broad_lines , broad_lines)
+end
+
+include("default_recipe.jl")
 
 end  # module

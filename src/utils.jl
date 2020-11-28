@@ -1,5 +1,3 @@
-using Pkg, Pkg.Artifacts
-using Interpolations, QuadGK
 
 qsfitversion() = v"0.1.0"
 qsfit_data() = artifact"qsfit_data"
@@ -64,4 +62,19 @@ function estimate_area(λ, f, from=nothing, to=nothing)
     isnothing(to  )  &&  (to   = λ[end])
     itp = interpolate((λ,), f, Gridded(Linear()));
     return quadgk(itp, from, to)
+end
+
+
+function line_covered(λ, line, fwhm; mingood=3, intervals=5)
+    # Identify min/max wavelengths corresponding to FWHM
+    λmin = line .* (1 - fwhm / 3.e5 / 2.)
+    λmax = line .* (1 + fwhm / 3.e5 / 2.)
+    δ = (λmax - λmin) / intervals
+    good = 0
+    for ii in 1:intervals
+        l1 = λmin + (ii-1) * δ
+        l2 = λmin +  ii    * δ
+        good += sign(count(l1 .<= λ .< l2))
+    end
+    return (λmin, λmax, (good >= mingood))
 end
