@@ -54,9 +54,8 @@ function eval_balmer_pseudocont(Temp, Ne, fwhm)
 
     (lower, upper, norm) = readfile(file, electronDensity)
     
-    c = gpc()
-    ryd = (1 / c.R_inf / c.A).val      # Rydberg in A
-    edge = 4 * ryd                     # Balmer (2^2=4) edge in Angstrom
+    ryd = 911.2671808036101 # Rydberg in A
+    edge = 4 * ryd          # Balmer (2^2=4) edge in Angstrom
 
     wave = ryd ./ (1 ./ lower.^2 - 1 ./ upper.^2)
 
@@ -79,9 +78,8 @@ end
 
 
 function eval_balmer_continuum(Temp, Tau, fwhm)
-    c = gpc()
-    ryd = (1 / c.R_inf / c.A).val    # Rydberg in A
-    edge = 4 * ryd                   # Balmer (2^2=4) edge in Angstrom
+    ryd = 911.2671808036101 # Rydberg in A
+    edge = 4 * ryd          # Balmer (2^2=4) edge in Angstrom
 
     λ = 10 .^range(log10(912.), stop=log10(5000), length=600) .* 1e-8 # cm
     
