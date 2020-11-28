@@ -111,14 +111,6 @@ function default_known_lines(::QSO)
         end
     end
     return out
-    # TODO list[:MgII_2798].br.voff_limits = 1000. .* (-1,1)
-    # TODO list[:OIII_5007_bw].fwhm = 500
-    # TODO list[:OIII_5007_bw].fwhm_limits = (1e2, 1e3)
-    # TODO list[:OIII_5007_bw].voff_limits = (0, 2e3)
-    # TODO list[:Ha_base].fwhm = 2e4
-    # TODO list[:Ha_base].fwhm_limits = (1e4, 3e4)
-    # TODO list[:Hb_base].fwhm = 2e4
-    # TODO list[:Hb_base].fwhm_limits = (1e4, 3e4)
 end
 
 
@@ -213,6 +205,26 @@ function GFit.fit!(source::QSO)
     add!(model, :NarrowLines => Reducer(sum, collect(keys(d))) , d)
     add!(model, :main => Reducer(sum, [:Broadband, :Iron, :BroadLines, :NarrowLines]))
     line_names = [collect(keys(source.broad_lines[1])); collect(keys(source.narrow_lines[1]))]
+
+    if haskey(model.comps, :Ha_base)
+        model[:Ha_base].fwhm.val  = 2e4
+        model[:Ha_base].fwhm.low  = 1e4
+        model[:Ha_base].fwhm.high = 3e4
+        model[:Ha_base].voff.val = 0
+        model[:Ha_base].voff.fixed = true
+    end
+    if haskey(model.comps, :MgII_2798)
+        model[:MgII_2798].voff.low  = -1000
+        model[:MgII_2798].voff.high =  1000
+    end
+    if haskey(model.comps, :OIII_5007_bw)
+        model[:OIII_5007_bw].fwhm.val  = 500
+        model[:OIII_5007_bw].fwhm.low  = 1e2
+        model[:OIII_5007_bw].fwhm.high = 1e3
+        model[:OIII_5007_bw].voff.low  = 0
+        model[:OIII_5007_bw].voff.high = 2e3
+    end
+
     # Guess values
     evaluate(model)
     y = source.data[1].val - model()
@@ -221,11 +233,6 @@ function GFit.fit!(source::QSO)
         yatline = interpol(y, λ, c.center.val)
         c.norm.val = 1.
         c.norm.val = abs(yatline) / QSFit.maxvalue(model[cname])
-    end
-    if haskey(model.comps, :Ha_base)
-        c = model[:Ha_base]
-        c.voff.val = 0
-        c.voff.fixed = true
     end
 
     model[:OIII_4959].voff.fixed = true
