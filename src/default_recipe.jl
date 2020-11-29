@@ -1,6 +1,15 @@
 # ====================================================================
 # Default recipe
 
+function options(::QSO)
+    out = OrderedDict{Symbol, Any}()
+    out[:host_template] = "Ell5"
+    out[:wavelength_range] = [1215, 7.3e3]
+    out[:line_minimum_coverage] = 0.6
+    return out
+end
+
+
 function default_broadline(::QSO, λ)
     out = SpecLineGauss(λ)
 
@@ -26,7 +35,7 @@ function default_narrowline(::QSO, λ)
 end
 
 
-function default_combinedlines(::QSO, λ)
+function default_combinedline(::QSO, λ)
     br = SpecLineGauss(λ)
     br.fwhm.val  = 5e3
     br.fwhm.low  = 900
@@ -120,15 +129,14 @@ function GFit.fit!(source::QSO)
     mzer = cmpfit()
     mzer.config.ftol = mzer.config.gtol = mzer.config.xtol = 1.e-6
 
-    # Initialize components and predictions
+    # Initialize components and guess initial values
+
     λ = source.domain[1][1]
     model = Model(source.domain[1],
                   :Broadband => Reducer(sum, [:continuum, :galaxy, :balmer]),
-                  :galaxy    => QSFit.hostgalaxy("Ell5"),
+                  :galaxy    => QSFit.hostgalaxy(options(source)[:host_template]),
                   :continuum => QSFit.cutoff_powerlaw(1216),
                   :balmer    => QSFit.balmercont(0.1, 0.5))
-
-    # Guess initial values
 
     # Galaxy
     model[:galaxy].norm.val = interpol(source.data[1].val, λ, 5500)

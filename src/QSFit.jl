@@ -51,11 +51,12 @@ struct QSO{T <: AbstractSource}
         log = stdout
         (logfile != "")  &&  (log = open(logfile, "w"))
         return new{T}(string(name), float(z), float(ebv), cosmo, flux2lum, log,
-                   Vector{GFit.Domain_1D}(), Vector{GFit.Measures_1D}(),
-                   Vector{OrderedDict{Symbol, AbstractComponent}}(),
-                   Vector{OrderedDict{Symbol, AbstractComponent}}())
+                      Vector{GFit.Domain_1D}(), Vector{GFit.Measures_1D}(),
+                      Vector{OrderedDict{Symbol, AbstractComponent}}(),
+                      Vector{OrderedDict{Symbol, AbstractComponent}}())
     end
 end
+
 
 function add_spec!(source::QSO, data::Spectrum)
     @assert length(source.data) == 0
@@ -65,16 +66,17 @@ function add_spec!(source::QSO, data::Spectrum)
     if goodfraction(data) < 0.5
         @error "Good fraction < 0.5"
     end
+    println(source.log, "  resolution: ~", @sprintf("%.4g", data.resolution), " km / s")
 
     λ = data.λ ./ (1 + source.z)
-    data.good[findall(λ .< 1215)]  .= false
-    data.good[findall(λ .> 7.3e3)] .= false
+    data.good[findall(λ .< options(source)[:wavelength_range][1])] .= false
+    data.good[findall(λ .> options(source)[:wavelength_range][2])] .= false
 
     narrow_lines = OrderedDict{Symbol, AbstractComponent}()
     broad_lines  = OrderedDict{Symbol, AbstractComponent}()
 
-    # Ignore lines on missing data (3/5 test)
-    println(source.log, "Good samples before 3/5th test: ", length(findall(data.good)))
+    # Ignore lines on missing data
+    println(source.log, "Good samples before line coverage filter: ", length(findall(data.good)))
     for (lname, (ltype, lwave)) in default_known_lines(source)
         if ltype == :Narrow
             comp = default_narrowline(source, lwave)
@@ -83,21 +85,22 @@ function add_spec!(source::QSO, data::Spectrum)
         else
             @error "Unexpected line type: $ltype"
         end
-        (λmin, λmax, good) = line_covered(λ .* data.good, comp.center.val, comp.fwhm.val)
-        if good
-            println(source.log, " Using line: ", lname)
+
+        (λmin, λmax, coverage) = line_coverage(λ .* data.good, data.resolution, comp.center.val, comp.fwhm.val)
+        @info "Line $lname has coverage: $coverage"
+        if coverage >= options(source)[:line_minimum_coverage]
             if ltype == :Narrow
                 narrow_lines[lname] = comp
             elseif ltype == :Broad
                 broad_lines[lname] = comp
             end
         else
-            println(source.log, "Neglecting line: ", lname)
+            println(source.log, "  neglecting line: ", lname)
             ii = findall(λmin .<= λ .< λmax)
             data.good[ii] .= false
         end
     end
-    println(source.log, "Good samples after  3/5th test: ", length(findall(data.good)))
+    println(source.log, "Good samples after line coverage filter: ", length(findall(data.good)))
 
     dered = ccm_unred([1450, 3000, 5100.], source.mw_ebv)
     println(source.log, "Dereddening factors @ 1450, 3000, 5100 AA: ", dered)

@@ -65,16 +65,23 @@ function estimate_area(λ, f, from=nothing, to=nothing)
 end
 
 
-function line_covered(λ, line, fwhm; mingood=3, intervals=5)
-    # Identify min/max wavelengths corresponding to FWHM
-    λmin = line .* (1 - fwhm / 3.e5 / 2.)
-    λmax = line .* (1 + fwhm / 3.e5 / 2.)
-    δ = (λmax - λmin) / intervals
+function line_coverage(spec_λ, resolution, line_λ, fwhm)
+    # Identify min/max wavelengths corresponding to expected FWHM
+    λmin = line_λ .* (1 - fwhm / 3.e5 / 2.)
+    λmax = line_λ .* (1 + fwhm / 3.e5 / 2.)
+
+    # Calculate step corresponding to the spectral resolution
+    δ = resolution / 3e5 * line_λ
+
+    # How many intervals should be considered?
+    intervals = Int(ceil((λmax - λmin) / δ))
+    bins = range(λmin, λmax, length=intervals+1)
+
+    # How many intervals are sampled?
     good = 0
-    for ii in 1:intervals
-        l1 = λmin + (ii-1) * δ
-        l2 = λmin +  ii    * δ
-        good += sign(count(l1 .<= λ .< l2))
+    for i in 1:intervals
+        good += sign(count(bins[i] .<= spec_λ .< bins[i+1]))
     end
-    return (λmin, λmax, (good >= mingood))
+
+    return (λmin, λmax, good / intervals)
 end

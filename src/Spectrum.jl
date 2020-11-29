@@ -9,7 +9,8 @@ struct Spectrum
     λ::Vector{Float64}
     flux::Vector{Float64}
     err::Vector{Float64}
-    good::Vector{Bool} 
+    good::Vector{Bool}
+    resolution::Float64  # km/s
     meta::Dict{Symbol, Any}
     function Spectrum(λ::Vector{T}, flux::Vector{T}, err::Vector{T},
                       good::Union{Nothing, Vector{Bool}}=nothing;
@@ -18,10 +19,16 @@ struct Spectrum
             good = fill(true, length(λ))
         end
         @assert length(λ) == length(flux) == length(err) == length(good)
-        @assert issorted(λ)
-        igood = findall(good)
-        new(label, λ, flux, err, good,
-            Dict{Symbol, Any}())
+
+        # Ensure wavelengths are sorted
+        ii = sortperm(λ)
+        λ = λ[ii]
+
+        # Estimate average spectral resolution in km/s
+        resolution = median((λ[2:end] .- λ[1:end-1]) ./ ((λ[2:end] .+ λ[1:end-1]) ./ 2)) * 3e5
+
+        return new(label, λ, flux[ii], err[ii], good, resolution,
+                   Dict{Symbol, Any}())
     end
 end
 
