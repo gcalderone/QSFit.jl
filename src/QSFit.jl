@@ -40,8 +40,8 @@ struct QSO{T <: AbstractSource}
     log::IO
     domain::Vector{GFit.Domain_1D}
     data::Vector{GFit.Measures_1D}
-    broad_lines::Vector{OrderedDict{Symbol, AbstractComponent}}
-    narrow_lines::Vector{OrderedDict{Symbol, AbstractComponent}}
+    line_names::Vector{OrderedDict{Symbol, Symbol}}
+    line_comps::Vector{OrderedDict{Symbol, AbstractComponent}}
 
     function QSO{T}(name, z; ebv=0., logfile="", cosmo=default_cosmology())  where T <: AbstractSource
         @assert z > 0
@@ -55,6 +55,53 @@ struct QSO{T <: AbstractSource}
                       Vector{OrderedDict{Symbol, AbstractComponent}}(),
                       Vector{OrderedDict{Symbol, AbstractComponent}}())
     end
+end
+
+
+abstract type AbstractSpectralLine end
+
+struct BroadBaseLine <: AbstractSpectralLine
+    name::Symbol
+    λ::Float64
+end
+
+struct BroadLine <: AbstractSpectralLine
+    name::Symbol
+    λ::Float64
+end
+
+struct NarrowLine <: AbstractSpectralLine
+    name::Symbol
+    λ::Float64
+end
+
+struct CombinedLine <: AbstractSpectralLine
+    name::Symbol
+    λ::Float64
+end
+
+struct AbsorptionLine <: AbstractSpectralLine
+    name::Symbol
+    λ::Float64
+end
+
+struct UnkLine <: AbstractSpectralLine
+end
+
+
+function line_components(source::QSO)
+    comps = OrderedDict{Symbol, AbstractComponent}()
+    groups = OrderedDict{Symbol, Symbol}()
+    for line in known_spectral_lines(source)
+        ltype = string(typeof(line))
+        (ltype[1:6] == "QSFit.")  &&  (ltype = ltype[7:end])
+        ltype = Symbol(ltype)
+        for (lname, lcomp) in line_components(source, line)
+            comps[lname] = lcomp
+            groups[lname] = Symbol(ltype)
+        end
+    end
+    return (groups, comps)
 end
 
 
@@ -72,36 +119,28 @@ function add_spec!(source::QSO, data::Spectrum)
     data.good[findall(λ .< options(source)[:wavelength_range][1])] .= false
     data.good[findall(λ .> options(source)[:wavelength_range][2])] .= false
 
-    narrow_lines = OrderedDict{Symbol, AbstractComponent}()
-    broad_lines  = OrderedDict{Symbol, AbstractComponent}()
-
-    # Ignore lines on missing data
+    #= Emission line are localized features whose parameter can be
+    reliably estimated only if there are sufficient samples to
+    constrain the corresponding parameters.  If data coverage is not
+    sufficient the component should not be added to the model, and
+    corresponding spectral samples shoult be ignored to avoid
+    worsening the fit due to missing model components.  =#
     println(source.log, "Good samples before line coverage filter: ", length(findall(data.good)))
-    for (lname, (ltype, lwave)) in default_known_lines(source)
-        if ltype == :Narrow
-            comp = default_narrowline(source, lwave)
-        elseif ltype == :Broad
-            comp = default_broadline(source, lwave)
-        else
-            @error "Unexpected line type: $ltype"
-        end
-
+    line_names, line_comps = line_components(source)
+    for (lname, comp) in line_comps
         (λmin, λmax, coverage) = line_coverage(λ .* data.good, data.resolution, comp.center.val, comp.fwhm.val)
         @info "Line $lname has coverage: $coverage"
-        if coverage >= options(source)[:line_minimum_coverage]
-            if ltype == :Narrow
-                narrow_lines[lname] = comp
-            elseif ltype == :Broad
-                broad_lines[lname] = comp
-            end
-        else
+        if coverage < options(source)[:line_minimum_coverage]
             println(source.log, "  neglecting line: ", lname)
             ii = findall(λmin .<= λ .< λmax)
             data.good[ii] .= false
+            delete!(line_names, lname)
+            delete!(line_comps, lname)
         end
     end
     println(source.log, "Good samples after line coverage filter: ", length(findall(data.good)))
 
+    # De-reddening
     dered = ccm_unred([1450, 3000, 5100.], source.mw_ebv)
     println(source.log, "Dereddening factors @ 1450, 3000, 5100 AA: ", dered)
     dered = ccm_unred(data.λ, source.mw_ebv)
@@ -112,8 +151,8 @@ function add_spec!(source::QSO, data::Spectrum)
                    data.err[ ii] .* dered[ii] .* source.flux2lum .* (1 + source.z))
     push!(source.domain, dom)
     push!(source.data, lum)
-    push!(source.narrow_lines, narrow_lines)
-    push!(source.broad_lines , broad_lines)
+    push!(source.line_names, line_names)
+    push!(source.line_comps, line_comps)
 end
 
 include("default_recipe.jl")

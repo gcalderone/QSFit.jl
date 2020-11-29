@@ -10,116 +10,105 @@ function options(::QSO)
 end
 
 
-function default_broadline(::QSO, λ)
-    out = SpecLineGauss(λ)
-
-    out.fwhm.val  = 5e3
-    out.fwhm.low  = 900
-    out.fwhm.high = 1.5e4
-
-    out.voff.low  = -3e3
-    out.voff.high =  3e3
-    return out
+function line_components(::QSO, line::BroadBaseLine)
+    comp = SpecLineGauss(line.λ)
+    comp.fwhm.val  = 2e4
+    comp.fwhm.low  = 1e4
+    comp.fwhm.high = 3e4
+    comp.voff.fixed = true
+    return [line.name => comp]
 end
 
-
-function default_narrowline(::QSO, λ)
-    out = SpecLineGauss(λ)
-    out.fwhm.val  = 5e2
-    out.fwhm.low  = 100
-    out.fwhm.high = 2e3
-
-    out.voff.low  = -1e3
-    out.voff.high =  1e3
-    return out
+function line_components(::QSO, line::BroadLine)
+    comp = SpecLineGauss(line.λ)
+    comp.fwhm.val  = 5e3
+    comp.fwhm.low  = 900
+    comp.fwhm.high = 1.5e4
+    comp.voff.low  = -3e3
+    comp.voff.high =  3e3
+    return [line.name => comp]
 end
 
+function line_components(::QSO, line::NarrowLine)
+    comp = SpecLineGauss(line.λ)
+    comp.fwhm.val  = 5e2
+    comp.fwhm.low  = 100
+    comp.fwhm.high = 2e3
+    comp.voff.low  = -1e3
+    comp.voff.high =  1e3
+    return [line.name => comp]
+end
 
-function default_combinedline(::QSO, λ)
-    br = SpecLineGauss(λ)
+function line_components(::QSO, line::CombinedLine)
+    br = SpecLineGauss(line.λ)
     br.fwhm.val  = 5e3
     br.fwhm.low  = 900
     br.fwhm.high = 1.5e4
-
     br.voff.low  = -3e3
     br.voff.high =  3e3
 
-    na = SpecLineGauss(λ)
+    na = SpecLineGauss(line.λ)
     na.fwhm.val  = 5e2
     na.fwhm.low  = 100
     na.fwhm.high = 1e3
-
     na.voff.low  = -1e3
     na.voff.high =  1e3
 
-    return [br, na]
+    return [Symbol(:br_, line.name) => br
+            Symbol(:na_, line.name) => na]
+end
+
+function line_components(::QSO, line::UnkLine)
+    comp = SpecLineGauss(5e3)
+    comp.center.fixed = false
+    comp.center.low = 0
+    comp.center.high = Inf
+    comp.fwhm.val  = 5e3
+    comp.fwhm.low  = 600
+    comp.fwhm.high = 1e4
+    comp.voff.fixed = true
+    return [:Unk => comp]
 end
 
 
-function default_unknownline(::QSO)
-    out = SpecLineGauss(5e3)
-    out.center.fixed = false
-    out.center.low = 0
-    out.center.high = Inf
-
-    out.fwhm.val  = 5e3
-    out.fwhm.low  = 600
-    out.fwhm.high = 1e4
-    out.voff.fixed = true
-    return out
-end
-
-
-function default_known_lines(::QSO)
-    list = OrderedDict{Symbol, Tuple{Symbol, Float64}}()
-    #list[:Lyb         ] = (:Combined, 1026.0  )
-    list[:Lya          ] = (:Combined, 1215.24 )
-    list[:NV_1241      ] = (:Narrow,   1240.81 )
-    list[:OI_1306      ] = (:Broad,    1305.53 )
-    list[:CII_1335     ] = (:Broad,    1335.31 )
-    list[:SiIV_1400    ] = (:Broad,    1399.8  )
-    list[:CIV_1549     ] = (:Combined, 1549.48 )
-    # list[:HeII       ] = (:Broad,    1640.4  )
-    # list[:OIII       ] = (:Broad,    1665.85 )
-    # list[:AlIII      ] = (:Broad,    1857.4  )
-    list[:CIII_1909    ] = (:Broad,    1908.734)
-    list[:CII          ] = (:Broad,    2326.0  )
-    list[:F2420        ] = (:Broad,    2420.0  )
-    list[:MgII_2798    ] = (:Combined, 2799.117)
-    # list[:NeVN       ] = (:Narrow,   3346.79 )
-    list[:NeVI_3426    ] = (:Narrow,   3426.85 )
-    list[:OII_3727     ] = (:Narrow,   3729.875)
-    list[:NeIII_3869   ] = (:Narrow,   3869.81 )
-    list[:Hd           ] = (:Broad,    4102.89 )
-    list[:Hg           ] = (:Broad,    4341.68 )
-    #list[:OIII_4363   ] = (:Narrow,    4363.00)  # TODO: Check wavelength is correct
-    list[:HeII         ] = (:Broad,    4686.   )
-    list[:Hb           ] = (:Combined, 4862.68 )
-    list[:OIII_4959    ] = (:Narrow,   4960.295)
-    list[:OIII_5007    ] = (:Narrow,   5008.240)
-    list[:OIII_5007_bw ] = (:Narrow,   5008.240)
-    list[:HeI_5876     ] = (:Broad,    5877.30 )
-    list[:OI_6300      ] = (:Narrow,   6300.00 )  # TODO: Check wavelength is correct
-    list[:OI_6364      ] = (:Narrow,   6364.00 )  # TODO: Check wavelength is correct
-    list[:NII_6549     ] = (:Narrow,   6549.86 )
-    list[:Ha           ] = (:Combined, 6564.61 )
-    list[:Ha_base      ] = (:Broad,    6564.61 )
-    list[:NII_6583     ] = (:Narrow,   6585.27 )
-    list[:SII_6716     ] = (:Narrow,   6718.29 )
-    list[:SII_6731     ] = (:Narrow,   6732.67 )
-
-    # Expand combined lines into broad and narrow components
-    out = OrderedDict{Symbol, Tuple{Symbol, Float64}}()
-    for (lname, (ltype, lwave)) in list
-        @assert ltype in [:Narrow, :Broad, :Combined]
-        if ltype == :Combined
-            out[Symbol(:na_, lname)] = (:Narrow, lwave)
-            out[Symbol(:br_, lname)] = (:Broad , lwave)
-        else
-            out[lname] = (ltype, lwave)
-        end
-    end
-    return out
+function known_spectral_lines(::QSO)
+    list = Vector{AbstractSpectralLine}()
+    #push!(list,CombinedLine(:Lyb          , 1026.0  ))
+    push!(list, CombinedLine( :Lya          , 1215.24 ))
+    push!(list, NarrowLine(   :NV_1241      , 1240.81 ))
+    push!(list, BroadLine(    :OI_1306      , 1305.53 ))
+    push!(list, BroadLine(    :CII_1335     , 1335.31 ))
+    push!(list, BroadLine(    :SiIV_1400    , 1399.8  ))
+    push!(list, CombinedLine( :CIV_1549     , 1549.48 ))
+    #push!(list,BroadLine(    :HeII         , 1640.4  ))
+    #push!(list,BroadLine(    :OIII         , 1665.85 ))
+    #push!(list,BroadLine(    :AlIII        , 1857.4  ))
+    push!(list, BroadLine(    :CIII_1909    , 1908.734))
+    push!(list, BroadLine(    :CII          , 2326.0  ))
+    push!(list, BroadLine(    :F2420        , 2420.0  ))
+    push!(list, CombinedLine( :MgII_2798    , 2799.117))
+    #push!(list,NarrowLine(   :NeVN         , 3346.79 ))
+    push!(list, NarrowLine(   :NeVI_3426    , 3426.85 ))
+    push!(list, NarrowLine(   :OII_3727     , 3729.875))
+    push!(list, NarrowLine(   :NeIII_3869   , 3869.81 ))
+    push!(list, BroadLine(    :Hd           , 4102.89 ))
+    push!(list, BroadLine(    :Hg           , 4341.68 ))
+    #push!(list,NarrowLine(   :OIII_4363    , 4363.00 ))  # TODO: Check wavelength is correct
+    push!(list, BroadLine(    :HeII         , 4686.   ))
+    push!(list, CombinedLine( :Hb           , 4862.68 ))
+    push!(list, NarrowLine(   :OIII_4959    , 4960.295))
+    push!(list, NarrowLine(   :OIII_5007    , 5008.240))
+    push!(list, NarrowLine(   :OIII_5007_bw , 5008.240))
+    push!(list, BroadLine(    :HeI_5876     , 5877.30 ))
+    push!(list, NarrowLine(   :OI_6300      , 6300.00 ))  # TODO: Check wavelength is correct
+    push!(list, NarrowLine(   :OI_6364      , 6364.00 ))  # TODO: Check wavelength is correct
+    push!(list, NarrowLine(   :NII_6549     , 6549.86 ))
+    push!(list, CombinedLine( :Ha           , 6564.61 ))
+    push!(list, BroadBaseLine(:Ha_base      , 6564.61 ))
+    push!(list, NarrowLine(   :NII_6583     , 6585.27 ))
+    push!(list, NarrowLine(   :SII_6716     , 6718.29 ))
+    push!(list, NarrowLine(   :SII_6731     , 6732.67 ))
+    return list
 end
 
 
@@ -130,7 +119,6 @@ function GFit.fit!(source::QSO)
     mzer.config.ftol = mzer.config.gtol = mzer.config.xtol = 1.e-6
 
     # Initialize components and guess initial values
-
     λ = source.domain[1][1]
     model = Model(source.domain[1],
                   :Broadband => Reducer(sum, [:continuum, :galaxy, :balmer]),
@@ -207,12 +195,13 @@ function GFit.fit!(source::QSO)
     freeze(model, :ironoptna)
 
     # Add emission lines
-    d = OrderedDict(zip(keys(source.broad_lines[1]), deepcopy(values(source.broad_lines[1]))))
-    add!(model, :BroadLines  => Reducer(sum, collect(keys(d))) , d)
-    d = OrderedDict(zip(keys(source.narrow_lines[1]), deepcopy(values(source.narrow_lines[1]))))
-    add!(model, :NarrowLines => Reducer(sum, collect(keys(d))) , d)
-    add!(model, :main => Reducer(sum, [:Broadband, :Iron, :BroadLines, :NarrowLines]))
-    line_names = [collect(keys(source.broad_lines[1])); collect(keys(source.narrow_lines[1]))]
+    line_names = collect(keys(source.line_names[1]))
+    line_groups = collect(values(source.line_names[1]))
+    add!(model, source.line_comps[1])
+    for (group, lnames) in invert_dictionary(source.line_names[1])
+        add!(model, group  => Reducer(sum, lnames))
+    end
+    add!(model, :main => Reducer(sum, [:Broadband, :Iron, line_groups...]))
 
     if haskey(model.comps, :Ha_base)
         model[:Ha_base].fwhm.val  = 2e4
@@ -258,11 +247,11 @@ function GFit.fit!(source::QSO)
     nunk = 10
     tmp = OrderedDict{Symbol, Any}()
     for j in 1:nunk
-        tmp[Symbol(:unk, j)] = default_unknownline(source)
+        tmp[Symbol(:unk, j)] = line_components(source, UnkLine())[1][2]
         tmp[Symbol(:unk, j)].norm.val = 0
     end
-    add!(model, :UnkLines=>Reducer(sum, collect(keys(tmp))), tmp)
-    add!(model, :main => Reducer(sum, [:Broadband, :Iron, :BroadLines, :NarrowLines, :UnkLines]))
+    add!(model, :UnkLines => Reducer(sum, collect(keys(tmp))), tmp)
+    add!(model, :main => Reducer(sum, [:Broadband, :Iron, line_groups..., :UnkLines]))
     evaluate(model)
     for j in 1:nunk
         freeze(model, Symbol(:unk, j))

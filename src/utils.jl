@@ -85,3 +85,14 @@ function line_coverage(spec_λ, resolution, line_λ, fwhm)
 
     return (λmin, λmax, good / intervals)
 end
+
+
+function invert_dictionary(d::OrderedDict{K, V}) where {K, V}
+    out = OrderedDict{V, Vector{K}}()
+    kk = collect(keys(d))
+    vv = collect(values(d))
+    for v in unique(vv)
+        out[v] = kk[findall(v .== vv)]
+    end
+    return out
+end
