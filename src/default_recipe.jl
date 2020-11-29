@@ -196,7 +196,7 @@ function GFit.fit!(source::QSO)
 
     # Add emission lines
     line_names = collect(keys(source.line_names[1]))
-    line_groups = collect(values(source.line_names[1]))
+    line_groups = unique(collect(values(source.line_names[1])))
     add!(model, source.line_comps[1])
     for (group, lnames) in invert_dictionary(source.line_names[1])
         add!(model, group  => Reducer(sum, lnames))
