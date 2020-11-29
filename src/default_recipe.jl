@@ -203,13 +203,6 @@ function GFit.fit!(source::QSO)
     end
     add!(model, :main => Reducer(sum, [:Broadband, :Iron, line_groups...]))
 
-    if haskey(model.comps, :Ha_base)
-        model[:Ha_base].fwhm.val  = 2e4
-        model[:Ha_base].fwhm.low  = 1e4
-        model[:Ha_base].fwhm.high = 3e4
-        model[:Ha_base].voff.val = 0
-        model[:Ha_base].voff.fixed = true
-    end
     if haskey(model.comps, :MgII_2798)
         model[:MgII_2798].voff.low  = -1000
         model[:MgII_2798].voff.high =  1000

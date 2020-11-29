@@ -123,8 +123,8 @@ function add_spec!(source::QSO, data::Spectrum)
     reliably estimated only if there are sufficient samples to
     constrain the corresponding parameters.  If data coverage is not
     sufficient the component should not be added to the model, and
-    corresponding spectral samples shoult be ignored to avoid
-    worsening the fit due to missing model components.  =#
+    corresponding spectral samples should be ignored to avoid
+    worsening the fit due to missing model components. =#
     println(source.log, "Good samples before line coverage filter: ", length(findall(data.good)))
     line_names, line_comps = line_components(source)
     for (lname, comp) in line_comps
@@ -149,6 +149,7 @@ function add_spec!(source::QSO, data::Spectrum)
     dom = Domain(data.λ[ii] ./ (1 + source.z))
     lum = Measures(data.flux[ii] .* dered[ii] .* source.flux2lum .* (1 + source.z),
                    data.err[ ii] .* dered[ii] .* source.flux2lum .* (1 + source.z))
+
     push!(source.domain, dom)
     push!(source.data, lum)
     push!(source.line_names, line_names)
