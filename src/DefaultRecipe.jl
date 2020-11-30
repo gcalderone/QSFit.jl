@@ -122,22 +122,20 @@ function fit!(source::QSO{T}) where T <: DefaultRecipe
     # Initialize components and guess initial values
     λ = source.domain[1][1]
     model = Model(source.domain[1],
-                  :Broadband => Reducer(sum, [:continuum, :galaxy, :balmer]),
+                  :Continuum => Reducer(sum, [:qso_cont, :galaxy, :balmer]),
                   :galaxy    => QSFit.hostgalaxy(options(source)[:host_template]),
-                  :continuum => QSFit.cutoff_powerlaw(1216),
+                  :qso_cont => QSFit.powerlaw(3000),
                   :balmer    => QSFit.balmercont(0.1, 0.5))
 
     # Galaxy
     model[:galaxy].norm.val = interpol(source.data[1].val, λ, 5500)
 
-    # Continuum
-    c = model[:continuum]
+    # Qso_Cont
+    c = model[:qso_cont]
     c.norm.val = interpol(source.data[1].val, λ, c.x0.val)
     c.alpha.val = -1.8
-    c.beta.low = -50
-    c.beta.val = -5
 
-    # Balmer continuum
+    # Balmer qso_cont
     c = model[:balmer]
     c.norm.val  = 0.1
     c.norm.fixed = false
@@ -147,13 +145,13 @@ function fit!(source::QSO{T}) where T <: DefaultRecipe
     c.ratio.low  = 0.3
     c.ratio.high = 1
     patch!(model) do m
-        m[:balmer].norm *= m[:continuum].norm
+        m[:balmer].norm *= m[:qso_cont].norm
     end
     bestfit = fit!(model, source.data, minimizer=mzer);  show(bestfit)
 
-    # Continuum renormalization
-    freeze(model, :continuum)
-    c = model[:continuum]
+    # Qso_Cont renormalization
+    freeze(model, :qso_cont)
+    c = model[:qso_cont]
     println(source.log, "Cont. norm. (before): ", c.norm.val)
     check_fraction = -1.
     last_fraction = check_fraction
@@ -173,7 +171,7 @@ function fit!(source::QSO{T}) where T <: DefaultRecipe
     println(source.log, "Cont. norm. (after) : ", c.norm.val)
 
     freeze(model, :galaxy)
-    freeze(model, :continuum)
+    freeze(model, :qso_cont)
     freeze(model, :balmer)
     evaluate(model)
 
@@ -182,7 +180,7 @@ function fit!(source::QSO{T}) where T <: DefaultRecipe
          :ironuv    => QSFit.ironuv(3000),
          :ironoptbr => QSFit.ironopt_broad(3000),
          :ironoptna => QSFit.ironopt_narrow(500))
-    add!(model, :main  => Reducer(sum, [:Broadband, :Iron]))
+    add!(model, :main  => Reducer(sum, [:Continuum, :Iron]))
     evaluate(model)
     model[:ironuv].norm.val = 0.5
     model[:ironoptbr].norm.val = 0.5
@@ -202,7 +200,7 @@ function fit!(source::QSO{T}) where T <: DefaultRecipe
     for (group, lnames) in invert_dictionary(source.line_names[1])
         add!(model, group  => Reducer(sum, lnames))
     end
-    add!(model, :main => Reducer(sum, [:Broadband, :Iron, line_groups...]))
+    add!(model, :main => Reducer(sum, [:Continuum, :Iron, line_groups...]))
 
     if haskey(model.comps, :MgII_2798)
         model[:MgII_2798].voff.low  = -1000
@@ -245,7 +243,7 @@ function fit!(source::QSO{T}) where T <: DefaultRecipe
         tmp[Symbol(:unk, j)].norm.val = 0
     end
     add!(model, :UnkLines => Reducer(sum, collect(keys(tmp))), tmp)
-    add!(model, :main => Reducer(sum, [:Broadband, :Iron, line_groups..., :UnkLines]))
+    add!(model, :main => Reducer(sum, [:Continuum, :Iron, line_groups..., :UnkLines]))
     evaluate(model)
     for j in 1:nunk
         freeze(model, Symbol(:unk, j))
@@ -270,7 +268,7 @@ function fit!(source::QSO{T}) where T <: DefaultRecipe
         Δ[abs.(λ .- 6565) .< 150] .= 0.
 
         # Do not add lines close to from the edges since these may
-        # affect continuum fitting
+        # affect qso_cont fitting
         Δ[findall((λ .< minimum(λ)*1.02)  .|
                   (λ .> maximum(λ)*0.98))] .= 0.
         iadd = argmax(Δ)
@@ -291,7 +289,7 @@ function fit!(source::QSO{T}) where T <: DefaultRecipe
 
     # Last run with all parameters free
     thaw(model, :galaxy)
-    thaw(model, :continuum)
+    thaw(model, :qso_cont)
     thaw(model, :balmer)
     thaw(model, :ironuv)
     thaw(model, :ironoptbr)
