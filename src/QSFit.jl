@@ -41,6 +41,7 @@ struct QSO{T <: DefaultRecipe}
     data::Vector{GFit.Measures_1D}
     line_names::Vector{OrderedDict{Symbol, Symbol}}
     line_comps::Vector{OrderedDict{Symbol, AbstractComponent}}
+    options::OrderedDict{Symbol, Any}
 
     function QSO{T}(name, z; ebv=0., logfile="", cosmo=default_cosmology())  where T <: DefaultRecipe
         @assert z > 0
@@ -52,7 +53,8 @@ struct QSO{T <: DefaultRecipe}
         return new{T}(string(name), float(z), float(ebv), cosmo, flux2lum, log,
                       Vector{GFit.Domain_1D}(), Vector{GFit.Measures_1D}(),
                       Vector{OrderedDict{Symbol, AbstractComponent}}(),
-                      Vector{OrderedDict{Symbol, AbstractComponent}}())
+                      Vector{OrderedDict{Symbol, AbstractComponent}}(),
+                      options(T))
     end
 end
 
@@ -115,8 +117,8 @@ function add_spec!(source::QSO, data::Spectrum)
     println(source.log, "  resolution: ~", @sprintf("%.4g", data.resolution), " km / s")
 
     λ = data.λ ./ (1 + source.z)
-    data.good[findall(λ .< options(source)[:wavelength_range][1])] .= false
-    data.good[findall(λ .> options(source)[:wavelength_range][2])] .= false
+    data.good[findall(λ .< source.options[:wavelength_range][1])] .= false
+    data.good[findall(λ .> source.options[:wavelength_range][2])] .= false
 
     #= Emission line are localized features whose parameter can be
     reliably estimated only if there are sufficient samples to
@@ -129,7 +131,7 @@ function add_spec!(source::QSO, data::Spectrum)
     for (lname, comp) in line_comps
         (λmin, λmax, coverage) = line_coverage(λ .* data.good, data.resolution, comp.center.val, comp.fwhm.val)
         @info "Line $lname has coverage: $coverage"
-        if coverage < options(source)[:line_minimum_coverage]
+        if coverage < source.options[:line_minimum_coverage]
             println(source.log, "  neglecting line: ", lname)
             ii = findall(λmin .<= λ .< λmax)
             data.good[ii] .= false
@@ -168,15 +170,6 @@ function populate_metadata!(source, model)
     end
 end
 
-
-# The following methods accept an instance of the QSO object, and
-# forward the call to the method accepting the QSO type.  NOTE: the
-# fit! method must always accept a QSO instance (not a type), hence
-# there is no `fit!(::Type{QSO{T}})` method.
-
-options(::QSO{T}) where T = options(QSO{T})
-line_components(::QSO{T}, line) where T = line_components(QSO{T}, line)
-known_spectral_lines(::QSO{T}) where T = known_spectral_lines(QSO{T})
 
 include("DefaultRecipe.jl")
 

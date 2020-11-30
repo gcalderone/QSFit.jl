@@ -1,8 +1,7 @@
 # Uncomment the following to implement a custom recipe:
 # import QSFit: options, line_components, known_spectral_lines, fit!
 
-
-function options(::Type{QSO{T}}) where T <: DefaultRecipe
+function options(::Type{T}) where T <: DefaultRecipe
     out = OrderedDict{Symbol, Any}()
     out[:host_template] = "Ell5"
     out[:wavelength_range] = [1215, 7.3e3]
@@ -18,7 +17,7 @@ function options(::Type{QSO{T}}) where T <: DefaultRecipe
 end
 
 
-function line_components(::Type{QSO{T}}, line::BroadBaseLine) where T <: DefaultRecipe
+function line_components(::QSO{T}, line::BroadBaseLine) where T <: DefaultRecipe
     comp = SpecLineGauss(line.λ)
     comp.fwhm.val  = 2e4
     comp.fwhm.low  = 1e4
@@ -27,7 +26,7 @@ function line_components(::Type{QSO{T}}, line::BroadBaseLine) where T <: Default
     return [line.name => comp]
 end
 
-function line_components(::Type{QSO{T}}, line::BroadLine) where T <: DefaultRecipe
+function line_components(::QSO{T}, line::BroadLine) where T <: DefaultRecipe
     comp = SpecLineGauss(line.λ)
     comp.fwhm.val  = 5e3
     comp.fwhm.low  = 900
@@ -37,7 +36,7 @@ function line_components(::Type{QSO{T}}, line::BroadLine) where T <: DefaultReci
     return [line.name => comp]
 end
 
-function line_components(::Type{QSO{T}}, line::NarrowLine) where T <: DefaultRecipe
+function line_components(::QSO{T}, line::NarrowLine) where T <: DefaultRecipe
     comp = SpecLineGauss(line.λ)
     comp.fwhm.val  = 5e2
     comp.fwhm.low  = 100
@@ -47,7 +46,7 @@ function line_components(::Type{QSO{T}}, line::NarrowLine) where T <: DefaultRec
     return [line.name => comp]
 end
 
-function line_components(::Type{QSO{T}}, line::CombinedLine) where T <: DefaultRecipe
+function line_components(::QSO{T}, line::CombinedLine) where T <: DefaultRecipe
     br = SpecLineGauss(line.λ)
     br.fwhm.val  = 5e3
     br.fwhm.low  = 900
@@ -66,7 +65,7 @@ function line_components(::Type{QSO{T}}, line::CombinedLine) where T <: DefaultR
             Symbol(:na_, line.name) => na]
 end
 
-function line_components(::Type{QSO{T}}, line::UnkLine) where T <: DefaultRecipe
+function line_components(::QSO{T}, line::UnkLine) where T <: DefaultRecipe
     comp = SpecLineGauss(5e3)
     comp.center.fixed = false
     comp.center.low = 0
@@ -79,7 +78,7 @@ function line_components(::Type{QSO{T}}, line::UnkLine) where T <: DefaultRecipe
 end
 
 
-function known_spectral_lines(::Type{QSO{T}}) where T <: DefaultRecipe
+function known_spectral_lines(source::QSO{T}) where T <: DefaultRecipe
     list = Vector{AbstractSpectralLine}()
     #push!(list,CombinedLine(  :Lyb          , 1026.0  ))
     push!(list, CombinedLine(  :Lya          , 1215.24 ))
@@ -106,7 +105,7 @@ function known_spectral_lines(::Type{QSO{T}}) where T <: DefaultRecipe
     push!(list, CombinedLine(  :Hb           , 4862.68 ))
     push!(list, NarrowLine(    :OIII_4959    , 4960.295))
     push!(list, NarrowLine(    :OIII_5007    , 5008.240))
-    if options(QSO{T})[:use_OIII_5007_bw]
+    if source.options[:use_OIII_5007_bw]
         push!(list, NarrowLine( :OIII_5007_bw, 5008.240))
     end
     push!(list, BroadLine(     :HeI_5876     , 5877.30 ))
@@ -127,7 +126,6 @@ function fit!(source::QSO{T}) where T <: DefaultRecipe
     elapsed = time()
     mzer = cmpfit()
     mzer.config.ftol = mzer.config.gtol = mzer.config.xtol = 1.e-6
-    opt = options(source)
 
     # Initialize components and guess initial values
     λ = source.domain[1][1]
@@ -139,15 +137,15 @@ function fit!(source::QSO{T}) where T <: DefaultRecipe
     c.alpha.val = -1.8
 
     # Galaxy
-    if opt[:use_host_template]
+    if source.options[:use_host_template]
         push!(cont_components, :galaxy)
         add!(model, :Continuum => Reducer(sum, cont_components),
-             :galaxy => QSFit.hostgalaxy(opt[:host_template]))
+             :galaxy => QSFit.hostgalaxy(source.options[:host_template]))
         model[:galaxy].norm.val = interpol(source.data[1].val, λ, 5500)
     end
 
     # Balmer qso_cont
-    if opt[:use_balmer]
+    if source.options[:use_balmer]
         push!(cont_components, :balmer)
         add!(model, :Continuum => Reducer(sum, cont_components),
              :balmer => QSFit.balmercont(0.1, 0.5))
@@ -187,18 +185,18 @@ function fit!(source::QSO{T}) where T <: DefaultRecipe
     println(source.log, "Cont. norm. (after) : ", c.norm.val)
 
     freeze(model, :qso_cont)
-    opt[:use_host_template]  &&  freeze(model, :galaxy)
-    opt[:use_balmer]         &&  freeze(model, :balmer)
+    source.options[:use_host_template]  &&  freeze(model, :galaxy)
+    source.options[:use_balmer]         &&  freeze(model, :balmer)
     evaluate(model)
 
     # Fit iron templates
     iron_components = Vector{Symbol}()
-    if opt[:use_ironuv]
+    if source.options[:use_ironuv]
         add!(model, :ironuv => QSFit.ironuv(3000))
         model[:ironuv].norm.val = 0.5
         push!(iron_components, :ironuv)
     end
-    if opt[:use_ironopt]
+    if source.options[:use_ironopt]
         add!(model,
              :ironoptbr => QSFit.ironopt_broad(3000),
              :ironoptna => QSFit.ironopt_narrow(500))
@@ -216,9 +214,9 @@ function fit!(source::QSO{T}) where T <: DefaultRecipe
         add!(model, :Iron => Reducer(() -> [0.], Symbol[]))
         add!(model, :main => Reducer(sum, [:Continuum, :Iron]))
     end
-    opt[:use_ironuv]   &&  freeze(model, :ironuv)
-    opt[:use_ironopt]  &&  freeze(model, :ironoptbr)
-    opt[:use_ironopt]  &&  freeze(model, :ironoptna)
+    source.options[:use_ironuv]   &&  freeze(model, :ironuv)
+    source.options[:use_ironopt]  &&  freeze(model, :ironoptbr)
+    source.options[:use_ironopt]  &&  freeze(model, :ironoptna)
 
     # Add emission lines
     line_names = collect(keys(source.line_names[1]))
@@ -255,7 +253,7 @@ function fit!(source::QSO{T}) where T <: DefaultRecipe
     patch!(model) do m
         m[:OIII_4959].voff = m[:OIII_5007].voff
     end
-    if opt[:use_OIII_5007_bw]
+    if source.options[:use_OIII_5007_bw]
         patch!(model) do m
             m[:OIII_5007_bw].voff += m[:OIII_5007].voff
             m[:OIII_5007_bw].fwhm += m[:OIII_5007].fwhm
@@ -267,16 +265,16 @@ function fit!(source::QSO{T}) where T <: DefaultRecipe
     end
 
     # Add unknown lines
-    if opt[:n_unk] > 0
+    if source.options[:n_unk] > 0
         tmp = OrderedDict{Symbol, Any}()
-        for j in 1:opt[:n_unk]
+        for j in 1:source.options[:n_unk]
             tmp[Symbol(:unk, j)] = line_components(source, UnkLine())[1][2]
             tmp[Symbol(:unk, j)].norm.val = 0
         end
         add!(model, :UnkLines => Reducer(sum, collect(keys(tmp))), tmp)
         add!(model, :main => Reducer(sum, [:Continuum, :Iron, line_groups..., :UnkLines]))
         evaluate(model)
-        for j in 1:opt[:n_unk]
+        for j in 1:source.options[:n_unk]
             freeze(model, Symbol(:unk, j))
         end
         evaluate(model)
@@ -285,7 +283,7 @@ function fit!(source::QSO{T}) where T <: DefaultRecipe
         # the fit residuals, and re-run a fit.
         λunk = Vector{Float64}()
         while true
-            (length(λunk) >= opt[:n_unk])  &&  break
+            (length(λunk) >= source.options[:n_unk])  &&  break
             evaluate(model)
             Δ = (source.data[1].val - model()) ./ source.data[1].unc
 
@@ -295,7 +293,7 @@ function fit!(source::QSO{T}) where T <: DefaultRecipe
             end
 
             # Avoidance regions
-            for rr in opt[:unk_avoid]
+            for rr in source.options[:unk_avoid]
                 Δ[findall(rr[1] .< λ .< rr[2])] .= 0.
             end
 
@@ -321,17 +319,17 @@ function fit!(source::QSO{T}) where T <: DefaultRecipe
     evaluate(model)
 
     # Last run with all parameters free
-    opt[:use_host_template]  &&  thaw(model, :galaxy)
+    source.options[:use_host_template]  &&  thaw(model, :galaxy)
     thaw(model, :qso_cont)
-    opt[:use_balmer]         &&  thaw(model, :balmer)
-    opt[:use_ironuv]         &&  thaw(model, :ironuv)
-    opt[:use_ironopt]        &&  thaw(model, :ironoptbr)
-    opt[:use_ironopt]        &&  thaw(model, :ironoptna)
+    source.options[:use_balmer]         &&  thaw(model, :balmer)
+    source.options[:use_ironuv]         &&  thaw(model, :ironuv)
+    source.options[:use_ironopt]        &&  thaw(model, :ironoptbr)
+    source.options[:use_ironopt]        &&  thaw(model, :ironoptna)
 
     for lname in line_names
         thaw(model, lname)
     end
-    for j in 1:opt[:n_unk]
+    for j in 1:source.options[:n_unk]
         cname = Symbol(:unk, j)
         if model[cname].norm.val > 0
             thaw(model, cname)
