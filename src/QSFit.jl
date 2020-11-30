@@ -148,11 +148,24 @@ function add_spec!(source::QSO, data::Spectrum)
     dom = Domain(data.λ[ii] ./ (1 + source.z))
     lum = Measures(data.flux[ii] .* dered[ii] .* source.flux2lum .* (1 + source.z),
                    data.err[ ii] .* dered[ii] .* source.flux2lum .* (1 + source.z))
+    lum.meta[:label] = data.label
 
     push!(source.domain, dom)
     push!(source.data, lum)
     push!(source.line_names, line_names)
     push!(source.line_comps, line_comps)
+end
+
+
+function populate_metadata!(source, model)
+    for id in 1:length(model.preds)
+        model.preds[id].meta[:label] = source.name * ", z=" * string(source.z) * " , E(B-V)=" * string(source.mw_ebv)
+        model.preds[id].meta[:label_x] = "Rest frame wavelength"
+        model.preds[id].meta[:unit_x]  = string(QSFit.unit_λ())
+        model.preds[id].meta[:label_y] = "Lum. density"
+        model.preds[id].meta[:unit_y]  = string(QSFit.unit_lum_density())
+        model.preds[id].meta[:scale_y] = string(QSFit.scale_lum())
+    end
 end
 
 

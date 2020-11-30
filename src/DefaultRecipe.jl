@@ -310,5 +310,7 @@ function fit!(source::QSO{T}) where T <: DefaultRecipe
     bestfit = fit!(model, source.data, minimizer=mzer); show(bestfit)
     elapsed = time() - elapsed
     println("Elapsed time: $elapsed s")
+
+    populate_metadata!(source, model)
     return (model, bestfit)
 end
