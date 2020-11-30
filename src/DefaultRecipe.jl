@@ -136,7 +136,7 @@ function fit!(source::QSO{T}) where T <: DefaultRecipe
     c.norm.val = interpol(source.data[1].val, λ, c.x0.val)
     c.alpha.val = -1.8
 
-    # Galaxy
+    # Host galaxy template
     if source.options[:use_host_template]
         push!(cont_components, :galaxy)
         add!(model, :Continuum => Reducer(sum, cont_components),
@@ -144,7 +144,7 @@ function fit!(source::QSO{T}) where T <: DefaultRecipe
         model[:galaxy].norm.val = interpol(source.data[1].val, λ, 5500)
     end
 
-    # Balmer qso_cont
+    # Balmer continuum and pseudo-continuum
     if source.options[:use_balmer]
         push!(cont_components, :balmer)
         add!(model, :Continuum => Reducer(sum, cont_components),
@@ -319,8 +319,8 @@ function fit!(source::QSO{T}) where T <: DefaultRecipe
     evaluate(model)
 
     # Last run with all parameters free
-    source.options[:use_host_template]  &&  thaw(model, :galaxy)
     thaw(model, :qso_cont)
+    source.options[:use_host_template]  &&  thaw(model, :galaxy)
     source.options[:use_balmer]         &&  thaw(model, :balmer)
     source.options[:use_ironuv]         &&  thaw(model, :ironuv)
     source.options[:use_ironopt]        &&  thaw(model, :ironoptbr)
