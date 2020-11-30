@@ -88,7 +88,7 @@ struct UnkLine <: AbstractSpectralLine
 end
 
 
-function line_components(source::QSO)
+function line_components_and_groups(source::QSO)
     comps = OrderedDict{Symbol, AbstractComponent}()
     groups = OrderedDict{Symbol, Symbol}()
     for line in known_spectral_lines(source)
@@ -125,7 +125,7 @@ function add_spec!(source::QSO, data::Spectrum)
     corresponding spectral samples should be ignored to avoid
     worsening the fit due to missing model components. =#
     println(source.log, "Good samples before line coverage filter: ", length(findall(data.good)))
-    line_names, line_comps = line_components(source)
+    line_names, line_comps = line_components_and_groups(source)
     for (lname, comp) in line_comps
         (λmin, λmax, coverage) = line_coverage(λ .* data.good, data.resolution, comp.center.val, comp.fwhm.val)
         @info "Line $lname has coverage: $coverage"
