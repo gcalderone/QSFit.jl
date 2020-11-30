@@ -4,7 +4,6 @@ unit_λ() = u"angstrom"
 unit_flux() = u"erg" / u"s" / u"cm"^2
 unit_lum() =  u"erg" / u"s"
 
-unit_λ() = u"angstrom"
 unit_flux_density() = unit_flux() / unit_λ()
 unit_lum_density() = unit_lum() / unit_λ()
 

@@ -1,6 +1,6 @@
 module QSFit
 
-export QSO, Spectrum, add_spec!, fit!
+export QSO, Spectrum, add_spec!, fit!, DefaultRecipe
 
 import GFit: Domain_1D, CompEval,
     Parameter, AbstractComponent, compeval_cdata, compeval_array, evaluate, fit!
@@ -26,12 +26,11 @@ include("components/SpecLineGauss.jl")
 include("components/SpecLineAsymmGauss.jl")
 include("components/SpecLineLorentz.jl")
 include("Spectrum.jl")
-#include("spectral_lines.jl")
 
-abstract type AbstractSource end
-struct T1_generic <: AbstractSource end
 
-struct QSO{T <: AbstractSource}
+abstract type DefaultRecipe end
+
+struct QSO{T <: DefaultRecipe}
     name::String
     z::Float64
     mw_ebv::Float64
@@ -43,7 +42,7 @@ struct QSO{T <: AbstractSource}
     line_names::Vector{OrderedDict{Symbol, Symbol}}
     line_comps::Vector{OrderedDict{Symbol, AbstractComponent}}
 
-    function QSO{T}(name, z; ebv=0., logfile="", cosmo=default_cosmology())  where T <: AbstractSource
+    function QSO{T}(name, z; ebv=0., logfile="", cosmo=default_cosmology())  where T <: DefaultRecipe
         @assert z > 0
         @assert ebv >= 0
         ld = uconvert(u"cm", luminosity_dist(cosmo, float(z)))
@@ -156,6 +155,6 @@ function add_spec!(source::QSO, data::Spectrum)
     push!(source.line_comps, line_comps)
 end
 
-include("default_recipe.jl")
+include("DefaultRecipe.jl")
 
 end  # module
