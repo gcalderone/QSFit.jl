@@ -155,6 +155,16 @@ function add_spec!(source::QSO, data::Spectrum)
     push!(source.line_comps, line_comps)
 end
 
+
+# The following methods accept an instance of the QSO object, and
+# forward the call to the method accepting the QSO type.  NOTE: the
+# fit! method must always accept a QSO instance (not a type), hence
+# there is no `fit!(::Type{QSO{T}})` method.
+
+options(::QSO{T}) where T = options(QSO{T})
+line_components(::QSO{T}, line) where T = line_components(QSO{T}, line)
+known_spectral_lines(::QSO{T}) where T = known_spectral_lines(QSO{T})
+
 include("DefaultRecipe.jl")
 
 end  # module

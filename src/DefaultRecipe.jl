@@ -1,17 +1,8 @@
-# ====================================================================
-# Default recipe
-
-# The following methods accept an instance of the QSO object, and
-# forward the call to the method accepting the QSO type.  NOTE: the
-# fit! method must always accept an instance (not a type), hence there
-# is no `fit!(::Type{QSO{T}})` method.
-
-options(::QSO{T}) where T = options(QSO{T})
-line_components(::QSO{T}, line) where T = line_components(QSO{T}, line)
-known_spectral_lines(::QSO{T}) where T = known_spectral_lines(QSO{T})
+# Uncomment the following to implement a custom recipe:
+# import QSFit: options, line_components, known_spectral_lines, fit!
 
 
-function options(::Type{QSO{T}}) where T
+function options(::Type{QSO{T}}) where T <: DefaultRecipe
     out = OrderedDict{Symbol, Any}()
     out[:host_template] = "Ell5"
     out[:wavelength_range] = [1215, 7.3e3]
@@ -20,7 +11,7 @@ function options(::Type{QSO{T}}) where T
 end
 
 
-function line_components(::Type{QSO{T}}, line::BroadBaseLine) where T
+function line_components(::Type{QSO{T}}, line::BroadBaseLine) where T <: DefaultRecipe
     comp = SpecLineGauss(line.λ)
     comp.fwhm.val  = 2e4
     comp.fwhm.low  = 1e4
@@ -29,7 +20,7 @@ function line_components(::Type{QSO{T}}, line::BroadBaseLine) where T
     return [line.name => comp]
 end
 
-function line_components(::Type{QSO{T}}, line::BroadLine) where T
+function line_components(::Type{QSO{T}}, line::BroadLine) where T <: DefaultRecipe
     comp = SpecLineGauss(line.λ)
     comp.fwhm.val  = 5e3
     comp.fwhm.low  = 900
@@ -39,7 +30,7 @@ function line_components(::Type{QSO{T}}, line::BroadLine) where T
     return [line.name => comp]
 end
 
-function line_components(::Type{QSO{T}}, line::NarrowLine) where T
+function line_components(::Type{QSO{T}}, line::NarrowLine) where T <: DefaultRecipe
     comp = SpecLineGauss(line.λ)
     comp.fwhm.val  = 5e2
     comp.fwhm.low  = 100
@@ -49,7 +40,7 @@ function line_components(::Type{QSO{T}}, line::NarrowLine) where T
     return [line.name => comp]
 end
 
-function line_components(::Type{QSO{T}}, line::CombinedLine) where T
+function line_components(::Type{QSO{T}}, line::CombinedLine) where T <: DefaultRecipe
     br = SpecLineGauss(line.λ)
     br.fwhm.val  = 5e3
     br.fwhm.low  = 900
@@ -68,7 +59,7 @@ function line_components(::Type{QSO{T}}, line::CombinedLine) where T
             Symbol(:na_, line.name) => na]
 end
 
-function line_components(::Type{QSO{T}}, line::UnkLine) where T
+function line_components(::Type{QSO{T}}, line::UnkLine) where T <: DefaultRecipe
     comp = SpecLineGauss(5e3)
     comp.center.fixed = false
     comp.center.low = 0
@@ -81,7 +72,7 @@ function line_components(::Type{QSO{T}}, line::UnkLine) where T
 end
 
 
-function known_spectral_lines(::Type{QSO{T}}) where T
+function known_spectral_lines(::Type{QSO{T}}) where T <: DefaultRecipe
     list = Vector{AbstractSpectralLine}()
     #push!(list,CombinedLine(:Lyb          , 1026.0  ))
     push!(list, CombinedLine( :Lya          , 1215.24 ))
@@ -122,7 +113,7 @@ function known_spectral_lines(::Type{QSO{T}}) where T
 end
 
 
-function fit!(source::QSO)
+function fit!(source::QSO{T}) where T <: DefaultRecipe
     @assert length(source.data) == 1
     elapsed = time()
     mzer = cmpfit()
