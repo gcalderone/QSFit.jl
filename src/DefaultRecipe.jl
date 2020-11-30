@@ -7,8 +7,13 @@ function options(::Type{QSO{T}}) where T <: DefaultRecipe
     out[:host_template] = "Ell5"
     out[:wavelength_range] = [1215, 7.3e3]
     out[:line_minimum_coverage] = 0.6
-    out[:OIII_5007_bw] = false
+    out[:use_host_template] = true
+    out[:use_balmer] = true
+    out[:use_ironuv] = true
+    out[:use_ironopt] = true
+    out[:use_OIII_5007_bw] = false
     out[:n_unk] = 10
+    out[:unk_avoid] = [4863 .+ [-1,1] .* 50, 6565 .+ [-1,1] .* 150]
     return out
 end
 
@@ -76,43 +81,43 @@ end
 
 function known_spectral_lines(::Type{QSO{T}}) where T <: DefaultRecipe
     list = Vector{AbstractSpectralLine}()
-    #push!(list,CombinedLine(:Lyb          , 1026.0  ))
-    push!(list, CombinedLine( :Lya          , 1215.24 ))
-    push!(list, NarrowLine(   :NV_1241      , 1240.81 ))
-    push!(list, BroadLine(    :OI_1306      , 1305.53 ))
-    push!(list, BroadLine(    :CII_1335     , 1335.31 ))
-    push!(list, BroadLine(    :SiIV_1400    , 1399.8  ))
-    push!(list, CombinedLine( :CIV_1549     , 1549.48 ))
-    #push!(list,BroadLine(    :HeII         , 1640.4  ))
-    #push!(list,BroadLine(    :OIII         , 1665.85 ))
-    #push!(list,BroadLine(    :AlIII        , 1857.4  ))
-    push!(list, BroadLine(    :CIII_1909    , 1908.734))
-    push!(list, BroadLine(    :CII          , 2326.0  ))
-    push!(list, BroadLine(    :F2420        , 2420.0  ))
-    push!(list, CombinedLine( :MgII_2798    , 2799.117))
-    #push!(list,NarrowLine(   :NeVN         , 3346.79 ))
-    push!(list, NarrowLine(   :NeVI_3426    , 3426.85 ))
-    push!(list, NarrowLine(   :OII_3727     , 3729.875))
-    push!(list, NarrowLine(   :NeIII_3869   , 3869.81 ))
-    push!(list, BroadLine(    :Hd           , 4102.89 ))
-    push!(list, BroadLine(    :Hg           , 4341.68 ))
-    #push!(list,NarrowLine(   :OIII_4363    , 4363.00 ))  # TODO: Check wavelength is correct
-    push!(list, BroadLine(    :HeII         , 4686.   ))
-    push!(list, CombinedLine( :Hb           , 4862.68 ))
-    push!(list, NarrowLine(   :OIII_4959    , 4960.295))
-    push!(list, NarrowLine(   :OIII_5007    , 5008.240))
-    if options(QSO{T})[:OIII_5007_bw]
-        push!(list, NarrowLine(   :OIII_5007_bw , 5008.240))
+    #push!(list,CombinedLine(  :Lyb          , 1026.0  ))
+    push!(list, CombinedLine(  :Lya          , 1215.24 ))
+    push!(list, NarrowLine(    :NV_1241      , 1240.81 ))
+    push!(list, BroadLine(     :OI_1306      , 1305.53 ))
+    push!(list, BroadLine(     :CII_1335     , 1335.31 ))
+    push!(list, BroadLine(     :SiIV_1400    , 1399.8  ))
+    push!(list, CombinedLine(  :CIV_1549     , 1549.48 ))
+    #push!(list,BroadLine(     :HeII         , 1640.4  ))
+    #push!(list,BroadLine(     :OIII         , 1665.85 ))
+    #push!(list,BroadLine(     :AlIII        , 1857.4  ))
+    push!(list, BroadLine(     :CIII_1909    , 1908.734))
+    push!(list, BroadLine(     :CII          , 2326.0  ))
+    push!(list, BroadLine(     :F2420        , 2420.0  ))
+    push!(list, CombinedLine(  :MgII_2798    , 2799.117))
+    #push!(list,NarrowLine(    :NeVN         , 3346.79 ))
+    push!(list, NarrowLine(    :NeVI_3426    , 3426.85 ))
+    push!(list, NarrowLine(    :OII_3727     , 3729.875))
+    push!(list, NarrowLine(    :NeIII_3869   , 3869.81 ))
+    push!(list, BroadLine(     :Hd           , 4102.89 ))
+    push!(list, BroadLine(     :Hg           , 4341.68 ))
+    #push!(list,NarrowLine(    :OIII_4363    , 4363.00 ))  # TODO: Check wavelength is correct
+    push!(list, BroadLine(     :HeII         , 4686.   ))
+    push!(list, CombinedLine(  :Hb           , 4862.68 ))
+    push!(list, NarrowLine(    :OIII_4959    , 4960.295))
+    push!(list, NarrowLine(    :OIII_5007    , 5008.240))
+    if options(QSO{T})[:use_OIII_5007_bw]
+        push!(list, NarrowLine( :OIII_5007_bw, 5008.240))
     end
-    push!(list, BroadLine(    :HeI_5876     , 5877.30 ))
-    push!(list, NarrowLine(   :OI_6300      , 6300.00 ))  # TODO: Check wavelength is correct
-    push!(list, NarrowLine(   :OI_6364      , 6364.00 ))  # TODO: Check wavelength is correct
-    push!(list, NarrowLine(   :NII_6549     , 6549.86 ))
-    push!(list, CombinedLine( :Ha           , 6564.61 ))
-    push!(list, BroadBaseLine(:Ha_base      , 6564.61 ))
-    push!(list, NarrowLine(   :NII_6583     , 6585.27 ))
-    push!(list, NarrowLine(   :SII_6716     , 6718.29 ))
-    push!(list, NarrowLine(   :SII_6731     , 6732.67 ))
+    push!(list, BroadLine(     :HeI_5876     , 5877.30 ))
+    push!(list, NarrowLine(    :OI_6300      , 6300.00 ))  # TODO: Check wavelength is correct
+    push!(list, NarrowLine(    :OI_6364      , 6364.00 ))  # TODO: Check wavelength is correct
+    push!(list, NarrowLine(    :NII_6549     , 6549.86 ))
+    push!(list, CombinedLine(  :Ha           , 6564.61 ))
+    push!(list, BroadBaseLine( :Ha_base      , 6564.61 ))
+    push!(list, NarrowLine(    :NII_6583     , 6585.27 ))
+    push!(list, NarrowLine(    :SII_6716     , 6718.29 ))
+    push!(list, NarrowLine(    :SII_6731     , 6732.67 ))
     return list
 end
 
@@ -126,35 +131,42 @@ function fit!(source::QSO{T}) where T <: DefaultRecipe
 
     # Initialize components and guess initial values
     λ = source.domain[1][1]
-    model = Model(source.domain[1],
-                  :Continuum => Reducer(sum, [:qso_cont, :galaxy, :balmer]),
-                  :galaxy    => QSFit.hostgalaxy(opt[:host_template]),
-                  :qso_cont => QSFit.powerlaw(3000),
-                  :balmer    => QSFit.balmercont(0.1, 0.5))
-
-    # Galaxy
-    model[:galaxy].norm.val = interpol(source.data[1].val, λ, 5500)
-
-    # Qso_Cont
+    cont_components = [:qso_cont]
+    model = Model(source.domain[1], :Continuum => Reducer(sum, cont_components),
+                  :qso_cont => QSFit.powerlaw(3000))
     c = model[:qso_cont]
     c.norm.val = interpol(source.data[1].val, λ, c.x0.val)
     c.alpha.val = -1.8
 
-    # Balmer qso_cont
-    c = model[:balmer]
-    c.norm.val  = 0.1
-    c.norm.fixed = false
-    c.norm.high = 1.5
-    c.ratio.val = 0.5
-    c.ratio.fixed = false
-    c.ratio.low  = 0.3
-    c.ratio.high = 1
-    patch!(model) do m
-        m[:balmer].norm *= m[:qso_cont].norm
+    # Galaxy
+    if opt[:use_host_template]
+        push!(cont_components, :galaxy)
+        add!(model, :Continuum => Reducer(sum, cont_components),
+             :galaxy => QSFit.hostgalaxy(opt[:host_template]))
+        model[:galaxy].norm.val = interpol(source.data[1].val, λ, 5500)
     end
+
+    # Balmer qso_cont
+    if opt[:use_balmer]
+        push!(cont_components, :balmer)
+        add!(model, :Continuum => Reducer(sum, cont_components),
+             :balmer => QSFit.balmercont(0.1, 0.5))
+        c = model[:balmer]
+        c.norm.val  = 0.1
+        c.norm.fixed = false
+        c.norm.high = 1.5
+        c.ratio.val = 0.5
+        c.ratio.fixed = false
+        c.ratio.low  = 0.3
+        c.ratio.high = 1
+        patch!(model) do m
+            m[:balmer].norm *= m[:qso_cont].norm
+        end
+    end
+
     bestfit = fit!(model, source.data, minimizer=mzer);  show(bestfit)
 
-    # Qso_Cont renormalization
+    # QSO continuum renormalization
     freeze(model, :qso_cont)
     c = model[:qso_cont]
     println(source.log, "Cont. norm. (before): ", c.norm.val)
@@ -163,7 +175,6 @@ function fit!(source::QSO{T}) where T <: DefaultRecipe
     yy = source.data[1].val;
     ee = source.data[1].unc;
     while true
-        #global last_fraction
         mm = model()
         residuals = (mm .- yy) ./ ee
         check_fraction = count(residuals .< 0) / length(residuals)
@@ -175,28 +186,39 @@ function fit!(source::QSO{T}) where T <: DefaultRecipe
     end
     println(source.log, "Cont. norm. (after) : ", c.norm.val)
 
-    freeze(model, :galaxy)
     freeze(model, :qso_cont)
-    freeze(model, :balmer)
+    opt[:use_host_template]  &&  freeze(model, :galaxy)
+    opt[:use_balmer]         &&  freeze(model, :balmer)
     evaluate(model)
 
-    # Fit iron template
-    add!(model, :Iron => Reducer(sum, [:ironuv, :ironoptbr, :ironoptna]),
-         :ironuv    => QSFit.ironuv(3000),
-         :ironoptbr => QSFit.ironopt_broad(3000),
-         :ironoptna => QSFit.ironopt_narrow(500))
-    add!(model, :main  => Reducer(sum, [:Continuum, :Iron]))
-    evaluate(model)
-    model[:ironuv].norm.val = 0.5
-    model[:ironoptbr].norm.val = 0.5
-    model[:ironoptna].norm.val = 0.0
-    freeze(model, :ironoptna)  # will be freed during last run
-    evaluate(model)
-    bestfit = fit!(model, source.data, minimizer=mzer); show(bestfit)
-
-    freeze(model, :ironuv)
-    freeze(model, :ironoptbr)
-    freeze(model, :ironoptna)
+    # Fit iron templates
+    iron_components = Vector{Symbol}()
+    if opt[:use_ironuv]
+        add!(model, :ironuv => QSFit.ironuv(3000))
+        model[:ironuv].norm.val = 0.5
+        push!(iron_components, :ironuv)
+    end
+    if opt[:use_ironopt]
+        add!(model,
+             :ironoptbr => QSFit.ironopt_broad(3000),
+             :ironoptna => QSFit.ironopt_narrow(500))
+        model[:ironoptbr].norm.val = 0.5
+        model[:ironoptna].norm.val = 0.0
+        freeze(model, :ironoptna)  # will be freed during last run
+        push!(iron_components, :ironoptbr, :ironoptna)
+    end
+    if length(iron_components) > 0
+        add!(model, :Iron => Reducer(sum, iron_components))
+        add!(model, :main => Reducer(sum, [:Continuum, :Iron]))
+        evaluate(model)
+        bestfit = fit!(model, source.data, minimizer=mzer); show(bestfit)
+    else
+        add!(model, :Iron => Reducer(() -> [0.], Symbol[]))
+        add!(model, :main => Reducer(sum, [:Continuum, :Iron]))
+    end
+    opt[:use_ironuv]   &&  freeze(model, :ironuv)
+    opt[:use_ironopt]  &&  freeze(model, :ironoptbr)
+    opt[:use_ironopt]  &&  freeze(model, :ironoptna)
 
     # Add emission lines
     line_names = collect(keys(source.line_names[1]))
@@ -233,7 +255,7 @@ function fit!(source::QSO{T}) where T <: DefaultRecipe
     patch!(model) do m
         m[:OIII_4959].voff = m[:OIII_5007].voff
     end
-    if opt[:OIII_5007_bw]
+    if opt[:use_OIII_5007_bw]
         patch!(model) do m
             m[:OIII_5007_bw].voff += m[:OIII_5007].voff
             m[:OIII_5007_bw].fwhm += m[:OIII_5007].fwhm
@@ -266,16 +288,17 @@ function fit!(source::QSO{T}) where T <: DefaultRecipe
             (length(λunk) >= opt[:n_unk])  &&  break
             evaluate(model)
             Δ = (source.data[1].val - model()) ./ source.data[1].unc
-            
+
             # Avoid considering again the same region (within 1A)
             for l in λunk
                 Δ[findall(abs.(l .- λ) .< 1)] .= 0.
             end
-            
+
             # Avoidance regions
-            Δ[abs.(λ .- 4863) .<  50] .= 0.
-            Δ[abs.(λ .- 6565) .< 150] .= 0.
-            
+            for rr in opt[:unk_avoid]
+                Δ[findall(rr[1] .< λ .< rr[2])] .= 0.
+            end
+
             # Do not add lines close to from the edges since these may
             # affect qso_cont fitting
             Δ[findall((λ .< minimum(λ)*1.02)  .|
@@ -283,13 +306,13 @@ function fit!(source::QSO{T}) where T <: DefaultRecipe
             iadd = argmax(Δ)
             (Δ[iadd] <= 0)  &&  break  # No residual is greater than 0, skip further residuals....
             push!(λunk, λ[iadd])
-            
+
             cname = Symbol(:unk, length(λunk))
             model[cname].norm.val = 1.
             model[cname].center.val  = λ[iadd]
             model[cname].center.low  = λ[iadd] - λ[iadd]/10. # allow to move 10%
             model[cname].center.high = λ[iadd] + λ[iadd]/10.
-            
+
             thaw(model, cname)
             bestfit = fit!(model, source.data, minimizer=mzer); show(bestfit)
             freeze(model, cname)
@@ -298,12 +321,12 @@ function fit!(source::QSO{T}) where T <: DefaultRecipe
     evaluate(model)
 
     # Last run with all parameters free
-    thaw(model, :galaxy)
+    opt[:use_host_template]  &&  thaw(model, :galaxy)
     thaw(model, :qso_cont)
-    thaw(model, :balmer)
-    thaw(model, :ironuv)
-    thaw(model, :ironoptbr)
-    thaw(model, :ironoptna)
+    opt[:use_balmer]         &&  thaw(model, :balmer)
+    opt[:use_ironuv]         &&  thaw(model, :ironuv)
+    opt[:use_ironopt]        &&  thaw(model, :ironoptbr)
+    opt[:use_ironopt]        &&  thaw(model, :ironoptna)
 
     for lname in line_names
         thaw(model, lname)
