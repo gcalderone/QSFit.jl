@@ -47,7 +47,7 @@ struct QSO{T <: AbstractSource}
         @assert z > 0
         @assert ebv >= 0
         ld = uconvert(u"cm", luminosity_dist(cosmo, float(z)))
-        flux2lum = 4pi * ld^2 * unit_flux() / unit_lum()
+        flux2lum = 4pi * ld^2 * (scale_flux() * unit_flux()) / (scale_lum() * unit_lum())
         log = stdout
         (logfile != "")  &&  (log = open(logfile, "w"))
         return new{T}(string(name), float(z), float(ebv), cosmo, flux2lum, log,
