@@ -7,6 +7,8 @@ function options(::Type{QSO{T}}) where T <: DefaultRecipe
     out[:host_template] = "Ell5"
     out[:wavelength_range] = [1215, 7.3e3]
     out[:line_minimum_coverage] = 0.6
+    out[:OIII_5007_bw] = false
+    out[:n_unk] = 10
     return out
 end
 
@@ -99,7 +101,9 @@ function known_spectral_lines(::Type{QSO{T}}) where T <: DefaultRecipe
     push!(list, CombinedLine( :Hb           , 4862.68 ))
     push!(list, NarrowLine(   :OIII_4959    , 4960.295))
     push!(list, NarrowLine(   :OIII_5007    , 5008.240))
-    push!(list, NarrowLine(   :OIII_5007_bw , 5008.240))
+    if options(QSO{T})[:OIII_5007_bw]
+        push!(list, NarrowLine(   :OIII_5007_bw , 5008.240))
+    end
     push!(list, BroadLine(    :HeI_5876     , 5877.30 ))
     push!(list, NarrowLine(   :OI_6300      , 6300.00 ))  # TODO: Check wavelength is correct
     push!(list, NarrowLine(   :OI_6364      , 6364.00 ))  # TODO: Check wavelength is correct
@@ -118,12 +122,13 @@ function fit!(source::QSO{T}) where T <: DefaultRecipe
     elapsed = time()
     mzer = cmpfit()
     mzer.config.ftol = mzer.config.gtol = mzer.config.xtol = 1.e-6
+    opt = options(source)
 
     # Initialize components and guess initial values
     λ = source.domain[1][1]
     model = Model(source.domain[1],
                   :Continuum => Reducer(sum, [:qso_cont, :galaxy, :balmer]),
-                  :galaxy    => QSFit.hostgalaxy(options(source)[:host_template]),
+                  :galaxy    => QSFit.hostgalaxy(opt[:host_template]),
                   :qso_cont => QSFit.powerlaw(3000),
                   :balmer    => QSFit.balmercont(0.1, 0.5))
 
@@ -227,8 +232,12 @@ function fit!(source::QSO{T}) where T <: DefaultRecipe
     model[:OIII_4959].voff.fixed = true
     patch!(model) do m
         m[:OIII_4959].voff = m[:OIII_5007].voff
-        m[:OIII_5007_bw].voff += m[:OIII_5007].voff
-        m[:OIII_5007_bw].fwhm += m[:OIII_5007].fwhm
+    end
+    if opt[:OIII_5007_bw]
+        patch!(model) do m
+            m[:OIII_5007_bw].voff += m[:OIII_5007].voff
+            m[:OIII_5007_bw].fwhm += m[:OIII_5007].fwhm
+        end
     end
     bestfit = fit!(model, source.data, minimizer=mzer); show(bestfit)
     for lname in line_names
@@ -236,54 +245,55 @@ function fit!(source::QSO{T}) where T <: DefaultRecipe
     end
 
     # Add unknown lines
-    nunk = 10
-    tmp = OrderedDict{Symbol, Any}()
-    for j in 1:nunk
-        tmp[Symbol(:unk, j)] = line_components(source, UnkLine())[1][2]
-        tmp[Symbol(:unk, j)].norm.val = 0
-    end
-    add!(model, :UnkLines => Reducer(sum, collect(keys(tmp))), tmp)
-    add!(model, :main => Reducer(sum, [:Continuum, :Iron, line_groups..., :UnkLines]))
-    evaluate(model)
-    for j in 1:nunk
-        freeze(model, Symbol(:unk, j))
-    end
-    evaluate(model)
-
-    # Set "unknown" line center wavelength where there is a maximum in
-    # the fit residuals, and re-run a fit.
-    λunk = Vector{Float64}()
-    while true
-        (length(λunk) >= nunk)  &&  break
-        evaluate(model)
-        Δ = (source.data[1].val - model()) ./ source.data[1].unc
-
-        # Avoid considering again the same region (within 1A)
-        for l in λunk
-            Δ[findall(abs.(l .- λ) .< 1)] .= 0.
+    if opt[:n_unk] > 0
+        tmp = OrderedDict{Symbol, Any}()
+        for j in 1:opt[:n_unk]
+            tmp[Symbol(:unk, j)] = line_components(source, UnkLine())[1][2]
+            tmp[Symbol(:unk, j)].norm.val = 0
         end
+        add!(model, :UnkLines => Reducer(sum, collect(keys(tmp))), tmp)
+        add!(model, :main => Reducer(sum, [:Continuum, :Iron, line_groups..., :UnkLines]))
+        evaluate(model)
+        for j in 1:opt[:n_unk]
+            freeze(model, Symbol(:unk, j))
+        end
+        evaluate(model)
 
-        # Avoidance regions
-        Δ[abs.(λ .- 4863) .<  50] .= 0.
-        Δ[abs.(λ .- 6565) .< 150] .= 0.
-
-        # Do not add lines close to from the edges since these may
-        # affect qso_cont fitting
-        Δ[findall((λ .< minimum(λ)*1.02)  .|
-                  (λ .> maximum(λ)*0.98))] .= 0.
-        iadd = argmax(Δ)
-        (Δ[iadd] <= 0)  &&  break  # No residual is greater than 0, skip further residuals....
-        push!(λunk, λ[iadd])
-
-        cname = Symbol(:unk, length(λunk))
-        model[cname].norm.val = 1.
-        model[cname].center.val  = λ[iadd]
-        model[cname].center.low  = λ[iadd] - λ[iadd]/10. # allow to move 10%
-        model[cname].center.high = λ[iadd] + λ[iadd]/10.
-
-        thaw(model, cname)
-        bestfit = fit!(model, source.data, minimizer=mzer); show(bestfit)
-        freeze(model, cname)
+        # Set "unknown" line center wavelength where there is a maximum in
+        # the fit residuals, and re-run a fit.
+        λunk = Vector{Float64}()
+        while true
+            (length(λunk) >= opt[:n_unk])  &&  break
+            evaluate(model)
+            Δ = (source.data[1].val - model()) ./ source.data[1].unc
+            
+            # Avoid considering again the same region (within 1A)
+            for l in λunk
+                Δ[findall(abs.(l .- λ) .< 1)] .= 0.
+            end
+            
+            # Avoidance regions
+            Δ[abs.(λ .- 4863) .<  50] .= 0.
+            Δ[abs.(λ .- 6565) .< 150] .= 0.
+            
+            # Do not add lines close to from the edges since these may
+            # affect qso_cont fitting
+            Δ[findall((λ .< minimum(λ)*1.02)  .|
+                      (λ .> maximum(λ)*0.98))] .= 0.
+            iadd = argmax(Δ)
+            (Δ[iadd] <= 0)  &&  break  # No residual is greater than 0, skip further residuals....
+            push!(λunk, λ[iadd])
+            
+            cname = Symbol(:unk, length(λunk))
+            model[cname].norm.val = 1.
+            model[cname].center.val  = λ[iadd]
+            model[cname].center.low  = λ[iadd] - λ[iadd]/10. # allow to move 10%
+            model[cname].center.high = λ[iadd] + λ[iadd]/10.
+            
+            thaw(model, cname)
+            bestfit = fit!(model, source.data, minimizer=mzer); show(bestfit)
+            freeze(model, cname)
+        end
     end
     evaluate(model)
 
@@ -298,7 +308,7 @@ function fit!(source::QSO{T}) where T <: DefaultRecipe
     for lname in line_names
         thaw(model, lname)
     end
-    for j in 1:nunk
+    for j in 1:opt[:n_unk]
         cname = Symbol(:unk, j)
         if model[cname].norm.val > 0
             thaw(model, cname)
