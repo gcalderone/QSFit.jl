@@ -216,6 +216,7 @@ function fit(source::QSO{T}; dataset=1) where T <: DefaultRecipe
     source.options[:use_ironuv]   &&  freeze(model, :ironuv)
     source.options[:use_ironopt]  &&  freeze(model, :ironoptbr)
     source.options[:use_ironopt]  &&  freeze(model, :ironoptna)
+    evaluate(model)
 
     # Add emission lines
     line_names = collect(keys(source.line_names[dataset]))
