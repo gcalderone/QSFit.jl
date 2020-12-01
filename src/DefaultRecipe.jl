@@ -1,7 +1,7 @@
 # Uncomment the following to implement a custom recipe:
 # import QSFit: options, line_components, known_spectral_lines, fit!
 
-function options(::Type{T}) where T <: DefaultRecipe
+function default_options(::Type{T}) where T <: DefaultRecipe
     out = OrderedDict{Symbol, Any}()
     out[:host_template] = "Ell5"
     out[:wavelength_range] = [1215, 7.3e3]
@@ -121,7 +121,7 @@ function known_spectral_lines(source::QSO{T}) where T <: DefaultRecipe
 end
 
 
-function fit!(source::QSO{T}) where T <: DefaultRecipe
+function fit(source::QSO{T}) where T <: DefaultRecipe
     @assert length(source.data) == 1
     elapsed = time()
     mzer = cmpfit()
@@ -249,11 +249,16 @@ function fit!(source::QSO{T}) where T <: DefaultRecipe
         c.norm.val = abs(yatline) / QSFit.maxvalue(model[cname])
     end
 
-    model[:OIII_4959].voff.fixed = true
-    patch!(model) do m
-        m[:OIII_4959].voff = m[:OIII_5007].voff
+    # Patch values
+    if  haskey(model.comps, :OIII_4959)  &&
+        haskey(model.comps, :OIII_5007)
+        model[:OIII_4959].voff.fixed = true
+        patch!(model) do m
+            m[:OIII_4959].voff = m[:OIII_5007].voff
+        end
     end
-    if source.options[:use_OIII_5007_bw]
+    if  haskey(model.comps, :OIII_5007_bw)  &&
+        haskey(model.comps, :OIII_5007)
         patch!(model) do m
             m[:OIII_5007_bw].voff += m[:OIII_5007].voff
             m[:OIII_5007_bw].fwhm += m[:OIII_5007].fwhm

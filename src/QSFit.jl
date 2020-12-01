@@ -1,6 +1,6 @@
 module QSFit
 
-export QSO, Spectrum, add_spec!, fit!, DefaultRecipe
+export QSO, Spectrum, DefaultRecipe, add_spec!, fit, multiepoch_fit
 
 import GFit: Domain_1D, CompEval,
     Parameter, AbstractComponent, compeval_cdata, compeval_array, evaluate, fit!
@@ -54,7 +54,7 @@ struct QSO{T <: DefaultRecipe}
                       Vector{GFit.Domain_1D}(), Vector{GFit.Measures_1D}(),
                       Vector{OrderedDict{Symbol, AbstractComponent}}(),
                       Vector{OrderedDict{Symbol, AbstractComponent}}(),
-                      options(T))
+                      default_options(T))
     end
 end
 
@@ -172,5 +172,6 @@ end
 
 
 include("DefaultRecipe.jl")
+include("DefaultRecipe_multiepoch.jl")
 
 end  # module

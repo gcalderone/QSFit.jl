@@ -26,7 +26,7 @@ struct Spectrum
             good = fill(true, length(λ))
         end
         if length(err) == 0
-            @warn "Uncertainty is not given: assuming 10% of flux"
+            @warn "Uncertainties were not provided: assuming 10% of flux"
             err = 0.1 .* flux
         end
         @assert length(λ) == length(flux) == length(err) == length(good)
