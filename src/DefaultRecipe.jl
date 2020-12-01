@@ -11,13 +11,14 @@ function default_options(::Type{T}) where T <: DefaultRecipe
     out[:use_ironuv] = true
     out[:use_ironopt] = true
     out[:use_OIII_5007_bw] = false
+    out[:use_broad_Ha_base] = true
     out[:n_unk] = 10
     out[:unk_avoid] = [4863 .+ [-1,1] .* 50, 6565 .+ [-1,1] .* 150]
     return out
 end
 
 
-function line_components(::QSO{T}, line::BroadBaseLine) where T <: DefaultRecipe
+function line_components(::Type{T}, line::BroadBaseLine) where T <: DefaultRecipe
     comp = SpecLineGauss(line.λ)
     comp.fwhm.val  = 2e4
     comp.fwhm.low  = 1e4
@@ -26,7 +27,7 @@ function line_components(::QSO{T}, line::BroadBaseLine) where T <: DefaultRecipe
     return [line.name => comp]
 end
 
-function line_components(::QSO{T}, line::BroadLine) where T <: DefaultRecipe
+function line_components(::Type{T}, line::BroadLine) where T <: DefaultRecipe
     comp = SpecLineGauss(line.λ)
     comp.fwhm.val  = 5e3
     comp.fwhm.low  = 900
@@ -36,7 +37,7 @@ function line_components(::QSO{T}, line::BroadLine) where T <: DefaultRecipe
     return [line.name => comp]
 end
 
-function line_components(::QSO{T}, line::NarrowLine) where T <: DefaultRecipe
+function line_components(::Type{T}, line::NarrowLine) where T <: DefaultRecipe
     comp = SpecLineGauss(line.λ)
     comp.fwhm.val  = 5e2
     comp.fwhm.low  = 100
@@ -46,7 +47,7 @@ function line_components(::QSO{T}, line::NarrowLine) where T <: DefaultRecipe
     return [line.name => comp]
 end
 
-function line_components(::QSO{T}, line::CombinedLine) where T <: DefaultRecipe
+function line_components(::Type{T}, line::CombinedLine) where T <: DefaultRecipe
     br = SpecLineGauss(line.λ)
     br.fwhm.val  = 5e3
     br.fwhm.low  = 900
@@ -65,7 +66,7 @@ function line_components(::QSO{T}, line::CombinedLine) where T <: DefaultRecipe
             Symbol(:na_, line.name) => na]
 end
 
-function line_components(::QSO{T}, line::UnkLine) where T <: DefaultRecipe
+function line_components(::Type{T}, line::UnkLine) where T <: DefaultRecipe
     comp = SpecLineGauss(5e3)
     comp.norm.val = 0.
     comp.center.fixed = false
@@ -79,7 +80,7 @@ function line_components(::QSO{T}, line::UnkLine) where T <: DefaultRecipe
 end
 
 
-function known_spectral_lines(source::QSO{T}) where T <: DefaultRecipe
+function known_spectral_lines(::Type{T}) where T <: DefaultRecipe
     list = Vector{AbstractSpectralLine}()
     #push!(list,CombinedLine(  :Lyb          , 1026.0  ))
     push!(list, CombinedLine(  :Lya          , 1215.24 ))
@@ -106,9 +107,7 @@ function known_spectral_lines(source::QSO{T}) where T <: DefaultRecipe
     push!(list, CombinedLine(  :Hb           , 4862.68 ))
     push!(list, NarrowLine(    :OIII_4959    , 4960.295))
     push!(list, NarrowLine(    :OIII_5007    , 5008.240))
-    if source.options[:use_OIII_5007_bw]
-        push!(list, NarrowLine( :OIII_5007_bw, 5008.240))
-    end
+    push!(list, NarrowLine(    :OIII_5007_bw , 5008.240))
     push!(list, BroadLine(     :HeI_5876     , 5877.30 ))
     push!(list, NarrowLine(    :OI_6300      , 6300.00 ))  # TODO: Check wavelength is correct
     push!(list, NarrowLine(    :OI_6364      , 6364.00 ))  # TODO: Check wavelength is correct
@@ -122,7 +121,7 @@ function known_spectral_lines(source::QSO{T}) where T <: DefaultRecipe
 end
 
 
-function fit(source::QSO{T}; id=1) where T <: DefaultRecipe
+function fit(source::QSO{TRecipe}; id=1) where TRecipe <: DefaultRecipe
     elapsed = time()
     mzer = cmpfit()
     mzer.config.ftol = mzer.config.gtol = mzer.config.xtol = 1.e-6
@@ -270,7 +269,7 @@ function fit(source::QSO{T}; id=1) where T <: DefaultRecipe
 
     # Add unknown lines
     if source.options[:n_unk] > 0
-        tmp = OrderedDict([Symbol(:unk, j) => line_components(source, UnkLine())[1][2] for j in 1:source.options[:n_unk]])
+        tmp = OrderedDict([Symbol(:unk, j) => line_components(TRecipe, UnkLine())[1][2] for j in 1:source.options[:n_unk]])
         add!(model, :UnkLines => Reducer(sum, collect(keys(tmp))), tmp)
         add!(model, :main => Reducer(sum, [:Continuum, :Iron, line_groups..., :UnkLines]))
         evaluate(model)

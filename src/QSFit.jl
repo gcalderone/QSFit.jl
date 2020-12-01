@@ -90,14 +90,16 @@ struct UnkLine <: AbstractSpectralLine
 end
 
 
-function line_components_and_groups(source::QSO)
+function line_components_and_groups(source::QSO{T}) where T
     comps = OrderedDict{Symbol, AbstractComponent}()
     groups = OrderedDict{Symbol, Symbol}()
-    for line in known_spectral_lines(source)
+    for line in known_spectral_lines(T)
         ltype = string(typeof(line))
         (ltype[1:6] == "QSFit.")  &&  (ltype = ltype[7:end])
         ltype = Symbol(ltype)
-        for (lname, lcomp) in line_components(source, line)
+        for (lname, lcomp) in line_components(T, line)
+            (lname == :Ha_base)       &&  !source.options[:use_broad_Ha_base]  &&  continue
+            (lname == :OIII_5007_bw)  &&  !source.options[:use_OIII_5007_bw ]  &&  continue
             comps[lname] = lcomp
             groups[lname] = Symbol(ltype)
         end
