@@ -1,5 +1,5 @@
-# Uncomment the following to implement a custom recipe:
-# import QSFit: options, line_components, known_spectral_lines, fit!
+# Uncomment one or more of the following to implement a custom recipe:
+# import QSFit: default_options, line_components, known_spectral_lines, fit
 
 function default_options(::Type{T}) where T <: DefaultRecipe
     out = OrderedDict{Symbol, Any}()
