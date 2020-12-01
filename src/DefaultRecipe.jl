@@ -121,18 +121,18 @@ function known_spectral_lines(source::QSO{T}) where T <: DefaultRecipe
 end
 
 
-function fit(source::QSO{T}; dataset=1) where T <: DefaultRecipe
+function fit(source::QSO{T}; id=1) where T <: DefaultRecipe
     elapsed = time()
     mzer = cmpfit()
     mzer.config.ftol = mzer.config.gtol = mzer.config.xtol = 1.e-6
 
     # Initialize components and guess initial values
-    λ = source.domain[dataset][1]
+    λ = source.domain[id][1]
     cont_components = [:qso_cont]
-    model = Model(source.domain[dataset], :Continuum => Reducer(sum, cont_components),
+    model = Model(source.domain[id], :Continuum => Reducer(sum, cont_components),
                   :qso_cont => QSFit.powerlaw(3000))
     c = model[:qso_cont]
-    c.norm.val = interpol(source.data[dataset].val, λ, c.x0.val)
+    c.norm.val = interpol(source.data[id].val, λ, c.x0.val)
     c.alpha.val = -1.8
 
     # Host galaxy template
@@ -140,7 +140,7 @@ function fit(source::QSO{T}; dataset=1) where T <: DefaultRecipe
         push!(cont_components, :galaxy)
         add!(model, :Continuum => Reducer(sum, cont_components),
              :galaxy => QSFit.hostgalaxy(source.options[:host_template]))
-        model[:galaxy].norm.val = interpol(source.data[dataset].val, λ, 5500)
+        model[:galaxy].norm.val = interpol(source.data[id].val, λ, 5500)
     end
 
     # Balmer continuum and pseudo-continuum
@@ -169,8 +169,8 @@ function fit(source::QSO{T}; dataset=1) where T <: DefaultRecipe
     println(source.log, "Cont. norm. (before): ", c.norm.val)
     check_fraction = -1.
     last_fraction = check_fraction
-    yy = source.data[dataset].val;
-    ee = source.data[dataset].unc;
+    yy = source.data[id].val;
+    ee = source.data[id].unc;
     while true
         mm = model()
         residuals = (mm .- yy) ./ ee
@@ -219,10 +219,10 @@ function fit(source::QSO{T}; dataset=1) where T <: DefaultRecipe
     evaluate(model)
 
     # Add emission lines
-    line_names = collect(keys(source.line_names[dataset]))
-    line_groups = unique(collect(values(source.line_names[dataset])))
-    add!(model, source.line_comps[dataset])
-    for (group, lnames) in invert_dictionary(source.line_names[dataset])
+    line_names = collect(keys(source.line_names[id]))
+    line_groups = unique(collect(values(source.line_names[id])))
+    add!(model, source.line_comps[id])
+    for (group, lnames) in invert_dictionary(source.line_names[id])
         add!(model, group  => Reducer(sum, lnames))
     end
     add!(model, :main => Reducer(sum, [:Continuum, :Iron, line_groups...]))
@@ -241,7 +241,7 @@ function fit(source::QSO{T}; dataset=1) where T <: DefaultRecipe
 
     # Guess values
     evaluate(model)
-    y = source.data[dataset].val - model()
+    y = source.data[id].val - model()
     for cname in line_names
         c = model[cname]
         yatline = interpol(y, λ, c.center.val)
@@ -297,7 +297,7 @@ function fit(source::QSO{T}; dataset=1) where T <: DefaultRecipe
         while true
             (length(λunk) >= source.options[:n_unk])  &&  break
             evaluate(model)
-            Δ = (source.data[dataset].val - model()) ./ source.data[dataset].unc
+            Δ = (source.data[id].val - model()) ./ source.data[id].unc
 
             # Avoid considering again the same region (within 1A)
             for l in λunk
@@ -320,7 +320,7 @@ function fit(source::QSO{T}; dataset=1) where T <: DefaultRecipe
             cname = Symbol(:unk, length(λunk))
             model[cname].norm.val = 1.
             model[cname].center.val  = λ[iadd]
-            model[cname].center.low  = λ[iadd] - λ[iadd]/10. # allow to move 10%
+            model[cname].center.low  = λ[iadd] - λ[iadd]/10. # allow to shift 10%
             model[cname].center.high = λ[iadd] + λ[iadd]/10.
 
             thaw(model, cname)
