@@ -270,7 +270,7 @@ function fit(source::QSO{T}; id=1) where T <: DefaultRecipe
 
     # Add unknown lines
     if source.options[:n_unk] > 0
-        tmp = OrderedDict([Symbol(:Unk, i) => line_components(source, UnkLine())[1][2] for j in 1:source.options[:n_unk]])
+        tmp = OrderedDict([Symbol(:unk, j) => line_components(source, UnkLine())[1][2] for j in 1:source.options[:n_unk]])
         add!(model, :UnkLines => Reducer(sum, collect(keys(tmp))), tmp)
         add!(model, :main => Reducer(sum, [:Continuum, :Iron, line_groups..., :UnkLines]))
         evaluate(model)
