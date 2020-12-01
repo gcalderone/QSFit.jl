@@ -107,8 +107,6 @@ end
 
 
 function add_spec!(source::QSO, data::Spectrum)
-    @assert length(source.data) == 0
-
     println(source.log, "New spectrum: " * data.label)
     println(source.log, "  good fraction:: ", goodfraction(data))
     if goodfraction(data) < 0.5
