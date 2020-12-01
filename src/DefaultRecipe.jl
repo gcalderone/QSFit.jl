@@ -67,6 +67,7 @@ end
 
 function line_components(::QSO{T}, line::UnkLine) where T <: DefaultRecipe
     comp = SpecLineGauss(5e3)
+    comp.norm.val = 0.
     comp.center.fixed = false
     comp.center.low = 0
     comp.center.high = Inf
@@ -166,17 +167,9 @@ function fit(source::QSO{T}; id=1) where T <: DefaultRecipe
     freeze(model, :qso_cont)
     c = model[:qso_cont]
     println(source.log, "Cont. norm. (before): ", c.norm.val)
-    check_fraction = -1.
-    last_fraction = check_fraction
-    yy = source.data[id].val;
-    ee = source.data[id].unc;
     while true
-        mm = model()
-        residuals = (mm .- yy) ./ ee
-        check_fraction = count(residuals .< 0) / length(residuals)
-        (last_fraction == check_fraction)  &&  break
-        last_fraction = check_fraction
-        (check_fraction > 0.9)  &&  break
+        residuals = (model() - source.data[id].val) ./ source.data[id].unc
+        (count(residuals .< 0) / length(residuals) > 0.9)  &&  break
         c.norm.val *= 0.99
         evaluate(model)
     end
@@ -277,11 +270,7 @@ function fit(source::QSO{T}; id=1) where T <: DefaultRecipe
 
     # Add unknown lines
     if source.options[:n_unk] > 0
-        tmp = OrderedDict{Symbol, Any}()
-        for j in 1:source.options[:n_unk]
-            tmp[Symbol(:unk, j)] = line_components(source, UnkLine())[1][2]
-            tmp[Symbol(:unk, j)].norm.val = 0
-        end
+        tmp = OrderedDict([Symbol(:Unk, i) => line_components(source, UnkLine())[1][2] for j in 1:source.options[:n_unk]])
         add!(model, :UnkLines => Reducer(sum, collect(keys(tmp))), tmp)
         add!(model, :main => Reducer(sum, [:Continuum, :Iron, line_groups..., :UnkLines]))
         evaluate(model)
