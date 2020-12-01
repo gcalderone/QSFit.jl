@@ -128,8 +128,7 @@ function fit(source::QSO{T}; id=1) where T <: DefaultRecipe
 
     # Initialize components and guess initial values
     λ = source.domain[id][1]
-    cont_components = [:qso_cont]
-    model = Model(source.domain[id], :Continuum => Reducer(sum, cont_components),
+    model = Model(source.domain[id], :Continuum => Reducer(sum, [:qso_cont]),
                   :qso_cont => QSFit.powerlaw(3000))
     c = model[:qso_cont]
     c.norm.val = interpol(source.data[id].val, λ, c.x0.val)
@@ -137,16 +136,16 @@ function fit(source::QSO{T}; id=1) where T <: DefaultRecipe
 
     # Host galaxy template
     if source.options[:use_host_template]
-        push!(cont_components, :galaxy)
-        add!(model, :Continuum => Reducer(sum, cont_components),
+        add!(model, :Continuum => Reducer(sum, [:qso_cont, :galaxy]),
              :galaxy => QSFit.hostgalaxy(source.options[:host_template]))
         model[:galaxy].norm.val = interpol(source.data[id].val, λ, 5500)
     end
 
     # Balmer continuum and pseudo-continuum
     if source.options[:use_balmer]
-        push!(cont_components, :balmer)
-        add!(model, :Continuum => Reducer(sum, cont_components),
+        tmp = [:qso_cont, :balmer]
+        source.options[:use_host_template]  &&  push!(tmp, :galaxy)
+        add!(model, :Continuum => Reducer(sum, tmp),
              :balmer => QSFit.balmercont(0.1, 0.5))
         c = model[:balmer]
         c.norm.val  = 0.1
