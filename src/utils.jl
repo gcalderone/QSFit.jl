@@ -65,7 +65,7 @@ function estimate_area(λ, f, from=nothing, to=nothing)
 end
 
 
-function line_coverage(spec_λ, resolution, line_λ, fwhm)
+function line_coverage(spec_λ, resolution, line_λ, fwhm; min_intervals=5)
     # Identify min/max wavelengths corresponding to expected FWHM
     λmin = line_λ .* (1 - fwhm / 3.e5 / 2.)
     λmax = line_λ .* (1 + fwhm / 3.e5 / 2.)
@@ -75,6 +75,7 @@ function line_coverage(spec_λ, resolution, line_λ, fwhm)
 
     # How many intervals should be considered?
     intervals = Int(ceil((λmax - λmin) / δ))
+    (intervals < min_intervals)  &&  (intervals = min_intervals)
     bins = range(λmin, λmax, length=intervals+1)
 
     # How many intervals are sampled?
