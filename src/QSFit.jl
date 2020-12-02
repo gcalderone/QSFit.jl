@@ -101,7 +101,17 @@ function line_components_and_groups(source::QSO{T}) where T
             (lname == :Ha_base)       &&  !source.options[:use_broad_Ha_base]  &&  continue
             (lname == :OIII_5007_bw)  &&  !source.options[:use_OIII_5007_bw ]  &&  continue
             comps[lname] = lcomp
-            groups[lname] = Symbol(ltype)
+            if (ltype == :CombinedLine)
+                if string(lname)[1:3] == "br_"
+                    groups[lname] = :BroadLine
+                elseif string(lname)[1:3] == "na_"
+                    groups[lname] = :NarrowLine
+                else
+                    groups[lname] = Symbol(ltype)
+                end
+            else
+                groups[lname] = Symbol(ltype)
+            end
         end
     end
     return (groups, comps)
