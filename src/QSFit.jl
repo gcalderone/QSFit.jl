@@ -142,7 +142,7 @@ function add_spec!(source::QSO, data::Spectrum)
         (λmin, λmax, coverage) = line_coverage(λ .* data.good, data.resolution, comp.center.val, comp.fwhm.val)
         @info "Line $lname has coverage: $coverage"
         if coverage < source.options[:line_minimum_coverage]
-            println(source.log, "  neglecting line: ", lname)
+            println(source.log, "  neglecting line: ", lname, "(", λmin, " < λ < ", λmax)
             ii = findall(λmin .<= λ .< λmax)
             data.good[ii] .= false
             delete!(line_names, lname)

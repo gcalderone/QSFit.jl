@@ -53,7 +53,7 @@ function multiepoch_fit(source::QSO{TRecipe}; ref_id=1) where TRecipe <: Default
             c = model[@T id :balmer]
             c.norm.val  = 0.1
             c.norm.fixed = false
-            c.norm.high = 1.5
+            c.norm.high = 0.5
             c.ratio.val = 0.5
             c.ratio.fixed = false
             c.ratio.low  = 0.3
@@ -313,8 +313,31 @@ function multiepoch_fit(source::QSO{TRecipe}; ref_id=1) where TRecipe <: Default
             thaw(model, @T id :calib)  # parameter is fixed in preds[1]
         end
     end
-
     bestfit = fit!(model, source.data, minimizer=mzer); show(bestfit)
+
+    # Disable "unknown" lines whose normalization uncertainty is larger
+    # than 3 times the normalization
+    needs_fitting = false
+    for id in 1:Nspec
+        for ii in 1:source.options[:n_unk]
+            cname = @T id :unk ii
+            model.cfixed[cname]  &&  continue
+            if bestfit[cname].norm.val == 0.
+                freeze(model, cname)
+                needs_fitting = true
+                @info "Disabling $cname (norm. = 0)"
+            elseif bestfit[cname].norm.unc / bestfit[cname].norm.val > 3
+                model[cname].norm.val = 0.
+                freeze(model, cname)
+                needs_fitting = true
+                @info "Disabling $cname (unc. / norm. > 3)"
+            end
+        end
+    end
+    if needs_fitting
+        bestfit = fit!(model, source.data, minimizer=mzer); show(bestfit)
+    end
+
     elapsed = time() - elapsed
     println("Elapsed time: $elapsed s")
     populate_metadata!(source, model)
