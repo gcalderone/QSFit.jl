@@ -317,5 +317,6 @@ function multiepoch_fit(source::QSO{TRecipe}; ref_id=1) where TRecipe <: Default
     bestfit = fit!(model, source.data, minimizer=mzer); show(bestfit)
     elapsed = time() - elapsed
     println("Elapsed time: $elapsed s")
+    populate_metadata!(source, model)
     return (model, bestfit)
 end
