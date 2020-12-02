@@ -171,7 +171,7 @@ end
 
 function populate_metadata!(source, model)
     for id in 1:length(model.preds)
-        model.preds[id].meta[:label] = source.name * ", z=" * string(source.z) * " , E(B-V)=" * string(source.mw_ebv)
+        model.preds[id].meta[:label] = source.name * ", z=" * string(source.z) * ", E(B-V)=" * string(source.mw_ebv)
         model.preds[id].meta[:label_x] = "Rest frame wavelength"
         model.preds[id].meta[:unit_x]  = string(QSFit.unit_λ())
         model.preds[id].meta[:label_y] = "Lum. density"
