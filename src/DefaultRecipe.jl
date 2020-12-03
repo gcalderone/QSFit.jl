@@ -136,6 +136,7 @@ function fit(source::QSO{TRecipe}; id=1) where TRecipe <: DefaultRecipe
     mzer.config.ftol = mzer.config.gtol = mzer.config.xtol = 1.e-6
 
     # Initialize components and guess initial values
+    println(source.log, "\nFit continuum components...")
     λ = source.domain[id][1]
     model = Model(source.domain[id], :Continuum => Reducer(sum, [:qso_cont]),
                   :qso_cont => qso_cont_component(TRecipe))
@@ -188,6 +189,7 @@ function fit(source::QSO{TRecipe}; id=1) where TRecipe <: DefaultRecipe
     evaluate(model)
 
     # Fit iron templates
+    println(source.log, "\nFit iron templates...")
     iron_components = Vector{Symbol}()
     if source.options[:use_ironuv]
         add!(model, :ironuv => QSFit.ironuv(3000))
@@ -218,6 +220,7 @@ function fit(source::QSO{TRecipe}; id=1) where TRecipe <: DefaultRecipe
     evaluate(model)
 
     # Add emission lines
+    println(source.log, "\nFit known emission lines...")
     line_names = collect(keys(source.line_names[id]))
     line_groups = unique(collect(values(source.line_names[id])))
     add!(model, source.line_comps[id])
@@ -276,6 +279,7 @@ function fit(source::QSO{TRecipe}; id=1) where TRecipe <: DefaultRecipe
     end
 
     # Add unknown lines
+    println(source.log, "\nFit unknown emission lines...")
     if source.options[:n_unk] > 0
         tmp = OrderedDict([Symbol(:unk, j) => line_components(TRecipe, UnkLine())[1][2] for j in 1:source.options[:n_unk]])
         add!(model, :UnkLines => Reducer(sum, collect(keys(tmp))), tmp)
@@ -326,6 +330,7 @@ function fit(source::QSO{TRecipe}; id=1) where TRecipe <: DefaultRecipe
     evaluate(model)
 
     # Last run with all parameters free
+    println(source.log, "\nLast run with all parameters free...")
     thaw(model, :qso_cont)
     source.options[:use_host_template]  &&  thaw(model, :galaxy)
     source.options[:use_balmer]         &&  thaw(model, :balmer)
@@ -364,11 +369,18 @@ function fit(source::QSO{TRecipe}; id=1) where TRecipe <: DefaultRecipe
         end
     end
     if needs_fitting
+        println(source.log, "\nRe-run fit...")
         bestfit = fit!(model, source.data, minimizer=mzer); show(source.log, bestfit)
     end
 
+    println(source.log, "\nFinal model and bestfit:")
+    show(source.log, model)
+    println(source.log)
+    show(source.log, bestfit)
+
     elapsed = time() - elapsed
-    println(source.log, "Elapsed time: $elapsed s")
+    println(source.log, "\nElapsed time: $elapsed s")
+    close_log(source)
 
     populate_metadata!(source, model)
     return (model, bestfit)

@@ -48,8 +48,13 @@ struct QSO{T <: DefaultRecipe}
         @assert ebv >= 0
         ld = uconvert(u"cm", luminosity_dist(cosmo, float(z)))
         flux2lum = 4pi * ld^2 * (scale_flux() * unit_flux()) / (scale_lum() * unit_lum())
-        log = stdout
-        (logfile != "")  &&  (log = open(logfile, "w"))
+        if logfile != ""
+            log = open(logfile, "w")
+            GFit.showsettings.plain = true
+        else
+            log = stdout
+            GFit.showsettings.plain = false
+        end
         return new{T}(string(name), float(z), float(ebv), cosmo, flux2lum, log,
                       Vector{GFit.Domain_1D}(), Vector{GFit.Measures_1D}(),
                       Vector{OrderedDict{Symbol, AbstractComponent}}(),
@@ -58,6 +63,14 @@ struct QSO{T <: DefaultRecipe}
     end
 end
 
+
+function close_log(source::QSO)
+    if source.log != stdout
+        close(source.log)
+        GFit.showsettings.plain = false
+        # source.log = stdout
+    end
+end
 
 abstract type AbstractSpectralLine end
 

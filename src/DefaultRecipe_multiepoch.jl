@@ -22,6 +22,7 @@ function multiepoch_fit(source::QSO{TRecipe}; ref_id=1) where TRecipe <: Default
     OIII_unc  = Vector{Float64}()
 
     # Initialize components and guess initial values
+    println(source.log, "\nFit continuum components...")
     preds = Vector{Prediction}()
     for id in 1:Nspec
         λ = source.domain[id][1]
@@ -87,7 +88,8 @@ function multiepoch_fit(source::QSO{TRecipe}; ref_id=1) where TRecipe <: Default
     end
     evaluate(model)
 
-    # Fit iron template
+    # Fit iron templates
+    println(source.log, "\nFit iron templates...")
     for id in 1:Nspec
         iron_components = Vector{Symbol}()
         if source.options[:use_ironuv]
@@ -120,6 +122,7 @@ function multiepoch_fit(source::QSO{TRecipe}; ref_id=1) where TRecipe <: Default
     evaluate(model)
 
     # Add emission lines
+    println(source.log, "\nFit known emission lines...")
     for id in 1:Nspec
         λ = source.domain[id][1]
 
@@ -187,6 +190,7 @@ function multiepoch_fit(source::QSO{TRecipe}; ref_id=1) where TRecipe <: Default
     end
 
     # Add unknown lines
+    println(source.log, "\nFit unknown emission lines...")
     if source.options[:n_unk] > 0
         for id in 1:Nspec
             tmp = OrderedDict([@T(id, :unk, j) => line_components(TRecipe, UnkLine())[1][2] for j in 1:source.options[:n_unk]])
@@ -206,7 +210,6 @@ function multiepoch_fit(source::QSO{TRecipe}; ref_id=1) where TRecipe <: Default
         end
     end
     evaluate(model)
-
 
     # Set "unknown" line center wavelength where there is a maximum in
     # the fit residuals, and re-run a fit.
@@ -274,16 +277,14 @@ function multiepoch_fit(source::QSO{TRecipe}; ref_id=1) where TRecipe <: Default
             end
             model[@T id :galaxy].norm.fixed = true
             model[@T id :OIII_5007].norm.fixed = true
-        else
-            ratio = 1.
+
+            line_groups = unique(collect(values(source.line_names[id])))
+            add!(model, id=id,
+                 :main => Reducer(calibsum, [@T(id, :calib), :Continuum, :Iron, line_groups..., :UnkLines]),
+                 T(id, :calib) => ratio)
         end
-        line_groups = unique(collect(values(source.line_names[id])))
-        add!(model, id=id,
-             :main => Reducer(calibsum, [@T(id, :calib), :Continuum, :Iron, line_groups..., :UnkLines]),
-             T(id, :calib) => ratio)
     end
     evaluate(model)
-    model[@T ref_id :calib].par.fixed = true
 
     for id in 1:Nspec
         if id != ref_id
@@ -296,10 +297,12 @@ function multiepoch_fit(source::QSO{TRecipe}; ref_id=1) where TRecipe <: Default
     evaluate(model)
 
     # Last run with all parameters free
+    println(source.log, "\nLast run with all parameters free...")
     for id in 1:Nspec
-        source.options[:use_host_template]  &&  thaw(model, @T id :qso_cont)
-        source.options[:use_balmer]         &&  thaw(model, @T id :galaxy)
-        source.options[:use_ironuv]         &&  thaw(model, @T id :balmer)
+        thaw(model, @T id :qso_cont)
+        source.options[:use_host_template]  &&  thaw(model, @T id :galaxy)
+        source.options[:use_balmer]         &&  thaw(model, @T id :balmer)
+        source.options[:use_ironuv]         &&  thaw(model, @T id :ironuv)
         source.options[:use_ironopt]        &&  thaw(model, @T id :ironoptbr)
         source.options[:use_ironopt]        &&  thaw(model, @T id :ironoptna)
 
@@ -341,11 +344,19 @@ function multiepoch_fit(source::QSO{TRecipe}; ref_id=1) where TRecipe <: Default
         end
     end
     if needs_fitting
+        println(source.log, "\nRe-run fit...")
         bestfit = fit!(model, source.data, minimizer=mzer); show(source.log, bestfit)
     end
 
+    println(source.log, "\nFinal model and bestfit:")
+    show(source.log, model)
+    println(source.log)
+    show(source.log, bestfit)
+
     elapsed = time() - elapsed
-    println(source.log, "Elapsed time: $elapsed s")
+    println(source.log, "\nElapsed time: $elapsed s")
+    close_log(source)
+
     populate_metadata!(source, model)
     return (model, bestfit)
 end
