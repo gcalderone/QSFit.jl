@@ -26,11 +26,10 @@ function multiepoch_fit(source::QSO{TRecipe}; ref_id=1) where TRecipe <: Default
     for id in 1:Nspec
         λ = source.domain[id][1]
         pred = Prediction(source.domain[id], :Continuum => Reducer(sum, T.(id, [:qso_cont])),
-                          T(id, :qso_cont) => QSFit.powerlaw(3000))
+                          T(id, :qso_cont) => qso_cont_component(TRecipe))
         push!(preds, pred)
         c = pred[@T id :qso_cont]
         c.norm.val = interpol(source.data[id].val, λ, c.x0.val)
-        c.alpha.val = -1.5
     end
     model = Model(preds)
 

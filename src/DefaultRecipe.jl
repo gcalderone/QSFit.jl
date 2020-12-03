@@ -18,6 +18,15 @@ function default_options(::Type{T}) where T <: DefaultRecipe
 end
 
 
+function qso_cont_component(::Type{T}) where T <: DefaultRecipe
+    comp = QSFit.powerlaw(3000)
+    comp.alpha.val  = -1.5
+    comp.alpha.low  = -3
+    comp.alpha.high =  1
+    return comp
+end
+
+
 function line_components(::Type{T}, line::BroadBaseLine) where T <: DefaultRecipe
     comp = SpecLineGauss(line.λ)
     comp.fwhm.val  = 2e4
@@ -129,10 +138,9 @@ function fit(source::QSO{TRecipe}; id=1) where TRecipe <: DefaultRecipe
     # Initialize components and guess initial values
     λ = source.domain[id][1]
     model = Model(source.domain[id], :Continuum => Reducer(sum, [:qso_cont]),
-                  :qso_cont => QSFit.powerlaw(3000))
+                  :qso_cont => qso_cont_component(TRecipe))
     c = model[:qso_cont]
     c.norm.val = interpol(source.data[id].val, λ, c.x0.val)
-    c.alpha.val = -1.5
 
     # Host galaxy template
     if source.options[:use_host_template]
