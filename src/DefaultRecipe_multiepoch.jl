@@ -63,7 +63,7 @@ function multiepoch_fit(source::QSO{TRecipe}; ref_id=1) where TRecipe <: Default
         end
     end
     for id in 1:Nspec
-        bestfit = fit!(model, id=id, source.data, minimizer=mzer);  show(bestfit)
+        bestfit = fit!(model, id=id, source.data, minimizer=mzer);  show(source.log, bestfit)
         push!(galaxy_best, bestfit[@T id :galaxy].norm.val)
         push!(galaxy_unc , bestfit[@T id :galaxy].norm.unc)
     end
@@ -108,7 +108,7 @@ function multiepoch_fit(source::QSO{TRecipe}; ref_id=1) where TRecipe <: Default
             add!(model, id=id, :Iron => Reducer(sum, T.(id, iron_components)))
             add!(model, id=id, :main => Reducer(sum, [:Continuum, :Iron]))
             evaluate(model)
-            bestfit = fit!(model, id=id, source.data, minimizer=mzer); show(bestfit)
+            bestfit = fit!(model, id=id, source.data, minimizer=mzer); show(source.log, bestfit)
         else
             add!(model, id=id, :Iron => Reducer(() -> [0.], Symbol[]))
             add!(model, id=id, :main => Reducer(sum, [:Continuum, :Iron]))
@@ -177,7 +177,7 @@ function multiepoch_fit(source::QSO{TRecipe}; ref_id=1) where TRecipe <: Default
                 m[@T id :OIII_5007_bw].fwhm += m[@T id :OIII_5007].fwhm
             end
         end
-        bestfit = fit!(model, id=id, source.data, minimizer=mzer); show(bestfit)
+        bestfit = fit!(model, id=id, source.data, minimizer=mzer); show(source.log, bestfit)
         push!(OIII_best, bestfit[@T id :OIII_5007].norm.val)
         push!(OIII_unc , bestfit[@T id :OIII_5007].norm.unc)
 
@@ -243,7 +243,7 @@ function multiepoch_fit(source::QSO{TRecipe}; ref_id=1) where TRecipe <: Default
             model[cname].center.high = λ[iadd] + λ[iadd]/10.
 
             thaw(model, cname)
-            bestfit = fit!(model, id=id, source.data, minimizer=mzer); show(bestfit)
+            bestfit = fit!(model, id=id, source.data, minimizer=mzer); show(source.log, bestfit)
             freeze(model, cname)
         end
     end
@@ -319,7 +319,7 @@ function multiepoch_fit(source::QSO{TRecipe}; ref_id=1) where TRecipe <: Default
             thaw(model, @T id :calib)  # parameter is fixed in preds[1]
         end
     end
-    bestfit = fit!(model, source.data, minimizer=mzer); show(bestfit)
+    bestfit = fit!(model, source.data, minimizer=mzer); show(source.log, bestfit)
 
     # Disable "unknown" lines whose normalization uncertainty is larger
     # than 3 times the normalization
@@ -331,21 +331,21 @@ function multiepoch_fit(source::QSO{TRecipe}; ref_id=1) where TRecipe <: Default
             if bestfit[cname].norm.val == 0.
                 freeze(model, cname)
                 needs_fitting = true
-                @info "Disabling $cname (norm. = 0)"
+                println(source.log, "Disabling $cname (norm. = 0)")
             elseif bestfit[cname].norm.unc / bestfit[cname].norm.val > 3
                 model[cname].norm.val = 0.
                 freeze(model, cname)
                 needs_fitting = true
-                @info "Disabling $cname (unc. / norm. > 3)"
+                println(source.log, "Disabling $cname (unc. / norm. > 3)")
             end
         end
     end
     if needs_fitting
-        bestfit = fit!(model, source.data, minimizer=mzer); show(bestfit)
+        bestfit = fit!(model, source.data, minimizer=mzer); show(source.log, bestfit)
     end
 
     elapsed = time() - elapsed
-    println("Elapsed time: $elapsed s")
+    println(source.log, "Elapsed time: $elapsed s")
     populate_metadata!(source, model)
     return (model, bestfit)
 end

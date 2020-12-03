@@ -122,7 +122,7 @@ function add_spec!(source::QSO, data::Spectrum)
     println(source.log, "New spectrum: " * data.label)
     println(source.log, "  good fraction:: ", goodfraction(data))
     if goodfraction(data) < 0.5
-        @error "Good fraction < 0.5"
+        error("Good fraction < 0.5")
     end
     println(source.log, "  resolution: ~", @sprintf("%.4g", data.resolution), " km / s")
 
@@ -140,7 +140,7 @@ function add_spec!(source::QSO, data::Spectrum)
     line_names, line_comps = line_components_and_groups(source)
     for (lname, comp) in line_comps
         (λmin, λmax, coverage) = line_coverage(λ .* data.good, data.resolution, comp.center.val, comp.fwhm.val)
-        @info "Line $lname has coverage: $coverage"
+        println(source.log, "Line $lname has coverage: $coverage")
         if coverage < source.options[:line_minimum_coverage]
             println(source.log, "  neglecting line: ", lname, "(", λmin, " < λ < ", λmax)
             ii = findall(λmin .<= λ .< λmax)

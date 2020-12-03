@@ -168,7 +168,7 @@ function fit(source::QSO{TRecipe}; id=1) where TRecipe <: DefaultRecipe
         end
     end
 
-    bestfit = fit!(model, source.data, minimizer=mzer);  show(bestfit)
+    bestfit = fit!(model, source.data, minimizer=mzer);  show(source.log, bestfit)
 
     # QSO continuum renormalization
     freeze(model, :qso_cont)
@@ -207,7 +207,7 @@ function fit(source::QSO{TRecipe}; id=1) where TRecipe <: DefaultRecipe
         add!(model, :Iron => Reducer(sum, iron_components))
         add!(model, :main => Reducer(sum, [:Continuum, :Iron]))
         evaluate(model)
-        bestfit = fit!(model, source.data, minimizer=mzer); show(bestfit)
+        bestfit = fit!(model, source.data, minimizer=mzer); show(source.log, bestfit)
     else
         add!(model, :Iron => Reducer(() -> [0.], Symbol[]))
         add!(model, :main => Reducer(sum, [:Continuum, :Iron]))
@@ -270,7 +270,7 @@ function fit(source::QSO{TRecipe}; id=1) where TRecipe <: DefaultRecipe
             m[:OIII_5007_bw].fwhm += m[:OIII_5007].fwhm
         end
     end
-    bestfit = fit!(model, source.data, minimizer=mzer); show(bestfit)
+    bestfit = fit!(model, source.data, minimizer=mzer); show(source.log, bestfit)
     for lname in line_names
         freeze(model, lname)
     end
@@ -319,7 +319,7 @@ function fit(source::QSO{TRecipe}; id=1) where TRecipe <: DefaultRecipe
             model[cname].center.high = λ[iadd] + λ[iadd]/10.
 
             thaw(model, cname)
-            bestfit = fit!(model, source.data, minimizer=mzer); show(bestfit)
+            bestfit = fit!(model, source.data, minimizer=mzer); show(source.log, bestfit)
             freeze(model, cname)
         end
     end
@@ -344,7 +344,7 @@ function fit(source::QSO{TRecipe}; id=1) where TRecipe <: DefaultRecipe
             freeze(model, cname)
         end
     end
-    bestfit = fit!(model, source.data, minimizer=mzer); show(bestfit)
+    bestfit = fit!(model, source.data, minimizer=mzer); show(source.log, bestfit)
 
     # Disable "unknown" lines whose normalization uncertainty is larger
     # than 3 times the normalization
@@ -355,20 +355,20 @@ function fit(source::QSO{TRecipe}; id=1) where TRecipe <: DefaultRecipe
         if bestfit[cname].norm.val == 0.
             freeze(model, cname)
             needs_fitting = true
-            @info "Disabling $cname (norm. = 0)"
+            println(source.log, "Disabling $cname (norm. = 0)")
         elseif bestfit[cname].norm.unc / bestfit[cname].norm.val > 3
             model[cname].norm.val = 0.
             freeze(model, cname)
             needs_fitting = true
-            @info "Disabling $cname (unc. / norm. > 3)"
+            println(source.log, "Disabling $cname (unc. / norm. > 3)")
         end
     end
     if needs_fitting
-        bestfit = fit!(model, source.data, minimizer=mzer); show(bestfit)
+        bestfit = fit!(model, source.data, minimizer=mzer); show(source.log, bestfit)
     end
 
     elapsed = time() - elapsed
-    println("Elapsed time: $elapsed s")
+    println(source.log, "Elapsed time: $elapsed s")
 
     populate_metadata!(source, model)
     return (model, bestfit)
