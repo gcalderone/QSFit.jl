@@ -30,7 +30,7 @@ function multiepoch_fit(source::QSO{TRecipe}; ref_id=1) where TRecipe <: Default
         push!(preds, pred)
         c = pred[@T id :qso_cont]
         c.norm.val = interpol(source.data[id].val, λ, c.x0.val)
-        c.alpha.val = -1.8
+        c.alpha.val = -1.5
     end
     model = Model(preds)
 
@@ -199,8 +199,15 @@ function multiepoch_fit(source::QSO{TRecipe}; ref_id=1) where TRecipe <: Default
                 freeze(model, @T id :unk j)
             end
         end
-        evaluate(model)
+    else
+        for id in 1:Nspec
+            add!(model, id=id, :UnkLines => Reducer(() -> [0.], Symbol[]))
+            line_groups = unique(collect(values(source.line_names[id])))
+            add!(model, id=id, :main => Reducer(sum, [:Continuum, :Iron, line_groups..., :UnkLines]))
+        end
     end
+    evaluate(model)
+
 
     # Set "unknown" line center wavelength where there is a maximum in
     # the fit residuals, and re-run a fit.

@@ -102,7 +102,7 @@ function known_spectral_lines(::Type{T}) where T <: DefaultRecipe
     push!(list, NarrowLine(    :NeIII_3869   , 3869.81 ))
     push!(list, BroadLine(     :Hd           , 4102.89 ))
     push!(list, BroadLine(     :Hg           , 4341.68 ))
-    #push!(list,NarrowLine(    :OIII_4363    , 4363.00 ))  # TODO: Check wavelength is correct
+    push!(list, NarrowLine(    :OIII_4363    , 4363.00 ))  # TODO: Check wavelength is correct
     push!(list, BroadLine(     :HeII         , 4686.   ))
     push!(list, CombinedLine(  :Hb           , 4862.68 ))
     push!(list, NarrowLine(    :OIII_4959    , 4960.295))
@@ -132,7 +132,7 @@ function fit(source::QSO{TRecipe}; id=1) where TRecipe <: DefaultRecipe
                   :qso_cont => QSFit.powerlaw(3000))
     c = model[:qso_cont]
     c.norm.val = interpol(source.data[id].val, λ, c.x0.val)
-    c.alpha.val = -1.8
+    c.alpha.val = -1.5
 
     # Host galaxy template
     if source.options[:use_host_template]
