@@ -180,6 +180,16 @@ function multiepoch_fit(source::QSO{TRecipe}; ref_id=1) where TRecipe <: Default
                 m[@T id :OIII_5007_bw].fwhm += m[@T id :OIII_5007].fwhm
             end
         end
+
+        #=
+        model[@T id :br_Hb].voff.fixed = 1
+        model[@T id :br_Hb].fwhm.fixed = 1
+        patch!(model) do m
+            m[@T id :br_Hb].voff = m[@T id :br_Ha].voff
+            m[@T id :br_Hb].fwhm = m[@T id :br_Ha].fwhm
+        end
+        =#
+
         bestfit = fit!(model, id=id, source.data, minimizer=mzer); show(source.log, bestfit)
         push!(OIII_best, bestfit[@T id :OIII_5007].norm.val)
         push!(OIII_unc , bestfit[@T id :OIII_5007].norm.unc)

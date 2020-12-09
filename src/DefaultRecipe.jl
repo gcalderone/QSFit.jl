@@ -273,6 +273,16 @@ function fit(source::QSO{TRecipe}; id=1) where TRecipe <: DefaultRecipe
             m[:OIII_5007_bw].fwhm += m[:OIII_5007].fwhm
         end
     end
+
+    #=
+    model[:br_Hb].voff.fixed = 1
+    model[:br_Hb].fwhm.fixed = 1
+    patch!(model) do m
+        m[:br_Hb].voff = m[@T id :br_Ha].voff
+        m[:br_Hb].fwhm = m[@T id :br_Ha].fwhm
+    end
+    =#
+
     bestfit = fit!(model, source.data, minimizer=mzer); show(source.log, bestfit)
     for lname in line_names
         freeze(model, lname)
