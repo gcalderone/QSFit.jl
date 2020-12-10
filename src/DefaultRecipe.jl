@@ -43,7 +43,7 @@ function line_components(::Type{T}, line::BroadLine) where T <: DefaultRecipe
     comp.fwhm.high = 1.5e4
     comp.voff.low  = -3e3
     comp.voff.high =  3e3
-    return [line.name => comp]
+    return line.name => comp
 end
 
 function line_components(::Type{T}, line::NarrowLine) where T <: DefaultRecipe
@@ -53,30 +53,38 @@ function line_components(::Type{T}, line::NarrowLine) where T <: DefaultRecipe
     comp.fwhm.high = 2e3
     comp.voff.low  = -1e3
     comp.voff.high =  1e3
-    return [line.name => comp]
+    return line.name => comp
+end
+
+function line_components(::Type{T}, line::ComboNarrowLine) where T <: DefaultRecipe
+    comp = SpecLineGauss(line.λ)
+    comp.fwhm.val  = 5e2
+    comp.fwhm.low  = 100
+    comp.fwhm.high = 1e3
+    comp.voff.low  = -1e3
+    comp.voff.high =  1e3
+    return line.name => comp
+end
+
+function line_components(::Type{T}, line::ComboBroadLine) where T <: DefaultRecipe
+    comp = SpecLineGauss(line.λ)
+    comp.fwhm.val  = 5e3
+    comp.fwhm.low  = 900
+    comp.fwhm.high = 1.5e4
+    comp.voff.low  = -3e3
+    comp.voff.high =  3e3
+    return line.name => comp
 end
 
 function line_components(::Type{T}, line::CombinedLine) where T <: DefaultRecipe
-    br = SpecLineGauss(line.λ)
-    br.fwhm.val  = 5e3
-    br.fwhm.low  = 900
-    br.fwhm.high = 1.5e4
-    br.voff.low  = -3e3
-    br.voff.high =  3e3
-
-    na = SpecLineGauss(line.λ)
-    na.fwhm.val  = 5e2
-    na.fwhm.low  = 100
-    na.fwhm.high = 1e3
-    na.voff.low  = -1e3
-    na.voff.high =  1e3
-
-    return [Symbol(:br_, line.name) => br
-            Symbol(:na_, line.name) => na]
+    br = line_components(T, ComboBroadLine( line.name, line.λ))
+    na = line_components(T, ComboNarrowLine(line.name, line.λ))
+    return [Symbol(:br_, br[1]) => br[2]
+            Symbol(:na_, na[1]) => na[2]]
 end
 
 function line_components(::Type{T}, line::UnkLine) where T <: DefaultRecipe
-    comp = SpecLineGauss(5e3)
+    comp = SpecLineGauss(line.λ)
     comp.norm.val = 0.
     comp.center.fixed = false
     comp.center.low = 0
@@ -85,7 +93,7 @@ function line_components(::Type{T}, line::UnkLine) where T <: DefaultRecipe
     comp.fwhm.low  = 600
     comp.fwhm.high = 1e4
     comp.voff.fixed = true
-    return [:Unk => comp]
+    return line.name => comp
 end
 
 
@@ -291,7 +299,8 @@ function fit(source::QSO{TRecipe}; id=1) where TRecipe <: DefaultRecipe
     # Add unknown lines
     println(source.log, "\nFit unknown emission lines...")
     if source.options[:n_unk] > 0
-        tmp = OrderedDict([Symbol(:unk, j) => line_components(TRecipe, UnkLine())[1][2] for j in 1:source.options[:n_unk]])
+        tmp = [line_components(TRecipe, UnkLine(Symbol(:unk, j), 5e3)) for j in 1:source.options[:n_unk]]
+        tmp = OrderedDict(getindex.(tmp, 1) .=> getindex.(tmp, 2))
         add!(model, :UnkLines => Reducer(sum, collect(keys(tmp))), tmp)
         add!(model, :main => Reducer(sum, [:Continuum, :Iron, line_groups..., :UnkLines]))
         evaluate(model)

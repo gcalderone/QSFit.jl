@@ -203,7 +203,8 @@ function multiepoch_fit(source::QSO{TRecipe}; ref_id=1) where TRecipe <: Default
     println(source.log, "\nFit unknown emission lines...")
     if source.options[:n_unk] > 0
         for id in 1:Nspec
-            tmp = OrderedDict([@T(id, :unk, j) => line_components(TRecipe, UnkLine())[1][2] for j in 1:source.options[:n_unk]])
+            tmp = [line_components(TRecipe, UnkLine(@T(id, :unk, j), 5e3)) for j in 1:source.options[:n_unk]]
+            tmp = OrderedDict(getindex.(tmp, 1) .=> getindex.(tmp, 2))
             add!(model, id=id, :UnkLines => Reducer(sum, collect(keys(tmp))), tmp)
             line_groups = unique(collect(values(source.line_names[id])))
             add!(model, id=id, :main => Reducer(sum, [:Continuum, :Iron, line_groups..., :UnkLines]))

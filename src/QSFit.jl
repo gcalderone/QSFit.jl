@@ -89,6 +89,16 @@ struct NarrowLine <: AbstractSpectralLine
     λ::Float64
 end
 
+struct ComboBroadLine <: AbstractSpectralLine
+    name::Symbol
+    λ::Float64
+end
+
+struct ComboNarrowLine <: AbstractSpectralLine
+    name::Symbol
+    λ::Float64
+end
+
 struct CombinedLine <: AbstractSpectralLine
     name::Symbol
     λ::Float64
@@ -100,6 +110,8 @@ struct AbsorptionLine <: AbstractSpectralLine
 end
 
 struct UnkLine <: AbstractSpectralLine
+    name::Symbol
+    λ::Float64
 end
 
 
@@ -110,7 +122,7 @@ function line_components_and_groups(source::QSO{T}) where T
         ltype = string(typeof(line))
         (ltype[1:6] == "QSFit.")  &&  (ltype = ltype[7:end])
         ltype = Symbol(ltype)
-        for (lname, lcomp) in line_components(T, line)
+        for (lname, lcomp) in ensure_vector(line_components(T, line))
             (lname == :Ha_base)       &&  !source.options[:use_broad_Ha_base]  &&  continue
             (lname == :OIII_5007_bw)  &&  !source.options[:use_OIII_5007_bw ]  &&  continue
             comps[lname] = lcomp
