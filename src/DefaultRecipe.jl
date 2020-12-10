@@ -1,6 +1,3 @@
-# Uncomment one or more of the following to implement a custom recipe:
-# import QSFit: default_options, line_component, known_spectral_lines, fit
-
 abstract type DefaultRecipe <: AbstractRecipe end
 
 function default_options(::Type{T}) where T <: DefaultRecipe
