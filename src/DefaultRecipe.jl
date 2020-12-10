@@ -5,15 +5,14 @@ abstract type DefaultRecipe <: AbstractRecipe end
 
 function default_options(::Type{T}) where T <: DefaultRecipe
     out = OrderedDict{Symbol, Any}()
-    out[:host_template] = "Ell5"
     out[:wavelength_range] = [1215, 7.3e3]
     out[:line_minimum_coverage] = 0.6
+    out[:skip_lines] = [:OIII_5007_bw] #, Ha_base
+    out[:host_template] = "Ell5"
     out[:use_host_template] = true
     out[:use_balmer] = true
     out[:use_ironuv] = true
     out[:use_ironopt] = true
-    out[:use_OIII_5007_bw] = false
-    out[:use_broad_Ha_base] = true
     out[:n_unk] = 10
     out[:unk_avoid] = [4863 .+ [-1,1] .* 50, 6565 .+ [-1,1] .* 150]
     return out

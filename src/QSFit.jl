@@ -30,6 +30,14 @@ include("Spectrum.jl")
 
 abstract type AbstractRecipe end
 
+function default_options(::Type{T}) where T <: AbstractRecipe
+    out = OrderedDict{Symbol, Any}()
+    out[:wavelength_range] = [1215, 7.3e3]
+    out[:line_minimum_coverage] = 0.6
+    out[:skip_lines] = Vector{Symbol}()
+    return out
+end
+
 struct QSO{T <: AbstractRecipe}
     name::String
     z::Float64
@@ -118,8 +126,7 @@ function line_components_and_groups(source::QSO{T}) where T
     comps = OrderedDict{Symbol, AbstractComponent}()
     groups = OrderedDict{Symbol, Symbol}()
     for (lname0, line0) in known_spectral_lines(T)
-        (lname0 == :Ha_base)       &&  !source.options[:use_broad_Ha_base]  &&  continue
-        (lname0 == :OIII_5007_bw)  &&  !source.options[:use_OIII_5007_bw ]  &&  continue
+        (lname0 in source.options[:skip_lines])  &&  continue
         for (lname, line) in line_breakdown(T, lname0, line0)
             lcomp = line_component(T, line)
             ltype = string(typeof(lcomp))
