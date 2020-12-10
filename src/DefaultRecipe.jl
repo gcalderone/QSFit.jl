@@ -1,5 +1,7 @@
 # Uncomment one or more of the following to implement a custom recipe:
-# import QSFit: default_options, line_components, known_spectral_lines, fit
+# import QSFit: default_options, line_component, known_spectral_lines, fit
+
+abstract type DefaultRecipe <: AbstractRecipe end
 
 function default_options(::Type{T}) where T <: DefaultRecipe
     out = OrderedDict{Symbol, Any}()
@@ -27,63 +29,68 @@ function qso_cont_component(::Type{T}) where T <: DefaultRecipe
 end
 
 
-function line_components(::Type{T}, line::BroadBaseLine) where T <: DefaultRecipe
+line_breakdown(::Type{T}, name::Symbol, line::CombinedLine) where T <: DefaultRecipe =
+    [(Symbol(:br_, name), ComboBroadLine( line.λ)),
+     (Symbol(:na_, name), ComboNarrowLine(line.λ))]
+
+line_group_name(::Type{T}, name::Symbol, line::BroadBaseLine)   where T <: DefaultRecipe = :BroadBaseLines
+line_group_name(::Type{T}, name::Symbol, line::BroadLine)       where T <: DefaultRecipe = :BroadLines
+line_group_name(::Type{T}, name::Symbol, line::NarrowLine)      where T <: DefaultRecipe = :NarrowLines
+line_group_name(::Type{T}, name::Symbol, line::ComboBroadLine)  where T <: DefaultRecipe = :BroadLines
+line_group_name(::Type{T}, name::Symbol, line::ComboNarrowLine) where T <: DefaultRecipe = :NarrowLines
+line_group_name(::Type{T}, name::Symbol, line::UnkLine)         where T <: DefaultRecipe = :UnknownLines
+
+
+function line_component(::Type{T}, line::BroadBaseLine) where T <: DefaultRecipe
     comp = SpecLineGauss(line.λ)
     comp.fwhm.val  = 2e4
     comp.fwhm.low  = 1e4
     comp.fwhm.high = 3e4
     comp.voff.fixed = true
-    return [line.name => comp]
+    return comp
 end
 
-function line_components(::Type{T}, line::BroadLine) where T <: DefaultRecipe
+function line_component(::Type{T}, line::BroadLine) where T <: DefaultRecipe
     comp = SpecLineGauss(line.λ)
     comp.fwhm.val  = 5e3
     comp.fwhm.low  = 900
     comp.fwhm.high = 1.5e4
     comp.voff.low  = -3e3
     comp.voff.high =  3e3
-    return line.name => comp
+    return comp
 end
 
-function line_components(::Type{T}, line::NarrowLine) where T <: DefaultRecipe
+function line_component(::Type{T}, line::NarrowLine) where T <: DefaultRecipe
     comp = SpecLineGauss(line.λ)
     comp.fwhm.val  = 5e2
     comp.fwhm.low  = 100
     comp.fwhm.high = 2e3
     comp.voff.low  = -1e3
     comp.voff.high =  1e3
-    return line.name => comp
+    return comp
 end
 
-function line_components(::Type{T}, line::ComboNarrowLine) where T <: DefaultRecipe
+function line_component(::Type{T}, line::ComboNarrowLine) where T <: DefaultRecipe
     comp = SpecLineGauss(line.λ)
     comp.fwhm.val  = 5e2
     comp.fwhm.low  = 100
     comp.fwhm.high = 1e3
     comp.voff.low  = -1e3
     comp.voff.high =  1e3
-    return line.name => comp
+    return comp
 end
 
-function line_components(::Type{T}, line::ComboBroadLine) where T <: DefaultRecipe
+function line_component(::Type{T}, line::ComboBroadLine) where T <: DefaultRecipe
     comp = SpecLineGauss(line.λ)
     comp.fwhm.val  = 5e3
     comp.fwhm.low  = 900
     comp.fwhm.high = 1.5e4
     comp.voff.low  = -3e3
     comp.voff.high =  3e3
-    return line.name => comp
+    return comp
 end
 
-function line_components(::Type{T}, line::CombinedLine) where T <: DefaultRecipe
-    br = line_components(T, ComboBroadLine( line.name, line.λ))
-    na = line_components(T, ComboNarrowLine(line.name, line.λ))
-    return [Symbol(:br_, br[1]) => br[2]
-            Symbol(:na_, na[1]) => na[2]]
-end
-
-function line_components(::Type{T}, line::UnkLine) where T <: DefaultRecipe
+function line_component(::Type{T}, line::UnkLine) where T <: DefaultRecipe
     comp = SpecLineGauss(line.λ)
     comp.norm.val = 0.
     comp.center.fixed = false
@@ -93,47 +100,47 @@ function line_components(::Type{T}, line::UnkLine) where T <: DefaultRecipe
     comp.fwhm.low  = 600
     comp.fwhm.high = 1e4
     comp.voff.fixed = true
-    return line.name => comp
+    return comp
 end
 
 
 function known_spectral_lines(::Type{T}) where T <: DefaultRecipe
-    list = Vector{AbstractSpectralLine}()
-    #push!(list,CombinedLine(  :Lyb          , 1026.0  ))
-    push!(list, CombinedLine(  :Lya          , 1215.24 ))
-    push!(list, NarrowLine(    :NV_1241      , 1240.81 ))
-    push!(list, BroadLine(     :OI_1306      , 1305.53 ))
-    push!(list, BroadLine(     :CII_1335     , 1335.31 ))
-    push!(list, BroadLine(     :SiIV_1400    , 1399.8  ))
-    push!(list, CombinedLine(  :CIV_1549     , 1549.48 ))
-    #push!(list,BroadLine(     :HeII         , 1640.4  ))
-    #push!(list,BroadLine(     :OIII         , 1665.85 ))
-    #push!(list,BroadLine(     :AlIII        , 1857.4  ))
-    push!(list, BroadLine(     :CIII_1909    , 1908.734))
-    push!(list, BroadLine(     :CII          , 2326.0  ))
-    push!(list, BroadLine(     :F2420        , 2420.0  ))
-    push!(list, CombinedLine(  :MgII_2798    , 2799.117))
-    #push!(list,NarrowLine(    :NeVN         , 3346.79 ))
-    push!(list, NarrowLine(    :NeVI_3426    , 3426.85 ))
-    push!(list, NarrowLine(    :OII_3727     , 3729.875))
-    push!(list, NarrowLine(    :NeIII_3869   , 3869.81 ))
-    push!(list, BroadLine(     :Hd           , 4102.89 ))
-    push!(list, BroadLine(     :Hg           , 4341.68 ))
-    push!(list, NarrowLine(    :OIII_4363    , 4363.00 ))  # TODO: Check wavelength is correct
-    push!(list, BroadLine(     :HeII         , 4686.   ))
-    push!(list, CombinedLine(  :Hb           , 4862.68 ))
-    push!(list, NarrowLine(    :OIII_4959    , 4960.295))
-    push!(list, NarrowLine(    :OIII_5007    , 5008.240))
-    push!(list, NarrowLine(    :OIII_5007_bw , 5008.240))
-    push!(list, BroadLine(     :HeI_5876     , 5877.30 ))
-    push!(list, NarrowLine(    :OI_6300      , 6300.00 ))  # TODO: Check wavelength is correct
-    push!(list, NarrowLine(    :OI_6364      , 6364.00 ))  # TODO: Check wavelength is correct
-    push!(list, NarrowLine(    :NII_6549     , 6549.86 ))
-    push!(list, CombinedLine(  :Ha           , 6564.61 ))
-    push!(list, BroadBaseLine( :Ha_base      , 6564.61 ))
-    push!(list, NarrowLine(    :NII_6583     , 6585.27 ))
-    push!(list, NarrowLine(    :SII_6716     , 6718.29 ))
-    push!(list, NarrowLine(    :SII_6731     , 6732.67 ))
+    list = OrderedDict{Symbol, AbstractSpectralLine}()
+    list[:Lyb         ] = CombinedLine( 1026.0  )
+    list[:Lya         ] = CombinedLine( 1215.24 )
+    list[:NV_1241     ] = NarrowLine(   1240.81 )
+    list[:OI_1306     ] = BroadLine(    1305.53 )
+    list[:CII_1335    ] = BroadLine(    1335.31 )
+    list[:SiIV_1400   ] = BroadLine(    1399.8  )
+    list[:CIV_1549    ] = CombinedLine( 1549.48 )
+    list[:HeII        ] = BroadLine(    1640.4  )
+    list[:OIII        ] = BroadLine(    1665.85 )
+    list[:AlIII       ] = BroadLine(    1857.4  )
+    list[:CIII_1909   ] = BroadLine(    1908.734)
+    list[:CII         ] = BroadLine(    2326.0  )
+    list[:F2420       ] = BroadLine(    2420.0  )
+    list[:MgII_2798   ] = CombinedLine( 2799.117)
+    list[:NeVN        ] = NarrowLine(   3346.79 )
+    list[:NeVI_3426   ] = NarrowLine(   3426.85 )
+    list[:OII_3727    ] = NarrowLine(   3729.875)
+    list[:NeIII_3869  ] = NarrowLine(   3869.81 )
+    list[:Hd          ] = BroadLine(    4102.89 )
+    list[:Hg          ] = BroadLine(    4341.68 )
+    list[:OIII_4363   ] = NarrowLine(   4363.00 )  # TODO: Check wavelength is correct
+    list[:HeII        ] = BroadLine(    4686.   )
+    list[:Hb          ] = CombinedLine( 4862.68 )
+    list[:OIII_4959   ] = NarrowLine(   4960.295)
+    list[:OIII_5007   ] = NarrowLine(   5008.240)
+    list[:OIII_5007_bw] = NarrowLine(   5008.240)
+    list[:HeI_5876    ] = BroadLine(    5877.30 )
+    list[:OI_6300     ] = NarrowLine(   6300.00 )  # TODO: Check wavelength is correct
+    list[:OI_6364     ] = NarrowLine(   6364.00 )  # TODO: Check wavelength is correct
+    list[:NII_6549    ] = NarrowLine(   6549.86 )
+    list[:Ha          ] = CombinedLine( 6564.61 )
+    list[:Ha_base     ] = BroadBaseLine(6564.61 )
+    list[:NII_6583    ] = NarrowLine(   6585.27 )
+    list[:SII_6716    ] = NarrowLine(   6718.29 )
+    list[:SII_6731    ] = NarrowLine(   6732.67 )
     return list
 end
 
@@ -299,8 +306,10 @@ function fit(source::QSO{TRecipe}; id=1) where TRecipe <: DefaultRecipe
     # Add unknown lines
     println(source.log, "\nFit unknown emission lines...")
     if source.options[:n_unk] > 0
-        tmp = [line_components(TRecipe, UnkLine(Symbol(:unk, j), 5e3)) for j in 1:source.options[:n_unk]]
-        tmp = OrderedDict(getindex.(tmp, 1) .=> getindex.(tmp, 2))
+        tmp = OrderedDict{Symbol, AbstractComponent}()
+        for j in 1:source.options[:n_unk]
+            tmp[Symbol(:unk, j)] = line_component(TRecipe, UnkLine(5e3))
+        end
         add!(model, :UnkLines => Reducer(sum, collect(keys(tmp))), tmp)
         add!(model, :main => Reducer(sum, [:Continuum, :Iron, line_groups..., :UnkLines]))
         evaluate(model)

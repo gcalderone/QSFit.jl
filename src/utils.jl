@@ -2,8 +2,6 @@
 qsfitversion() = v"0.1.0"
 qsfit_data() = artifact"qsfit_data"
 
-ensure_vector(v) = (isa(v, Vector)  ?  v  :  [v])
-
 gauss(x, μ, σ) = exp.(-0.5 .* ((x .- μ) ./ σ).^2) ./ sqrt(2pi) ./ σ
 
 

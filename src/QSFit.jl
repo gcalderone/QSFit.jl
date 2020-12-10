@@ -1,6 +1,6 @@
 module QSFit
 
-export QSO, Spectrum, DefaultRecipe, add_spec!, fit, multiepoch_fit
+export QSO, Spectrum, add_spec!, fit, multiepoch_fit
 
 import GFit: Domain_1D, CompEval,
     Parameter, AbstractComponent, compeval_cdata, compeval_array, evaluate, fit!
@@ -28,9 +28,9 @@ include("components/SpecLineLorentz.jl")
 include("Spectrum.jl")
 
 
-abstract type DefaultRecipe end
+abstract type AbstractRecipe end
 
-struct QSO{T <: DefaultRecipe}
+struct QSO{T <: AbstractRecipe}
     name::String
     z::Float64
     mw_ebv::Float64
@@ -43,7 +43,7 @@ struct QSO{T <: DefaultRecipe}
     line_comps::Vector{OrderedDict{Symbol, AbstractComponent}}
     options::OrderedDict{Symbol, Any}
 
-    function QSO{T}(name, z; ebv=0., logfile="", cosmo=default_cosmology())  where T <: DefaultRecipe
+    function QSO{T}(name, z; ebv=0., logfile="", cosmo=default_cosmology())  where T <: AbstractRecipe
         @assert z > 0
         @assert ebv >= 0
         ld = uconvert(u"cm", luminosity_dist(cosmo, float(z)))
@@ -75,68 +75,58 @@ end
 abstract type AbstractSpectralLine end
 
 struct BroadBaseLine <: AbstractSpectralLine
-    name::Symbol
     λ::Float64
 end
 
 struct BroadLine <: AbstractSpectralLine
-    name::Symbol
     λ::Float64
 end
 
 struct NarrowLine <: AbstractSpectralLine
-    name::Symbol
     λ::Float64
 end
 
 struct ComboBroadLine <: AbstractSpectralLine
-    name::Symbol
     λ::Float64
 end
 
 struct ComboNarrowLine <: AbstractSpectralLine
-    name::Symbol
     λ::Float64
 end
 
 struct CombinedLine <: AbstractSpectralLine
-    name::Symbol
     λ::Float64
 end
 
 struct AbsorptionLine <: AbstractSpectralLine
-    name::Symbol
     λ::Float64
 end
 
 struct UnkLine <: AbstractSpectralLine
-    name::Symbol
     λ::Float64
 end
 
 
+# Note: line_breakdown must always return a Vector{Tuple{Symbol, <: AbstractSpectralLine}}
+line_breakdown(::Type{T}, name::Symbol, line::L) where {T <: AbstractRecipe, L <: AbstractSpectralLine} =
+    [(name, line)]
+
+line_group_name(::Type{T}, name::Symbol, line::L) where {T <: AbstractRecipe, L <: AbstractSpectralLine} =
+    Symbol(L)
+
 function line_components_and_groups(source::QSO{T}) where T
     comps = OrderedDict{Symbol, AbstractComponent}()
     groups = OrderedDict{Symbol, Symbol}()
-    for line in known_spectral_lines(T)
-        ltype = string(typeof(line))
-        (ltype[1:6] == "QSFit.")  &&  (ltype = ltype[7:end])
-        ltype = Symbol(ltype)
-        for (lname, lcomp) in ensure_vector(line_components(T, line))
-            (lname == :Ha_base)       &&  !source.options[:use_broad_Ha_base]  &&  continue
-            (lname == :OIII_5007_bw)  &&  !source.options[:use_OIII_5007_bw ]  &&  continue
+    for (lname0, line0) in known_spectral_lines(T)
+        (lname0 == :Ha_base)       &&  !source.options[:use_broad_Ha_base]  &&  continue
+        (lname0 == :OIII_5007_bw)  &&  !source.options[:use_OIII_5007_bw ]  &&  continue
+        for (lname, line) in line_breakdown(T, lname0, line0)
+            lcomp = line_component(T, line)
+            ltype = string(typeof(lcomp))
+            (ltype[1:6] == "QSFit.")  &&  (ltype = ltype[7:end])
+            ltype = Symbol(ltype)
             comps[lname] = lcomp
-            if (ltype == :CombinedLine)
-                if string(lname)[1:3] == "br_"
-                    groups[lname] = :BroadLine
-                elseif string(lname)[1:3] == "na_"
-                    groups[lname] = :NarrowLine
-                else
-                    groups[lname] = Symbol(ltype)
-                end
-            else
-                groups[lname] = Symbol(ltype)
-            end
+            groups[lname] = line_group_name(T, lname0, line) # Note: here we use original name and specific line type
         end
     end
     return (groups, comps)
