@@ -33,7 +33,7 @@ abstract type AbstractRecipe end
 function default_options(::Type{T}) where T <: AbstractRecipe
     out = OrderedDict{Symbol, Any}()
     out[:wavelength_range] = [1215, 7.3e3]
-    out[:line_minimum_coverage] = 0.6
+    out[:min_spectral_coverage] = Dict{Symbol, Float64}(:default => 0.6)
     out[:skip_lines] = Vector{Symbol}()
     return out
 end
@@ -161,9 +161,11 @@ function add_spec!(source::QSO, data::Spectrum)
     println(source.log, "Good samples before line coverage filter: ", length(findall(data.good)))
     line_names, line_comps = line_components_and_groups(source)
     for (lname, comp) in line_comps
-        (λmin, λmax, coverage) = spectral_coverage(λ .* data.good, data.resolution, lname, comp)
-        print(source.log, "Line $lname coverage: $coverage")
-        if coverage < source.options[:line_minimum_coverage]
+        (λmin, λmax, coverage) = spectral_coverage(λ .* data.good, data.resolution, comp)
+        coverage = round(coverage * 1e3) / 1e3  # keep just 3 significant digits...
+        threshold = get(source.options[:min_spectral_coverage], lname, source.options[:min_spectral_coverage][:default])
+        print(source.log, "Line $lname coverage: $coverage (threshold: $threshold)")
+        if coverage < threshold
             print(source.log, "  neglecting range: $λmin < λ <  $λmax")
             ii = findall(λmin .<= λ .< λmax)
             data.good[ii] .= false

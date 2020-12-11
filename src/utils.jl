@@ -65,19 +65,11 @@ function estimate_area(λ, f, from=nothing, to=nothing)
 end
 
 
-spectral_coverage(spec_λ, resolution, compname::Symbol, comp::AbstractComponent; kw...) =
-    spectral_coverage(spec_λ, resolution, comp; kw...)
-
-spectral_coverage(spec_λ, resolution, line::SpecLineGauss; kw...) =
+spectral_coverage(spec_λ, resolution, line::Union{SpecLineGauss, SpecLineAsymmGauss, SpecLineLorentz} ; kw...) =
     spectral_coverage(spec_λ, resolution, line.center.val, line.center.val * line.fwhm.val / 3.e5; kw...)
 
-spectral_coverage(spec_λ, resolution, line::SpecLineAsymmGauss; kw...) =
-    spectral_coverage(spec_λ, resolution, line.center.val, line.center.val * line.fwhm.val / 3.e5; kw...)
-
-spectral_coverage(spec_λ, resolution, line::SpecLineLorentz; kw...) =
-    spectral_coverage(spec_λ, resolution, line.center.val, line.center.val * line.fwhm.val / 3.e5; kw...)
-
-function spectral_coverage(spec_λ, resolution, center_λ, span_λ; min_steps=5)
+function spectral_coverage(spec_λ::Vector{Float64}, resolution::Float64,
+                           center_λ::Float64, span_λ::Float64; min_steps::Int=5)
     # Identify min/max wavelengths
     λmin = center_λ - span_λ / 2.
     λmax = center_λ + span_λ / 2.

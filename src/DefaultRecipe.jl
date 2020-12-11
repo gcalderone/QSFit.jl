@@ -3,7 +3,7 @@ abstract type DefaultRecipe <: AbstractRecipe end
 function default_options(::Type{T}) where T <: DefaultRecipe
     out = OrderedDict{Symbol, Any}()
     out[:wavelength_range] = [1215, 7.3e3]
-    out[:line_minimum_coverage] = 0.6
+    out[:min_spectral_coverage] = Dict(:default => 0.6)
     out[:skip_lines] = [:OIII_5007_bw] #, Ha_base
     out[:host_template] = "Ell5"
     out[:use_host_template] = true
