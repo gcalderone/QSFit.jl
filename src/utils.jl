@@ -65,26 +65,38 @@ function estimate_area(λ, f, from=nothing, to=nothing)
 end
 
 
-function line_coverage(spec_λ, resolution, line_λ, fwhm; min_intervals=5)
-    # Identify min/max wavelengths corresponding to expected FWHM
-    λmin = line_λ .* (1 - fwhm / 3.e5 / 2.)
-    λmax = line_λ .* (1 + fwhm / 3.e5 / 2.)
+spectral_coverage(spec_λ, resolution, compname::Symbol, comp::AbstractComponent; kw...) =
+    spectral_coverage(spec_λ, resolution, comp; kw...)
+
+spectral_coverage(spec_λ, resolution, line::SpecLineGauss; kw...) =
+    spectral_coverage(spec_λ, resolution, line.center.val, line.center.val * line.fwhm.val / 3.e5; kw...)
+
+spectral_coverage(spec_λ, resolution, line::SpecLineAsymmGauss; kw...) =
+    spectral_coverage(spec_λ, resolution, line.center.val, line.center.val * line.fwhm.val / 3.e5; kw...)
+
+spectral_coverage(spec_λ, resolution, line::SpecLineLorentz; kw...) =
+    spectral_coverage(spec_λ, resolution, line.center.val, line.center.val * line.fwhm.val / 3.e5; kw...)
+
+function spectral_coverage(spec_λ, resolution, center_λ, span_λ; min_steps=5)
+    # Identify min/max wavelengths
+    λmin = center_λ - span_λ / 2.
+    λmax = center_λ + span_λ / 2.
 
     # Calculate step corresponding to the spectral resolution
-    δ = resolution / 3e5 * line_λ
+    δ = resolution / 3e5 * center_λ
 
-    # How many intervals should be considered?
-    intervals = Int(ceil((λmax - λmin) / δ))
-    (intervals < min_intervals)  &&  (intervals = min_intervals)
-    bins = range(λmin, λmax, length=intervals+1)
+    # How many steps should be considered?
+    steps = Int(ceil((λmax - λmin) / δ))
+    (steps < min_steps)  &&  (steps = min_steps)
+    bin_edges = range(λmin, λmax, length=steps+1)
 
     # How many intervals are sampled?
     good = 0
-    for i in 1:intervals
-        good += sign(count(bins[i] .<= spec_λ .< bins[i+1]))
+    for i in 1:steps
+        good += sign(count(bin_edges[i] .<= spec_λ .< bin_edges[i+1]))
     end
 
-    return (λmin, λmax, good / intervals)
+    return (λmin, λmax, good / steps)
 end
 
 

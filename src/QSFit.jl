@@ -13,7 +13,6 @@ using Unitful, UnitfulAstro
 GFit.@with_CMPFit
 # GFit.showsettings.showfixed = true
 
-include("utils.jl")
 include("cosmology.jl")
 include("ccm_unred.jl")
 include("components/powerlaw.jl")
@@ -25,6 +24,7 @@ include("components/balmercont.jl")
 include("components/SpecLineGauss.jl")
 include("components/SpecLineAsymmGauss.jl")
 include("components/SpecLineLorentz.jl")
+include("utils.jl")
 include("Spectrum.jl")
 
 
@@ -161,7 +161,7 @@ function add_spec!(source::QSO, data::Spectrum)
     println(source.log, "Good samples before line coverage filter: ", length(findall(data.good)))
     line_names, line_comps = line_components_and_groups(source)
     for (lname, comp) in line_comps
-        (λmin, λmax, coverage) = line_coverage(λ .* data.good, data.resolution, comp.center.val, comp.fwhm.val)
+        (λmin, λmax, coverage) = spectral_coverage(λ .* data.good, data.resolution, lname, comp)
         print(source.log, "Line $lname coverage: $coverage")
         if coverage < source.options[:line_minimum_coverage]
             print(source.log, "  neglecting range: $λmin < λ <  $λmax")
