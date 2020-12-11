@@ -32,8 +32,8 @@ line_breakdown(::Type{T}, name::Symbol, line::CombinedLine) where T <: DefaultRe
 line_group_name(::Type{T}, name::Symbol, line::BroadBaseLine)   where T <: DefaultRecipe = :BroadBaseLines
 line_group_name(::Type{T}, name::Symbol, line::BroadLine)       where T <: DefaultRecipe = :BroadLines
 line_group_name(::Type{T}, name::Symbol, line::NarrowLine)      where T <: DefaultRecipe = :NarrowLines
-line_group_name(::Type{T}, name::Symbol, line::ComboBroadLine)  where T <: DefaultRecipe = :BroadLines
-line_group_name(::Type{T}, name::Symbol, line::ComboNarrowLine) where T <: DefaultRecipe = :NarrowLines
+line_group_name(::Type{T}, name::Symbol, line::ComboBroadLine)  where T <: DefaultRecipe = line_group_name(T, name, BroadLine(line.λ))
+line_group_name(::Type{T}, name::Symbol, line::ComboNarrowLine) where T <: DefaultRecipe = line_group_name(T, name, NarrowLine(line.λ))
 line_group_name(::Type{T}, name::Symbol, line::UnkLine)         where T <: DefaultRecipe = :UnknownLines
 
 
@@ -56,6 +56,9 @@ function line_component(::Type{T}, line::BroadLine) where T <: DefaultRecipe
     return comp
 end
 
+line_component(::Type{T}, line::ComboBroadLine) where T <: DefaultRecipe =
+    line_component(T, BroadLine(line.λ))
+
 function line_component(::Type{T}, line::NarrowLine) where T <: DefaultRecipe
     comp = SpecLineGauss(line.λ)
     comp.fwhm.val  = 5e2
@@ -67,22 +70,8 @@ function line_component(::Type{T}, line::NarrowLine) where T <: DefaultRecipe
 end
 
 function line_component(::Type{T}, line::ComboNarrowLine) where T <: DefaultRecipe
-    comp = SpecLineGauss(line.λ)
-    comp.fwhm.val  = 5e2
-    comp.fwhm.low  = 100
+    comp = line_component(T, NarrowLine(line.λ))
     comp.fwhm.high = 1e3
-    comp.voff.low  = -1e3
-    comp.voff.high =  1e3
-    return comp
-end
-
-function line_component(::Type{T}, line::ComboBroadLine) where T <: DefaultRecipe
-    comp = SpecLineGauss(line.λ)
-    comp.fwhm.val  = 5e3
-    comp.fwhm.low  = 900
-    comp.fwhm.high = 1.5e4
-    comp.voff.low  = -3e3
-    comp.voff.high =  3e3
     return comp
 end
 
