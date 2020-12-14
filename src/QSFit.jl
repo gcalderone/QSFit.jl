@@ -10,7 +10,6 @@ using Pkg, Pkg.Artifacts
 using Statistics, DelimitedFiles, DataFrames, FFTW, Interpolations, QuadGK, Printf, DataStructures
 using Unitful, UnitfulAstro
 
-GFit.@with_CMPFit
 # GFit.showsettings.showfixed = true
 
 include("cosmology.jl")

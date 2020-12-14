@@ -132,7 +132,7 @@ end
 
 function fit(source::QSO{TRecipe}; id=1) where TRecipe <: DefaultRecipe
     elapsed = time()
-    mzer = cmpfit()
+    mzer = GFit.cmpfit()
     mzer.config.ftol = mzer.config.gtol = mzer.config.xtol = 1.e-6
 
     # Initialize components and guess initial values
