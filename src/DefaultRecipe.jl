@@ -220,9 +220,9 @@ function fit(source::QSO{TRecipe}; id=1) where TRecipe <: DefaultRecipe
     evaluate(model)
 
     # Add emission lines
-    println(source.log, "\nFit known emission lines...")
     line_names = collect(keys(source.line_names[id]))
     line_groups = unique(collect(values(source.line_names[id])))
+    println(source.log, "\nFit known emission lines...")
     add!(model, source.line_comps[id])
     for (group, lnames) in invert_dictionary(source.line_names[id])
         add!(model, group  => Reducer(sum, lnames))
@@ -278,8 +278,8 @@ function fit(source::QSO{TRecipe}; id=1) where TRecipe <: DefaultRecipe
     model[:br_Hb].voff.fixed = 1
     model[:br_Hb].fwhm.fixed = 1
     patch!(model) do m
-        m[:br_Hb].voff = m[@T id :br_Ha].voff
-        m[:br_Hb].fwhm = m[@T id :br_Ha].fwhm
+        m[:br_Hb].voff = m[:br_Ha].voff
+        m[:br_Hb].fwhm = m[:br_Ha].fwhm
     end
     =#
 

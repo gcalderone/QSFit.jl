@@ -115,19 +115,17 @@ function multiepoch_fit(source::QSO{TRecipe}; ref_id=1) where TRecipe <: Default
     evaluate(model)
 
     # Add emission lines
+    line_names = [collect(keys(source.line_names[id])) for id in 1:Nspec]
+    line_groups = [unique(collect(values(source.line_names[id]))) for id in 1:Nspec]
     println(source.log, "\nFit known emission lines...")
     for id in 1:Nspec
         λ = source.domain[id][1]
 
-        line_names = collect(keys(source.line_names[id]))
-        line_groups = unique(collect(values(source.line_names[id])))
-        for (lname, lcomp) in source.line_comps[id]
-            add!(model[id], lname => lcomp)
-        end
+        add!(model[id], source.line_comps[id])
         for (group, lnames) in invert_dictionary(source.line_names[id])
             add!(model[id], group => Reducer(sum, lnames))
         end
-        add!(model[id], :main => Reducer(sum, [:Continuum, :Iron, line_groups...]))
+        add!(model[id], :main => Reducer(sum, [:Continuum, :Iron, line_groups[id]...]))
 
         if haskey(model[id], :MgII_2798)
             model[id][:MgII_2798].voff.low  = -1000
@@ -144,7 +142,7 @@ function multiepoch_fit(source::QSO{TRecipe}; ref_id=1) where TRecipe <: Default
         # Guess values
         evaluate(model)
         y = source.data[id].val - model[id]()
-        for cname in line_names
+        for cname in line_names[id]
             c = model[id][cname]
             yatline = interpol(y, λ, c.center.val)
             c.norm.val = 1.
@@ -187,7 +185,7 @@ function multiepoch_fit(source::QSO{TRecipe}; ref_id=1) where TRecipe <: Default
         push!(OIII_best, bestfit[id][:OIII_5007].norm.val)
         push!(OIII_unc , bestfit[id][:OIII_5007].norm.unc)
 
-        for lname in line_names
+        for lname in line_names[id]
             freeze(model[id], lname)
         end
     end
@@ -201,18 +199,17 @@ function multiepoch_fit(source::QSO{TRecipe}; ref_id=1) where TRecipe <: Default
                 tmp[Symbol(:unk, j)] = line_component(TRecipe, UnkLine(5e3))
             end
             add!(model[id], :UnkLines => Reducer(sum, collect(keys(tmp))), tmp)
-            line_groups = unique(collect(values(source.line_names[id])))
-            add!(model[id], :main => Reducer(sum, [:Continuum, :Iron, line_groups..., :UnkLines]))
+            add!(model[id], :main => Reducer(sum, [:Continuum, :Iron, line_groups[id]..., :UnkLines]))
             evaluate(model)
             for j in 1:source.options[:n_unk]
                 freeze(model[id], Symbol(:unk, j))
             end
         end
     else
+        # Here we need a :UnkLines reducer, even when n_unk is 0
         for id in 1:Nspec
             add!(model[id], :UnkLines => Reducer(() -> [0.], Symbol[]))
-            line_groups = unique(collect(values(source.line_names[id])))
-            add!(model[id], :main => Reducer(sum, [:Continuum, :Iron, line_groups..., :UnkLines]))
+            add!(model[id], :main => Reducer(sum, [:Continuum, :Iron, line_groups[id]..., :UnkLines]))
         end
     end
     evaluate(model)
@@ -284,9 +281,8 @@ function multiepoch_fit(source::QSO{TRecipe}; ref_id=1) where TRecipe <: Default
             model[id][:galaxy].norm.fixed = true
             model[id][:OIII_5007].norm.fixed = true
 
-            line_groups = unique(collect(values(source.line_names[id])))
             add!(model[id],
-                 :main => Reducer(calibsum, [:calib, :Continuum, :Iron, line_groups..., :UnkLines]),
+                 :main => Reducer(calibsum, [:calib, :Continuum, :Iron, line_groups[id]..., :UnkLines]),
                  :calib => ratio)
         end
     end
@@ -312,8 +308,7 @@ function multiepoch_fit(source::QSO{TRecipe}; ref_id=1) where TRecipe <: Default
         source.options[:use_ironopt]        &&  thaw(model[id], :ironoptbr)
         source.options[:use_ironopt]        &&  thaw(model[id], :ironoptna)
 
-        line_names = collect(keys(source.line_names[id]))
-        for lname in line_names
+        for lname in line_names[id]
             thaw(model[id], lname)
         end
         for j in 1:source.options[:n_unk]
@@ -325,7 +320,7 @@ function multiepoch_fit(source::QSO{TRecipe}; ref_id=1) where TRecipe <: Default
             end
         end
         if id != ref_id
-            thaw(model[id], :calib)  # parameter is fixed in preds[1]
+            thaw(model[id], :calib)  # parameter is fixed in preds[ref_id]
         end
     end
     bestfit = fit!(model, source.data, minimizer=mzer); show(source.log, bestfit)
