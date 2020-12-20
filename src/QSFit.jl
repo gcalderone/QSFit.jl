@@ -1,6 +1,6 @@
 module QSFit
 
-export QSO, Spectrum, add_spec!, fit, multiepoch_fit
+export interpol, QSO, Spectrum, add_spec!, fit, multiepoch_fit
 
 import GFit: Domain_1D, CompEval,
     Parameter, AbstractComponent, compeval_cdata, compeval_array, evaluate, fit!
@@ -195,12 +195,12 @@ end
 
 function populate_metadata!(source, model)
     for id in 1:length(model.preds)
-        model.preds[id].meta[:label] = source.name * ", z=" * string(source.z) * ", E(B-V)=" * string(source.mw_ebv)
-        model.preds[id].meta[:label_x] = "Rest frame wavelength"
-        model.preds[id].meta[:unit_x]  = string(QSFit.unit_λ())
-        model.preds[id].meta[:label_y] = "Lum. density"
-        model.preds[id].meta[:unit_y]  = string(QSFit.unit_lum_density())
-        model.preds[id].meta[:scale_y] = string(QSFit.scale_lum())
+        model.meta[id][:label] = source.name * ", z=" * string(source.z) * ", E(B-V)=" * string(source.mw_ebv)
+        model.meta[id][:label_x] = "Rest frame wavelength"
+        model.meta[id][:unit_x]  = string(QSFit.unit_λ())
+        model.meta[id][:label_y] = "Lum. density"
+        model.meta[id][:unit_y]  = string(QSFit.unit_lum_density())
+        model.meta[id][:scale_y] = string(QSFit.scale_lum())
     end
 end
 

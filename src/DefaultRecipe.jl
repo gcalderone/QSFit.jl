@@ -139,7 +139,7 @@ function fit(source::QSO{TRecipe}; id=1) where TRecipe <: DefaultRecipe
     println(source.log, "\nFit continuum components...")
     λ = source.domain[id][1]
     model = Model(source.domain[id], :Continuum => Reducer(sum, [:qso_cont]),
-                  :qso_cont => qso_cont_component(TRecipe))
+                  :qso_cont => QSFit.qso_cont_component(TRecipe))
     c = model[:qso_cont]
     c.norm.val = interpol(source.data[id].val, λ, c.x0.val)
 
@@ -229,11 +229,11 @@ function fit(source::QSO{TRecipe}; id=1) where TRecipe <: DefaultRecipe
     end
     add!(model, :main => Reducer(sum, [:Continuum, :Iron, line_groups...]))
 
-    if haskey(model.comps, :MgII_2798)
+    if haskey(model, :MgII_2798)
         model[:MgII_2798].voff.low  = -1000
         model[:MgII_2798].voff.high =  1000
     end
-    if haskey(model.comps, :OIII_5007_bw)
+    if haskey(model, :OIII_5007_bw)
         model[:OIII_5007_bw].fwhm.val  = 500
         model[:OIII_5007_bw].fwhm.low  = 1e2
         model[:OIII_5007_bw].fwhm.high = 1e3
@@ -252,22 +252,22 @@ function fit(source::QSO{TRecipe}; id=1) where TRecipe <: DefaultRecipe
     end
 
     # Patch parameters
-    if  haskey(model.comps, :OIII_4959)  &&
-        haskey(model.comps, :OIII_5007)
+    if  haskey(model, :OIII_4959)  &&
+        haskey(model, :OIII_5007)
         model[:OIII_4959].voff.fixed = true
         patch!(model) do m
             m[:OIII_4959].voff = m[:OIII_5007].voff
         end
     end
-    if  haskey(model.comps, :NII_6549)  &&
-        haskey(model.comps, :NII_6583)
+    if  haskey(model, :NII_6549)  &&
+        haskey(model, :NII_6583)
         model[:NII_6549].voff.fixed = true
         patch!(model) do m
             m[:NII_6549].voff = m[:NII_6583].voff
         end
     end
-    if  haskey(model.comps, :OIII_5007_bw)  &&
-        haskey(model.comps, :OIII_5007)
+    if  haskey(model, :OIII_5007_bw)  &&
+        haskey(model, :OIII_5007)
         patch!(model) do m
             m[:OIII_5007_bw].voff += m[:OIII_5007].voff
             m[:OIII_5007_bw].fwhm += m[:OIII_5007].fwhm
@@ -369,7 +369,7 @@ function fit(source::QSO{TRecipe}; id=1) where TRecipe <: DefaultRecipe
     needs_fitting = false
     for ii in 1:source.options[:n_unk]
         cname = Symbol(:unk, ii)
-        model.cfixed[cname]  &&  continue
+        isfixed(model, cname)  &&  continue
         if bestfit[cname].norm.val == 0.
             freeze(model, cname)
             needs_fitting = true
