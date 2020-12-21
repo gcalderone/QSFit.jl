@@ -75,7 +75,7 @@ function Spectrum(::Val{:SDSS_DR10}, file::AbstractString; ndrop=100)
         good[end-ndrop+1:end] .= false
     end
     
-    out = Spectrum(λ, flux, sqrt.(1 ./ ivar), good=good, label="SDSS: " * file)
+    out = Spectrum(λ, flux, sqrt.(1 ./ ivar), good=good, label=file)
     return out
 end
 
@@ -98,7 +98,7 @@ function Spectrum(::Val{:ASCII}, file::AbstractString; columns=[1,2,3])
         end
     end
     good = fill(true, length(λ))
-    out = Spectrum(λ, flux, unc, label="ASCII: " * file)
+    out = Spectrum(λ, flux, unc, label=file)
     return out
 end
 
