@@ -171,7 +171,7 @@ function add_spec!(source::QSO, data::Spectrum)
             delete!(line_names, lname)
             delete!(line_comps, lname)
         end
-        println()
+        println(source.log)
     end
     println(source.log, "Good samples after line coverage filter: ", length(findall(data.good)))
 
