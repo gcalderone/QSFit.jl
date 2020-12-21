@@ -50,17 +50,24 @@ struct QSO{T <: AbstractRecipe}
     line_comps::Vector{OrderedDict{Symbol, AbstractComponent}}
     options::OrderedDict{Symbol, Any}
 
-    function QSO{T}(name, z; ebv=0., logfile="", cosmo=default_cosmology())  where T <: AbstractRecipe
+    function QSO{T}(name, z; ebv=0., logfile=nothing, cosmo=default_cosmology())  where T <: AbstractRecipe
         @assert z > 0
         @assert ebv >= 0
         ld = uconvert(u"cm", luminosity_dist(cosmo, float(z)))
         flux2lum = 4pi * ld^2 * (scale_flux() * unit_flux()) / (scale_lum() * unit_lum())
-        if logfile != ""
-            log = open(logfile, "w")
-            GFit.showsettings.plain = true
-        else
+        if isnothing(logfile)
             log = stdout
             GFit.showsettings.plain = false
+        else
+            if isa(logfile, AbstractString)
+                log = open(logfile, "w")
+                GFit.showsettings.plain = true
+            elseif isa(logfile, Bool)  &&  logfile
+                log = open(name * ".log", "w")
+                GFit.showsettings.plain = true
+            else
+                error("Unexpected value for logfile: $logfile")
+            end
         end
         return new{T}(string(name), float(z), float(ebv), cosmo, flux2lum, log,
                       Vector{GFit.Domain_1D}(), Vector{GFit.Measures_1D}(),
