@@ -23,14 +23,12 @@ mutable struct cutoff_powerlaw <: AbstractComponent
     end
 end
 
-compeval_cdata(comp::cutoff_powerlaw, domain::Domain_1D) = nothing
-compeval_array(comp::cutoff_powerlaw, domain::Domain_1D) = fill(NaN, length(domain))
 
-function evaluate(c::CompEval{cutoff_powerlaw, Domain_1D},
-                   norm, x0, alpha, beta)
-    x = c.domain[1]
+function evaluate(buffer, comp::cutoff_powerlaw, domain::Domain{1},
+                  norm, x0, alpha, beta)
+    x = domain[1]
     if alpha * beta < 0
         @warn "alpha and beta should have the same sign"
     end        
-    c.buffer .= norm .* (x ./ x0).^alpha .* exp.(1 .- ((x ./ x0) .^ beta))
+    buffer .= norm .* (x ./ x0).^alpha .* exp.(1 .- ((x ./ x0) .^ beta))
 end

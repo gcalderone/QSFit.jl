@@ -21,8 +21,8 @@ mutable struct SpecLineLorentz <: AbstractComponent
     end
 end
 
-compeval_cdata(comp::SpecLineLorentz, domain::Domain_1D) = collect(1:length(domain))
-compeval_array(comp::SpecLineLorentz, domain::Domain_1D) = fill(NaN, length(domain))
+compeval_cdata(comp::SpecLineLorentz, domain::Domain{1}) = collect(1:length(domain))
+
 
 function maxvalue(comp::SpecLineLorentz)
     ceval = CompEval(comp, Domain([comp.center.val]))
@@ -30,19 +30,19 @@ function maxvalue(comp::SpecLineLorentz)
     return ceval.buffer[1]
 end
 
-function evaluate(c::CompEval{SpecLineLorentz, Domain_1D},
+function evaluate(buffer, comp::SpecLineLorentz, domain::Domain{1}, cdata,
                   norm, center, fwhm, voff)
-    c.buffer[c.cdata] .= 0.
-    empty!(c.cdata)
+    c.buffer[cdata] .= 0.
+    empty!(cdata)
 
-    x = c.domain[1]
+    x = domain[1]
     x0 = center - (voff / 3.e5) * center
     hwhm = fwhm / 3.e5 * center / 2  # Note: this is in `center` units
 
     X = (x .- x0) ./ hwhm
     i = findall(abs.(X) .< 20) # optimization
-    append!(c.cdata, i)
-    c.buffer[i] .= (norm / pi / hwhm) ./ (1 .+ X[i].^2.)
+    append!(cdata, i)
+    buffer[i] .= (norm / pi / hwhm) ./ (1 .+ X[i].^2.)
 end
 
 

@@ -2,8 +2,8 @@ module QSFit
 
 export interpol, QSO, Spectrum, add_spec!, fit, multiepoch_fit
 
-import GFit: Domain_1D, CompEval,
-    Parameter, AbstractComponent, compeval_cdata, compeval_array, evaluate, fit!
+import GFit: Domain, CompEval,
+    Parameter, AbstractComponent, compeval_cdata, evaluate, fit!
 
 using CMPFit, GFit
 using Pkg, Pkg.Artifacts
@@ -44,8 +44,8 @@ struct QSO{T <: AbstractRecipe}
     cosmo::Cosmology.AbstractCosmology
     flux2lum::Float64
     log::IO
-    domain::Vector{GFit.Domain_1D}
-    data::Vector{GFit.Measures_1D}
+    domain::Vector{GFit.Domain{1}}
+    data::Vector{GFit.Measures{1}}
     line_names::Vector{OrderedDict{Symbol, Symbol}}
     line_comps::Vector{OrderedDict{Symbol, AbstractComponent}}
     options::OrderedDict{Symbol, Any}
@@ -70,7 +70,7 @@ struct QSO{T <: AbstractRecipe}
             end
         end
         return new{T}(string(name), float(z), float(ebv), cosmo, flux2lum, log,
-                      Vector{GFit.Domain_1D}(), Vector{GFit.Measures_1D}(),
+                      Vector{GFit.Domain{1}}(), Vector{GFit.Measures{1}}(),
                       Vector{OrderedDict{Symbol, AbstractComponent}}(),
                       Vector{OrderedDict{Symbol, AbstractComponent}}(),
                       default_options(T))

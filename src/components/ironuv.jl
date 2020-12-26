@@ -44,7 +44,7 @@ mutable struct ironuv <: AbstractComponent
 end
 
 
-function compeval_cdata(comp::ironuv, domain::Domain_1D)
+function compeval_cdata(comp::ironuv, domain::Domain{1})
     @assert comp.fwhm > 900
     σ0 = comp.fwhm / 2.35 / 3.e5
     lmin, lmax = extrema(comp.λ)
@@ -64,10 +64,10 @@ function compeval_cdata(comp::ironuv, domain::Domain_1D)
     conv = interpol(conv, 10 .^logλ, domain[1])
     return ironuv_cdata(conv, comp.fwhm)
 end
-compeval_array(comp::ironuv, domain::Domain_1D) = fill(NaN, length(domain))
 
-function evaluate(c::CompEval{ironuv, Domain_1D},
+
+function evaluate(buffer, comp::ironuv, domain::Domain{1}, cdata,
                   norm)
-    c.buffer .= norm .* c.cdata.L
+    buffer .= norm .* cdata.L
 end
 
