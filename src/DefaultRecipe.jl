@@ -179,14 +179,14 @@ function fit(source::QSO{TRecipe}; id=1) where TRecipe <: DefaultRecipe
         residuals = (model() - source.data[id].val) ./ source.data[id].unc
         (count(residuals .< 0) / length(residuals) > 0.9)  &&  break
         c.norm.val *= 0.99
-        evaluate(model)
+        evaluate!(model)
     end
     println(source.log, "Cont. norm. (after) : ", c.norm.val)
 
     freeze(model, :qso_cont)
     source.options[:use_host_template]  &&  freeze(model, :galaxy)
     source.options[:use_balmer]         &&  freeze(model, :balmer)
-    evaluate(model)
+    evaluate!(model)
 
     # Fit iron templates
     println(source.log, "\nFit iron templates...")
@@ -208,7 +208,7 @@ function fit(source::QSO{TRecipe}; id=1) where TRecipe <: DefaultRecipe
     if length(iron_components) > 0
         add!(model, :Iron => Reducer(sum, iron_components))
         add!(model, :main => Reducer(sum, [:Continuum, :Iron]))
-        evaluate(model)
+        evaluate!(model)
         bestfit = fit!(model, source.data, minimizer=mzer); show(source.log, bestfit)
     else
         add!(model, :Iron => Reducer(() -> [0.], Symbol[]))
@@ -217,7 +217,7 @@ function fit(source::QSO{TRecipe}; id=1) where TRecipe <: DefaultRecipe
     source.options[:use_ironuv]   &&  freeze(model, :ironuv)
     source.options[:use_ironopt]  &&  freeze(model, :ironoptbr)
     source.options[:use_ironopt]  &&  freeze(model, :ironoptna)
-    evaluate(model)
+    evaluate!(model)
 
     # Add emission lines
     line_names = collect(keys(source.line_names[id]))
@@ -242,7 +242,7 @@ function fit(source::QSO{TRecipe}; id=1) where TRecipe <: DefaultRecipe
     end
 
     # Guess values
-    evaluate(model)
+    evaluate!(model)
     y = source.data[id].val - model()
     for cname in line_names
         c = model[cname]
@@ -297,18 +297,18 @@ function fit(source::QSO{TRecipe}; id=1) where TRecipe <: DefaultRecipe
         end
         add!(model, :UnkLines => Reducer(sum, collect(keys(tmp))), tmp)
         add!(model, :main => Reducer(sum, [:Continuum, :Iron, line_groups..., :UnkLines]))
-        evaluate(model)
+        evaluate!(model)
         for j in 1:source.options[:n_unk]
             freeze(model, Symbol(:unk, j))
         end
-        evaluate(model)
+        evaluate!(model)
 
         # Set "unknown" line center wavelength where there is a maximum in
         # the fit residuals, and re-run a fit.
         λunk = Vector{Float64}()
         while true
             (length(λunk) >= source.options[:n_unk])  &&  break
-            evaluate(model)
+            evaluate!(model)
             Δ = (source.data[id].val - model()) ./ source.data[id].unc
 
             # Avoid considering again the same region (within 1A)
@@ -340,7 +340,7 @@ function fit(source::QSO{TRecipe}; id=1) where TRecipe <: DefaultRecipe
             freeze(model, cname)
         end
     end
-    evaluate(model)
+    evaluate!(model)
 
     # Last run with all parameters free
     println(source.log, "\nLast run with all parameters free...")

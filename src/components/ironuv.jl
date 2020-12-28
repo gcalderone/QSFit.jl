@@ -23,51 +23,43 @@ function ironuv_read()
 end
 
 
-mutable struct ironuv_cdata
-    L::Vector{Float64}
-    fwhm::Float64
-end
-
-
 mutable struct ironuv <: AbstractComponent
     norm::Parameter
-    λ::Vector{Float64}
-    L::Vector{Float64}
     fwhm::Float64
+    L::Vector{Float64}  # pre-computed
 
     function ironuv(fwhm::Number)
-        λ, L = ironuv_read()
-        out = new(Parameter(1), λ, L, float(fwhm))
+        out = new(Parameter(1), float(fwhm), Vector{Float64}())
         out.norm.low = 0
         return out
     end
 end
 
 
-function compeval_cdata(comp::ironuv, domain::Domain{1})
+function prepare!(comp::ironuv, domain::Domain{1})
     @assert comp.fwhm > 900
+    λ, L = ironuv_read()
     σ0 = comp.fwhm / 2.35 / 3.e5
-    lmin, lmax = extrema(comp.λ)
+    lmin, lmax = extrema(λ)
     lmin -= 3 * σ0 * lmin
     lmax += 3 * σ0 * lmax
     lmin -= 100
     lmax += 100
 
     logλ = collect(log10(lmin):log10(lmax/(lmax-σ0*lmax)):log10(lmax))
-    logL = interpol(comp.L, comp.λ, 10 .^logλ)
+    logL = interpol(L, λ, 10 .^logλ)
     σ = sqrt(comp.fwhm^2. - 900^2) / 2.35 / 3.e5
     kernel = gauss(logλ, mean(logλ), σ)
 
     conv = real.(ifft(fft(logL) .* fft(kernel)))
     conv = [conv[div(length(conv), 2):end]; conv[1:div(length(conv), 2)-1]]
-
-    conv = interpol(conv, 10 .^logλ, domain[1])
-    return ironuv_cdata(conv, comp.fwhm)
+    comp.L = interpol(conv, 10 .^logλ, domain[1])
+    return fill(NaN, length(domain))
 end
 
 
-function evaluate(buffer, comp::ironuv, domain::Domain{1}, cdata,
-                  norm)
-    buffer .= norm .* cdata.L
+function evaluate!(buffer, comp::ironuv, domain::Domain{1},
+                   norm)
+    buffer .= norm .* comp.L
 end
 

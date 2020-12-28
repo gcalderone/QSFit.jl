@@ -6,11 +6,15 @@ mutable struct SpecLineGauss <: AbstractComponent
     center::Parameter
     fwhm::Parameter
     voff::Parameter
+    index::Vector{Int}  # optimization
+
     function SpecLineGauss(center::Number)
         out = new(Parameter(1),
                   Parameter(center),
                   Parameter(3000),
-                  Parameter(0))
+                  Parameter(0),
+                  Vector{Int}())
+
         @assert center > 0
         out.norm.low = 0
         out.center.low = 0
@@ -21,8 +25,10 @@ mutable struct SpecLineGauss <: AbstractComponent
     end
 end
 
-compeval_cdata(comp::SpecLineGauss, domain::Domain{1}) = collect(1:length(domain))
-
+function prepare!(comp::SpecLineGauss, domain::Domain{1})
+    comp.index = collect(1:length(domain))
+    return fill(NaN, length(domain))
+end
 
 function maxvalue(comp::SpecLineGauss)
     ceval = CompEval(comp, Domain([comp.center.val]))
@@ -30,10 +36,10 @@ function maxvalue(comp::SpecLineGauss)
     return ceval.buffer[1]
 end
 
-function evaluate(buffer, comp::SpecLineGauss, domain::Domain{1}, cdata,
-                  norm, center, fwhm, voff)
-    buffer[cdata] .= 0.
-    empty!(cdata)
+function evaluate!(buffer, comp::SpecLineGauss, domain::Domain{1},
+                   norm, center, fwhm, voff)
+    buffer[comp.index] .= 0.
+    empty!(comp.index)
 
     x = domain[1]
     x0 = center - (voff / 3.e5) * center
@@ -42,7 +48,7 @@ function evaluate(buffer, comp::SpecLineGauss, domain::Domain{1}, cdata,
     sigma = hwhm / (2.355 / 2)
     X = (x .- x0) ./ sigma
     i = findall(abs.(X) .< 4)  # optimization
-    append!(cdata, i)
+    append!(comp.index, i)
     buffer[i] .= (norm / sqrt(2pi) / sigma) * exp.(-X[i].^2 ./ 2)
 end
 

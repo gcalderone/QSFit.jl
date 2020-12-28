@@ -71,7 +71,7 @@ function multiepoch_fit(source::QSO{TRecipe}; ref_id=1) where TRecipe <: Default
             residuals = (model[id]() - source.data[id].val) ./ source.data[id].unc
             (count(residuals .< 0) / length(residuals) > 0.9)  &&  break
             c.norm.val *= 0.99
-            evaluate(model)
+            evaluate!(model)
         end
         println(source.log, "Cont. norm. (after) : ", c.norm.val)
 
@@ -79,7 +79,7 @@ function multiepoch_fit(source::QSO{TRecipe}; ref_id=1) where TRecipe <: Default
         source.options[:use_host_template]  &&  freeze(model[id], :galaxy)
         source.options[:use_balmer]         &&  freeze(model[id], :balmer)
     end
-    evaluate(model)
+    evaluate!(model)
 
     # Fit iron templates
     println(source.log, "\nFit iron templates...")
@@ -102,7 +102,7 @@ function multiepoch_fit(source::QSO{TRecipe}; ref_id=1) where TRecipe <: Default
         if length(iron_components) > 0
             add!(model[id], :Iron => Reducer(sum, iron_components))
             add!(model[id], :main => Reducer(sum, [:Continuum, :Iron]))
-            evaluate(model)
+            evaluate!(model)
             bestfit = fit!(model, only_id=id, source.data, minimizer=mzer); show(source.log, bestfit)
         else
             add!(model[id], :Iron => Reducer(() -> [0.], Symbol[]))
@@ -112,7 +112,7 @@ function multiepoch_fit(source::QSO{TRecipe}; ref_id=1) where TRecipe <: Default
         source.options[:use_ironopt]  &&  freeze(model[id], :ironoptbr)
         source.options[:use_ironopt]  &&  freeze(model[id], :ironoptna)
     end
-    evaluate(model)
+    evaluate!(model)
 
     # Add emission lines
     line_names = [collect(keys(source.line_names[id])) for id in 1:Nspec]
@@ -140,7 +140,7 @@ function multiepoch_fit(source::QSO{TRecipe}; ref_id=1) where TRecipe <: Default
         end
 
         # Guess values
-        evaluate(model)
+        evaluate!(model)
         y = source.data[id].val - model[id]()
         for cname in line_names[id]
             c = model[id][cname]
@@ -200,7 +200,7 @@ function multiepoch_fit(source::QSO{TRecipe}; ref_id=1) where TRecipe <: Default
             end
             add!(model[id], :UnkLines => Reducer(sum, collect(keys(tmp))), tmp)
             add!(model[id], :main => Reducer(sum, [:Continuum, :Iron, line_groups[id]..., :UnkLines]))
-            evaluate(model)
+            evaluate!(model)
             for j in 1:source.options[:n_unk]
                 freeze(model[id], Symbol(:unk, j))
             end
@@ -212,7 +212,7 @@ function multiepoch_fit(source::QSO{TRecipe}; ref_id=1) where TRecipe <: Default
             add!(model[id], :main => Reducer(sum, [:Continuum, :Iron, line_groups[id]..., :UnkLines]))
         end
     end
-    evaluate(model)
+    evaluate!(model)
 
     # Set "unknown" line center wavelength where there is a maximum in
     # the fit residuals, and re-run a fit.
@@ -221,7 +221,7 @@ function multiepoch_fit(source::QSO{TRecipe}; ref_id=1) where TRecipe <: Default
         λunk = Vector{Float64}()
         while true
             (length(λunk) >= source.options[:n_unk])  &&  break
-            evaluate(model)
+            evaluate!(model)
             Δ = (source.data[id].val - model[id]()) ./ source.data[id].unc
 
             # Avoid considering again the same region (within 1A)
@@ -253,7 +253,7 @@ function multiepoch_fit(source::QSO{TRecipe}; ref_id=1) where TRecipe <: Default
             freeze(model, cname)
         end
     end
-    evaluate(model)
+    evaluate!(model)
 
     # ----------------------------------------------------------------
     # Constrain component normalization across epochs.  Note:
@@ -286,7 +286,7 @@ function multiepoch_fit(source::QSO{TRecipe}; ref_id=1) where TRecipe <: Default
                  :calib => ratio)
         end
     end
-    evaluate(model)
+    evaluate!(model)
 
     for id in 1:Nspec
         if id != ref_id
@@ -296,7 +296,7 @@ function multiepoch_fit(source::QSO{TRecipe}; ref_id=1) where TRecipe <: Default
             end
         end
     end
-    evaluate(model)
+    evaluate!(model)
 
     # Last run with all parameters free
     println(source.log, "\nLast run with all parameters free...")

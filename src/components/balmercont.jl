@@ -113,20 +113,18 @@ end
 mutable struct balmercont <: AbstractComponent
     norm::Parameter
     ratio::Parameter
+    c1::Vector{Float64}
+    c2::Vector{Float64}
+
     function balmercont(norm::Number, ratio::Number)
-        out = new(Parameter(norm), Parameter(ratio))
+        out = new(Parameter(norm), Parameter(ratio), Vector{Float64}(), Vector{Float64}())
         out.norm.low = 0
         out.ratio.low = 0        
         return out
     end
 end
 
-mutable struct balmercont_cdata
-    c1::Vector{Float64}
-    c2::Vector{Float64}
-end
-
-function compeval_cdata(comp::balmercont, domain::Domain{1})
+function prepare!(comp::balmercont, domain::Domain{1})
     T = 15000.
     Ne = 1e9
     Tau = 1.
@@ -134,16 +132,16 @@ function compeval_cdata(comp::balmercont, domain::Domain{1})
     (λ1, c1, contAtEdge) = eval_balmer_continuum(T, Tau, fwhm)
     (λ2, c2) = eval_balmer_pseudocont(T, Ne, fwhm)
     c2 .*= contAtEdge
-    out = balmercont_cdata(interpol(c1, λ1, domain[1], allow_extrapolations=true),
-                           interpol(c2, λ2, domain[1], allow_extrapolations=true))
-    out.c1[findall(out.c1 .< 0.)] .= 0.
-    out.c2[findall(out.c2 .< 0.)] .= 0.
-    return out
+    comp.c1 = interpol(c1, λ1, domain[1], allow_extrapolations=true)
+    comp.c2 = interpol(c2, λ2, domain[1], allow_extrapolations=true)
+    comp.c1[findall(comp.c1 .< 0.)] .= 0.
+    comp.c2[findall(comp.c2 .< 0.)] .= 0.
+    return fill(NaN, length(domain))
 end
 
-function evaluate(buffer, comp::balmercont, domain::Domain{1}, cdata,
-                  norm, ratio)
-    buffer .= norm .* (cdata.c1 .+ ratio .* cdata.c2)
+function evaluate!(buffer, comp::balmercont, domain::Domain{1},
+                   norm, ratio)
+    buffer .= norm .* (comp.c1 .+ ratio .* comp.c2)
 end
 
 

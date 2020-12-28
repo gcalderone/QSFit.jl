@@ -21,48 +21,45 @@ function ironopt_read(file)
 end
 
 
-mutable struct ironopt_cdata
-    L::Vector{Float64}
-    fwhm::Float64
-end
-
-
 mutable struct ironopt <: AbstractComponent
-    norm::Parameter
-    λ::Vector{Float64}
-    A::Vector{Float64}
+    file::String
     fwhm::Float64
+    L::Vector{Float64}
+    norm::Parameter
     
     function ironopt(file::String, fwhm::Number)
-        df = ironopt_read(file)
-        # Drop Balmer lines (they are accounted for in the main QSFit code)
-        ii = findall(getindex.(df[:, :line], Ref(1:2)) .!= "H\$")
-        df = df[ii,:]
-        out = new(Parameter(1), df[:, :wavelength], df[:, :wht], float(fwhm))
+        out = new(file, float(fwhm), Vector{Float64}(), Parameter(1))
         out.norm.low = 0
         return out
     end
 end
 
-function compeval_cdata(comp::ironopt, domain::Domain{1})
+function prepare!(comp::ironopt, domain::Domain{1})
+    df = ironopt_read(comp.file)
+    # Drop Balmer lines (they are accounted for in the main QSFit code)
+    ii = findall(getindex.(df[:, :line], Ref(1:2)) .!= "H\$")
+    df = df[ii,:]
+    λ0 = df[:, :wavelength]
+    A0 = df[:, :wht]
+
     σ0 = comp.fwhm / 2.35 / 3.e5
-    lmin, lmax = extrema(comp.λ)
+    lmin, lmax = extrema(λ0)
     lmin -= 3 * σ0 * lmin
     lmax += 3 * σ0 * lmax
     λ = collect(lmin:(σ0*lmin/5):lmax)
     L = fill(0., length(λ))
-    for ii in 1:length(comp.A)
-        L .+= comp.A[ii] .* gauss(λ, comp.λ[ii], σ0 * comp.λ[ii])
+    for ii in 1:length(A0)
+        L .+= A0[ii] .* gauss(λ, λ0[ii], σ0 * λ0[ii])
     end
-    L ./= sum(comp.A)
-    out = interpol(L, λ, domain[1])
-    return ironopt_cdata(out, comp.fwhm)
+    L ./= sum(A0)
+    comp.L = interpol(L, λ, domain[1])
+    return fill(NaN, length(domain))
 end
 
 
-function evaluate(buffer, comp::ironopt, domain::Domain{1}, cdata,
-                  norm)
-    buffer .= norm .* cdata.L
+function evaluate!(buffer, comp::ironopt, domain::Domain{1},
+                   norm)
+    buffer .= norm .* comp.L
 end
 
 ironopt_broad( fwhm) = ironopt(qsfit_data() * "/VC2004/TabA1", fwhm)

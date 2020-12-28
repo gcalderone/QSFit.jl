@@ -3,7 +3,7 @@ module QSFit
 export interpol, QSO, Spectrum, add_spec!, fit, multiepoch_fit
 
 import GFit: Domain, CompEval,
-    Parameter, AbstractComponent, compeval_cdata, evaluate, fit!
+    Parameter, AbstractComponent, prepare!, evaluate!, fit!
 
 using CMPFit, GFit
 using Pkg, Pkg.Artifacts
