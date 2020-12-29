@@ -44,6 +44,7 @@ struct QSO{T <: AbstractRecipe}
     cosmo::Cosmology.AbstractCosmology
     flux2lum::Float64
     log::IO
+    spectra::Vector{Spectrum}
     domain::Vector{GFit.Domain{1}}
     data::Vector{GFit.Measures{1}}
     line_names::Vector{OrderedDict{Symbol, Symbol}}
@@ -70,6 +71,7 @@ struct QSO{T <: AbstractRecipe}
             end
         end
         return new{T}(string(name), float(z), float(ebv), cosmo, flux2lum, log,
+                      Vector{Spectrum}(),
                       Vector{GFit.Domain{1}}(), Vector{GFit.Measures{1}}(),
                       Vector{OrderedDict{Symbol, AbstractComponent}}(),
                       Vector{OrderedDict{Symbol, AbstractComponent}}(),
@@ -193,6 +195,7 @@ function add_spec!(source::QSO, data::Spectrum)
                    data.err[ ii] .* dered[ii] .* source.flux2lum .* (1 + source.z))
     lum.meta[:label] = data.label
 
+    push!(source.spectra, data)
     push!(source.domain, dom)
     push!(source.data, lum)
     push!(source.line_names, line_names)
