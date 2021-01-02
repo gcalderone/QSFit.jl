@@ -35,12 +35,11 @@ function maxvalue(comp::SpecLineLorentz)
     return ceval.buffer[1]
 end
 
-function evaluate!(buffer, comp::SpecLineLorentz, domain::Domain{1},
+function evaluate!(buffer, comp::SpecLineLorentz, x::Domain{1},
                    norm, center, fwhm, voff)
     buffer[comp.index] .= 0.
     empty!(comp.index)
 
-    x = domain[1]
     x0 = center - (voff / 3.e5) * center
     hwhm = fwhm / 3.e5 * center / 2  # Note: this is in `center` units
 
@@ -57,5 +56,5 @@ end
     comp.fwhm.val = 3e4
     ceval = GFit.CompEval(comp, x)
     GFit.evaluate_cached(ceval)
-    @gp x[1] ceval.buffer ./ maximum(ceval.buffer) "w l"
+    @gp x ceval.buffer ./ maximum(ceval.buffer) "w l"
 =#

@@ -38,12 +38,11 @@ function maxvalue(comp::SpecLineAsymmGauss)
     return ceval.buffer[1]
 end
 
-function evaluate!(buffer, comp::SpecLineAsymmGauss, domain::Domain{1},
+function evaluate!(buffer, comp::SpecLineAsymmGauss, x::Domain{1},
                    norm, center, fwhm, voff, asymm)
     buffer[comp.index] .= 0.
     empty!(comp.index)
 
-    x = domain[1]
     x0 = center - (voff / 3.e5) * center
     hwhm = fwhm / 3.e5 * center / 2  # Note: this is in `center` units
 
@@ -63,5 +62,5 @@ end
     comp.asymm.val = 1
     ceval = GFit.CompEval(comp, x)
     GFit.evaluate_cached(ceval)
-    @gp x[1] ceval.buffer ./ maximum(ceval.buffer) "w l"
+    @gp x ceval.buffer ./ maximum(ceval.buffer) "w l"
 =#

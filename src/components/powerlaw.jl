@@ -18,8 +18,7 @@ mutable struct powerlaw <: AbstractComponent
     end
 end
 
-function evaluate!(buffer, comp::powerlaw, domain::Domain{1},
+function evaluate!(buffer, comp::powerlaw, x::Domain{1},
                    norm, x0, alpha)
-    x = domain[1]
     buffer .= norm .* (x ./ x0).^alpha
 end

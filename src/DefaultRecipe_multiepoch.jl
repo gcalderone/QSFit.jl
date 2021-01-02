@@ -17,7 +17,7 @@ function multiepoch_fit(source::QSO{TRecipe}; ref_id=1) where TRecipe <: Default
     println(source.log, "\nFit continuum components...")
     preds = Vector{Prediction}()
     for id in 1:Nspec
-        λ = source.domain[id][1]
+        λ = source.domain[id][:]
         pred = Prediction(source.domain[id], :Continuum => Reducer(sum, [:qso_cont]),
                           :qso_cont => QSFit.qso_cont_component(TRecipe))
         push!(preds, pred)
@@ -27,7 +27,7 @@ function multiepoch_fit(source::QSO{TRecipe}; ref_id=1) where TRecipe <: Default
     model = Model(preds)
 
     for id in 1:Nspec
-        λ = source.domain[id][1]
+        λ = source.domain[id][:]
 
         # Host galaxy template
         if source.options[:use_host_template]
@@ -119,7 +119,7 @@ function multiepoch_fit(source::QSO{TRecipe}; ref_id=1) where TRecipe <: Default
     line_groups = [unique(collect(values(source.line_names[id]))) for id in 1:Nspec]
     println(source.log, "\nFit known emission lines...")
     for id in 1:Nspec
-        λ = source.domain[id][1]
+        λ = source.domain[id][:]
 
         add!(model[id], source.line_comps[id])
         for (group, lnames) in invert_dictionary(source.line_names[id])
@@ -217,7 +217,7 @@ function multiepoch_fit(source::QSO{TRecipe}; ref_id=1) where TRecipe <: Default
     # Set "unknown" line center wavelength where there is a maximum in
     # the fit residuals, and re-run a fit.
     for id in 1:Nspec
-        λ = source.domain[id][1]
+        λ = source.domain[id][:]
         λunk = Vector{Float64}()
         while true
             (length(λunk) >= source.options[:n_unk])  &&  break

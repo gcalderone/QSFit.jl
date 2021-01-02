@@ -53,7 +53,7 @@ function prepare!(comp::ironuv, domain::Domain{1})
 
     conv = real.(ifft(fft(logL) .* fft(kernel)))
     conv = [conv[div(length(conv), 2):end]; conv[1:div(length(conv), 2)-1]]
-    comp.L = interpol(conv, 10 .^logλ, domain[1])
+    comp.L = interpol(conv, 10 .^logλ, domain[:])
     return fill(NaN, length(domain))
 end
 

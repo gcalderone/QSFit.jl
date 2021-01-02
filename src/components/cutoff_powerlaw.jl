@@ -24,9 +24,8 @@ mutable struct cutoff_powerlaw <: AbstractComponent
 end
 
 
-function evaluate!(buffer, comp::cutoff_powerlaw, domain::Domain{1},
+function evaluate!(buffer, comp::cutoff_powerlaw, x::Domain{1},
                    norm, x0, alpha, beta)
-    x = domain[1]
     if alpha * beta < 0
         @warn "alpha and beta should have the same sign"
     end        

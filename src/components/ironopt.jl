@@ -52,7 +52,7 @@ function prepare!(comp::ironopt, domain::Domain{1})
         L .+= A0[ii] .* gauss(λ, λ0[ii], σ0 * λ0[ii])
     end
     L ./= sum(A0)
-    comp.L = interpol(L, λ, domain[1])
+    comp.L = interpol(L, λ, domain[:])
     return fill(NaN, length(domain))
 end
 

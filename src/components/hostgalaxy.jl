@@ -18,7 +18,7 @@ function prepare!(comp::hostgalaxy, domain::Domain{1})
     d = readdlm(qsfit_data() * "/swire/" * comp.template * "_template_norm.sed")
     @assert typeof(d) == Matrix{Float64}
     itp = interpolate((d[:,1],), d[:,2], Gridded(Linear()))
-    comp.base = collect(itp(domain[1]))
+    comp.base = collect(itp(domain[:]))
     comp.base ./= itp(5500.)
     return fill(NaN, length(domain))
 end

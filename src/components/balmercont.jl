@@ -132,8 +132,8 @@ function prepare!(comp::balmercont, domain::Domain{1})
     (λ1, c1, contAtEdge) = eval_balmer_continuum(T, Tau, fwhm)
     (λ2, c2) = eval_balmer_pseudocont(T, Ne, fwhm)
     c2 .*= contAtEdge
-    comp.c1 = interpol(c1, λ1, domain[1], allow_extrapolations=true)
-    comp.c2 = interpol(c2, λ2, domain[1], allow_extrapolations=true)
+    comp.c1 = interpol(c1, λ1, domain[:], allow_extrapolations=true)
+    comp.c2 = interpol(c2, λ2, domain[:], allow_extrapolations=true)
     comp.c1[findall(comp.c1 .< 0.)] .= 0.
     comp.c2[findall(comp.c2 .< 0.)] .= 0.
     return fill(NaN, length(domain))

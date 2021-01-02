@@ -137,7 +137,7 @@ function fit(source::QSO{TRecipe}; id=1) where TRecipe <: DefaultRecipe
 
     # Initialize components and guess initial values
     println(source.log, "\nFit continuum components...")
-    λ = source.domain[id][1]
+    λ = source.domain[id][:]
     model = Model(source.domain[id], :Continuum => Reducer(sum, [:qso_cont]),
                   :qso_cont => QSFit.qso_cont_component(TRecipe))
     c = model[:qso_cont]
