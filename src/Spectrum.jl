@@ -9,7 +9,7 @@ unit_lum_density() = unit_lum() / unit_λ()
 
 scale_λ() = 1.
 scale_flux() = 1.e-17
-scale_lum() =  1.e42
+scale_lum() = 1.e42
 
 struct Spectrum
     label::String
