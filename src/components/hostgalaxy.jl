@@ -7,7 +7,12 @@ mutable struct hostgalaxy <: AbstractComponent
     base::Vector{Float64}
 
     function hostgalaxy(template::String)
-        out = new(Parameter(1), template, Vector{Float64}())
+        filename = qsfit_data() * "/swire/" * template * "_template_norm.sed"
+        if !isfile(filename)
+            filename = template
+        end
+        @assert isfile(filename) "File $filename do not exists"
+        out = new(Parameter(1), filename, Vector{Float64}())
         out.norm.val = 1
         out.norm.low = 0
         return out
@@ -15,7 +20,7 @@ mutable struct hostgalaxy <: AbstractComponent
 end
 
 function prepare!(comp::hostgalaxy, domain::Domain{1})
-    d = readdlm(qsfit_data() * "/swire/" * comp.template * "_template_norm.sed")
+    d = readdlm(comp.template, comments=true)
     @assert typeof(d) == Matrix{Float64}
     itp = interpolate((d[:,1],), d[:,2], Gridded(Linear()))
     comp.base = collect(itp(domain[:]))

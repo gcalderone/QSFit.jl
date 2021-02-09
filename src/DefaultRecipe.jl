@@ -174,15 +174,18 @@ function fit(source::QSO{TRecipe}; id=1) where TRecipe <: DefaultRecipe
     # QSO continuum renormalization
     freeze(model, :qso_cont)
     c = model[:qso_cont]
-    println(source.log, "Cont. norm. (before): ", c.norm.val)
-    while true
-        residuals = (model() - source.data[id].val) ./ source.data[id].unc
-        (count(residuals .< 0) / length(residuals) > 0.9)  &&  break
-        c.norm.val *= 0.99
-        evaluate!(model)
+    if c.norm.val > 0
+        println(source.log, "Cont. norm. (before): ", c.norm.val)
+        while true
+            residuals = (model() - source.data[id].val) ./ source.data[id].unc
+            (count(residuals .< 0) / length(residuals) > 0.9)  &&  break
+            c.norm.val *= 0.99
+            evaluate!(model)
+        end
+        println(source.log, "Cont. norm. (after) : ", c.norm.val)
+    else
+        println(source.log, "Skipping cont. renormalization")
     end
-    println(source.log, "Cont. norm. (after) : ", c.norm.val)
-
     freeze(model, :qso_cont)
     source.options[:use_host_template]  &&  freeze(model, :galaxy)
     source.options[:use_balmer]         &&  freeze(model, :balmer)
