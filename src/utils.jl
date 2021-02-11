@@ -56,7 +56,7 @@ function spectral_coverage(spec_λ, resolution, comp::ironuv; kw...)
 end
 
 function spectral_coverage(spec_λ, resolution, comp::ironopt; kw...)
-    rr = extrema(QSFit.ironopt_read(comp.file)[:, :wavelength])
+    rr = extrema(QSFit.ironopt_read(comp.file)[:wavelength])
     return spectral_coverage(spec_λ, resolution, mean(rr), rr[2]-rr[1]; kw...)
 end
 
