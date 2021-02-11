@@ -72,7 +72,7 @@ function eval_balmer_pseudocont(Temp, Ne, fwhm)
     for i in 1:length(wave)
         cont += norm[i] * gauss.(λ, wave[i], σ[i])
     end
-    cont ./= interpol(cont, λ, edge)
+    cont ./= Spline1D(λ, cont, k=1, bc="error")(edge)
     return (λ, cont)
 end
 
@@ -101,8 +101,8 @@ function eval_balmer_continuum(Temp, Tau, fwhm)
     cont = convol(cont, kernel)
 
     # Normalize Balmer continuum at 3000A
-    cont ./= interpol(cont, λ, 3000., allow_extrapolations=true)
-    contAtEdge = interpol(cont, λ, edge, allow_extrapolations=true)
+    cont ./=     Spline1D(λ, cont, k=1, bc="extrapolate")(3000.)
+    contAtEdge = Spline1D(λ, cont, k=1, bc="extrapolate")(3000.)
     return (λ, cont, contAtEdge)
 end
 
@@ -132,8 +132,8 @@ function prepare!(comp::balmercont, domain::Domain{1})
     (λ1, c1, contAtEdge) = eval_balmer_continuum(T, Tau, fwhm)
     (λ2, c2) = eval_balmer_pseudocont(T, Ne, fwhm)
     c2 .*= contAtEdge
-    comp.c1 = interpol(c1, λ1, domain[:], allow_extrapolations=true)
-    comp.c2 = interpol(c2, λ2, domain[:], allow_extrapolations=true)
+    comp.c1 = Spline1D(λ1, c1, k=1, bc="extrapolate")(domain[:])
+    comp.c2 = Spline1D(λ2, c2, k=1, bc="extrapolate")(domain[:])
     comp.c1[findall(comp.c1 .< 0.)] .= 0.
     comp.c2[findall(comp.c2 .< 0.)] .= 0.
     return fill(NaN, length(domain))

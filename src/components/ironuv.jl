@@ -11,11 +11,11 @@ function ironuv_read()
     lmin, lmax = extrema([ia[:,1]; ib[:,1]; i34[:,1]; i47[:,1]; i191[:,1]])
 
     λ = lmin:(ia[2,1]-ia[1,1]):lmax
-    ia   = interpol(  ia[:,2],   ia[:,1], λ)
-    ib   = interpol(  ib[:,2],   ib[:,1], λ)
-    i34  = interpol( i34[:,2],  i34[:,1], λ)
-    i47  = interpol( i47[:,2],  i47[:,1], λ)
-    i191 = interpol(i191[:,2], i191[:,1], λ)
+    ia   = Spline1D(  ia[:,1],   ia[:,2], k=1, bc="zero")(λ)
+    ib   = Spline1D(  ib[:,1],   ib[:,2], k=1, bc="zero")(λ)
+    i34  = Spline1D( i34[:,1],  i34[:,2], k=1, bc="zero")(λ)
+    i47  = Spline1D( i47[:,1],  i47[:,2], k=1, bc="zero")(λ)
+    i191 = Spline1D(i191[:,1], i191[:,2], k=1, bc="zero")(λ)
 
     L = ib .+ i47 .+ i191
     L ./= sum(L .* (λ[2] - λ[1]))
@@ -47,13 +47,13 @@ function prepare!(comp::ironuv, domain::Domain{1})
     lmax += 100
 
     logλ = collect(log10(lmin):log10(lmax/(lmax-σ0*lmax)):log10(lmax))
-    logL = interpol(L, λ, 10 .^logλ)
+    logL = Spline1D(λ, L, k=1, bc="error")(10 .^logλ)
     σ = sqrt(comp.fwhm^2. - 900^2) / 2.35 / 3.e5
     kernel = gauss(logλ, mean(logλ), σ)
 
     conv = real.(ifft(fft(logL) .* fft(kernel)))
     conv = [conv[div(length(conv), 2):end]; conv[1:div(length(conv), 2)-1]]
-    comp.L = interpol(conv, 10 .^logλ, domain[:])
+    comp.L = Spline1D(10 .^logλ, conv, k=1, bc="error")(domain[:])
     return fill(NaN, length(domain))
 end
 

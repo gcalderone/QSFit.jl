@@ -22,7 +22,8 @@ function multiepoch_fit(source::QSO{TRecipe}; ref_id=1) where TRecipe <: Default
                           :qso_cont => QSFit.qso_cont_component(TRecipe))
         push!(preds, pred)
         c = pred[:qso_cont]
-        c.norm.val = interpol(source.data[id].val, λ, c.x0.val)
+        c.x0.val = median(λ)
+        c.norm.val = Spline1D(λ, source.data[id].val, k=1, bc="error")(c.x0.val)
     end
     model = Model(preds)
 
@@ -33,7 +34,7 @@ function multiepoch_fit(source::QSO{TRecipe}; ref_id=1) where TRecipe <: Default
         if source.options[:use_host_template]
             add!(model[id], :Continuum => Reducer(sum, [:qso_cont, :galaxy]),
                  :galaxy => QSFit.hostgalaxy(source.options[:host_template]))
-            model[id][:galaxy].norm.val = interpol(source.data[id].val, λ, 5500)
+            model[id][:galaxy].norm.val = Spline1D(λ, source.data[id].val, k=1, bc="error")(5500.)
         end
 
         # Balmer continuum and pseudo-continuum
@@ -87,20 +88,37 @@ function multiepoch_fit(source::QSO{TRecipe}; ref_id=1) where TRecipe <: Default
     # Fit iron templates
     println(source.log, "\nFit iron templates...")
     for id in 1:Nspec
+        λ = source.domain[id][:]
+
         iron_components = Vector{Symbol}()
         if source.options[:use_ironuv]
-            add!(model[id], :ironuv => QSFit.ironuv(3000))
-            model[id][:ironuv].norm.val = 0.5
-            push!(iron_components, :ironuv)
+            comp = QSFit.ironuv(3000)
+            (_1, _2, coverage) = spectral_coverage(λ, source.spectra[id].resolution, comp)
+            threshold = get(source.options[:min_spectral_coverage], :ironuv, source.options[:min_spectral_coverage][:default])
+            if coverage >= threshold
+                add!(model[id], :ironuv => comp)
+                model[:ironuv].norm.val = 0.5
+                push!(iron_components, :ironuv)
+            else
+                println(source.log, "Ignoring ironuv component on prediction $id (threshold: $threshold)")
+            end
         end
+
         if source.options[:use_ironopt]
-            add!(model[id],
-                 :ironoptbr => QSFit.ironopt_broad(3000),
-                 :ironoptna => QSFit.ironopt_narrow(500))
-            model[id][:ironoptbr].norm.val = 0.5
-            model[id][:ironoptna].norm.val = 0.0
-            freeze(model[id], :ironoptna)  # will be freed during last run
-            push!(iron_components, :ironoptbr, :ironoptna)
+            comp = QSFit.ironopt_broad(3000)
+            (_1, _2, coverage) = spectral_coverage(λ, source.spectra[id].resolution, comp)
+            threshold = get(source.options[:min_spectral_coverage], :ironopt, source.options[:min_spectral_coverage][:default])
+            if coverage >= threshold
+                add!(model[id],
+                     :ironoptbr => comp,
+                     :ironoptna => QSFit.ironopt_narrow(500))
+                model[id][:ironoptbr].norm.val = 0.5
+                model[id][:ironoptna].norm.val = 0.0
+                freeze(model[id], :ironoptna)  # will be freed during last run
+                push!(iron_components, :ironoptbr, :ironoptna)
+            else
+                println(source.log, "Ignoring ironopt component on prediction $id (threshold: $threshold)")
+            end
         end
         if length(iron_components) > 0
             add!(model[id], :Iron => Reducer(sum, iron_components))
@@ -111,9 +129,9 @@ function multiepoch_fit(source::QSO{TRecipe}; ref_id=1) where TRecipe <: Default
             add!(model[id], :Iron => Reducer(() -> [0.], Symbol[]))
             add!(model[id], :main => Reducer(sum, [:Continuum, :Iron]))
         end
-        source.options[:use_ironuv]   &&  freeze(model[id], :ironuv)
-        source.options[:use_ironopt]  &&  freeze(model[id], :ironoptbr)
-        source.options[:use_ironopt]  &&  freeze(model[id], :ironoptna)
+        (:ironuv    in keys(model[id]))  &&  freeze(model[id], :ironuv)
+        (:ironoptbr in keys(model[id]))  &&  freeze(model[id], :ironoptbr)
+        (:ironoptna in keys(model[id]))  &&  freeze(model[id], :ironoptna)
     end
     evaluate!(model)
 
@@ -147,7 +165,7 @@ function multiepoch_fit(source::QSO{TRecipe}; ref_id=1) where TRecipe <: Default
         y = source.data[id].val - model[id]()
         for cname in line_names[id]
             c = model[id][cname]
-            yatline = interpol(y, λ, c.center.val)
+            yatline = Spline1D(λ, y, k=1, bc="error")(c.center.val)
             c.norm.val = 1.
             c.norm.val = abs(yatline) / QSFit.maxvalue(model[id][cname])
         end
@@ -307,9 +325,9 @@ function multiepoch_fit(source::QSO{TRecipe}; ref_id=1) where TRecipe <: Default
         thaw(model[id], :qso_cont)
         source.options[:use_host_template]  &&  thaw(model[id], :galaxy)
         source.options[:use_balmer]         &&  thaw(model[id], :balmer)
-        source.options[:use_ironuv]         &&  thaw(model[id], :ironuv)
-        source.options[:use_ironopt]        &&  thaw(model[id], :ironoptbr)
-        source.options[:use_ironopt]        &&  thaw(model[id], :ironoptna)
+        (:ironuv    in keys(model[id]))     &&  thaw(model[id], :ironuv)
+        (:ironoptbr in keys(model[id]))     &&  thaw(model[id], :ironoptbr)
+        (:ironoptna in keys(model[id]))     &&  thaw(model[id], :ironoptna)
 
         for lname in line_names[id]
             thaw(model[id], lname)

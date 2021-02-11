@@ -29,24 +29,6 @@ function convol(v, _k)
 end
 
 
-function interpol(y, x, newX; allow_extrapolations=false)
-    out = fill(0., length(newX))  # TODO: Initialize with NaN, not zero...
-    itp = interpolate((x,), y, Gridded(Linear()))
-    ii = findall(minimum(x) .<= newX .<= maximum(x))
-    out[ii] .= itp(newX[ii])
-
-    if allow_extrapolations
-        etp = extrapolate(itp, Interpolations.Line())
-        ii = findall(newX .< minimum(x))
-        out[ii] .= etp(newX[ii])
-        ii = findall(maximum(x) .< newX)
-        out[ii] .= etp(newX[ii])
-    end
-    return out
-end
-interpol(y, x, newX::Real; kw...) = interpol(y, x, [newX]; kw...)[1]
-
-
 function estimate_fwhm(λ, f)
     i = argmax(f)
     maxv = f[i]
@@ -57,19 +39,31 @@ function estimate_fwhm(λ, f)
 end
 
 
-function estimate_area(λ, f, from=nothing, to=nothing)
-    isnothing(from)  &&  (from = λ[1])
-    isnothing(to  )  &&  (to   = λ[end])
-    itp = interpolate((λ,), f, Gridded(Linear()));
-    return quadgk(itp, from, to)
+function int_tabulated(λ, f; int_k=3)
+    @assert issorted(λ)
+    itp = Spline1D(λ, f, k=int_k, bc="error")
+    return quadgk(itp, λ[1], λ[end])
 end
 
 
-spectral_coverage(spec_λ, resolution, line::Union{SpecLineGauss, SpecLineAsymmGauss, SpecLineLorentz} ; kw...) =
+spectral_coverage(spec_λ, resolution, line::Union{SpecLineGauss, SpecLineAsymmGauss, SpecLineLorentz}; kw...) =
     spectral_coverage(spec_λ, resolution, line.center.val, line.center.val * line.fwhm.val / 3.e5; kw...)
+
+
+function spectral_coverage(spec_λ, resolution, comp::ironuv; kw...)
+    rr = extrema(ironuv_read()[1])
+    return spectral_coverage(spec_λ, resolution, mean(rr), rr[2]-rr[1]; kw...)
+end
+
+function spectral_coverage(spec_λ, resolution, comp::ironopt; kw...)
+    rr = extrema(QSFit.ironopt_read(comp.file)[:, :wavelength])
+    return spectral_coverage(spec_λ, resolution, mean(rr), rr[2]-rr[1]; kw...)
+end
+
 
 function spectral_coverage(spec_λ::Vector{Float64}, resolution::Float64,
                            center_λ::Float64, span_λ::Float64; min_steps::Int=5)
+
     # Identify min/max wavelengths
     λmin = center_λ - span_λ / 2.
     λmax = center_λ + span_λ / 2.

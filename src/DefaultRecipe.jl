@@ -141,13 +141,14 @@ function fit(source::QSO{TRecipe}; id=1) where TRecipe <: DefaultRecipe
     model = Model(source.domain[id], :Continuum => Reducer(sum, [:qso_cont]),
                   :qso_cont => QSFit.qso_cont_component(TRecipe))
     c = model[:qso_cont]
-    c.norm.val = interpol(source.data[id].val, λ, c.x0.val)
+    c.x0.val = median(λ)
+    c.norm.val = Spline1D(λ, source.data[id].val, k=1, bc="error")(c.x0.val)
 
     # Host galaxy template
     if source.options[:use_host_template]
         add!(model, :Continuum => Reducer(sum, [:qso_cont, :galaxy]),
              :galaxy => QSFit.hostgalaxy(source.options[:host_template]))
-        model[:galaxy].norm.val = interpol(source.data[id].val, λ, 5500)
+        model[:galaxy].norm.val = Spline1D(λ, source.data[id].val, k=1, bc="error")(5500.)
     end
 
     # Balmer continuum and pseudo-continuum
@@ -195,18 +196,33 @@ function fit(source::QSO{TRecipe}; id=1) where TRecipe <: DefaultRecipe
     println(source.log, "\nFit iron templates...")
     iron_components = Vector{Symbol}()
     if source.options[:use_ironuv]
-        add!(model, :ironuv => QSFit.ironuv(3000))
-        model[:ironuv].norm.val = 0.5
-        push!(iron_components, :ironuv)
+        comp = QSFit.ironuv(3000)
+        (_1, _2, coverage) = spectral_coverage(λ, source.spectra[1].resolution, comp)
+        threshold = get(source.options[:min_spectral_coverage], :ironuv, source.options[:min_spectral_coverage][:default])
+        if coverage >= threshold
+            add!(model, :ironuv => comp)
+            model[:ironuv].norm.val = 0.5
+            push!(iron_components, :ironuv)
+        else
+            println(source.log, "Ignoring ironuv component (threshold: $threshold)")
+        end
     end
+
     if source.options[:use_ironopt]
-        add!(model,
-             :ironoptbr => QSFit.ironopt_broad(3000),
-             :ironoptna => QSFit.ironopt_narrow(500))
-        model[:ironoptbr].norm.val = 0.5
-        model[:ironoptna].norm.val = 0.0
-        freeze(model, :ironoptna)  # will be freed during last run
-        push!(iron_components, :ironoptbr, :ironoptna)
+        comp = QSFit.ironopt_broad(3000)
+        (_1, _2, coverage) = spectral_coverage(λ, source.spectra[1].resolution, comp)
+        threshold = get(source.options[:min_spectral_coverage], :ironopt, source.options[:min_spectral_coverage][:default])
+        if coverage >= threshold
+            add!(model,
+                 :ironoptbr => comp,
+                 :ironoptna => QSFit.ironopt_narrow(500))
+            model[:ironoptbr].norm.val = 0.5
+            model[:ironoptna].norm.val = 0.0
+            freeze(model, :ironoptna)  # will be freed during last run
+            push!(iron_components, :ironoptbr, :ironoptna)
+        else
+            println(source.log, "Ignoring ironopt component (threshold: $threshold)")
+        end
     end
     if length(iron_components) > 0
         add!(model, :Iron => Reducer(sum, iron_components))
@@ -217,9 +233,9 @@ function fit(source::QSO{TRecipe}; id=1) where TRecipe <: DefaultRecipe
         add!(model, :Iron => Reducer(() -> [0.], Symbol[]))
         add!(model, :main => Reducer(sum, [:Continuum, :Iron]))
     end
-    source.options[:use_ironuv]   &&  freeze(model, :ironuv)
-    source.options[:use_ironopt]  &&  freeze(model, :ironoptbr)
-    source.options[:use_ironopt]  &&  freeze(model, :ironoptna)
+    (:ironuv    in keys(model))  &&  freeze(model, :ironuv)
+    (:ironoptbr in keys(model))  &&  freeze(model, :ironoptbr)
+    (:ironoptna in keys(model))  &&  freeze(model, :ironoptna)
     evaluate!(model)
 
     # Add emission lines
@@ -249,7 +265,7 @@ function fit(source::QSO{TRecipe}; id=1) where TRecipe <: DefaultRecipe
     y = source.data[id].val - model()
     for cname in line_names
         c = model[cname]
-        yatline = interpol(y, λ, c.center.val)
+        yatline = Spline1D(λ, y, k=1, bc="error")(c.center.val)
         c.norm.val = 1.
         c.norm.val = abs(yatline) / QSFit.maxvalue(model[cname])
     end
@@ -350,9 +366,9 @@ function fit(source::QSO{TRecipe}; id=1) where TRecipe <: DefaultRecipe
     thaw(model, :qso_cont)
     source.options[:use_host_template]  &&  thaw(model, :galaxy)
     source.options[:use_balmer]         &&  thaw(model, :balmer)
-    source.options[:use_ironuv]         &&  thaw(model, :ironuv)
-    source.options[:use_ironopt]        &&  thaw(model, :ironoptbr)
-    source.options[:use_ironopt]        &&  thaw(model, :ironoptna)
+    (:ironuv    in keys(model))  &&  thaw(model, :ironuv)
+    (:ironoptbr in keys(model))  &&  thaw(model, :ironoptbr)
+    (:ironoptna in keys(model))  &&  thaw(model, :ironoptna)
 
     for lname in line_names
         thaw(model, lname)

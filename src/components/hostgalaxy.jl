@@ -22,8 +22,8 @@ end
 function prepare!(comp::hostgalaxy, domain::Domain{1})
     d = readdlm(comp.template, comments=true)
     @assert typeof(d) == Matrix{Float64}
-    itp = interpolate((d[:,1],), d[:,2], Gridded(Linear()))
-    comp.base = collect(itp(domain[:]))
+    itp = Spline1D(d[:,1], d[:,2], k=1, bc="error")
+    comp.base = itp(domain[:])
     comp.base ./= itp(5500.)
     return fill(NaN, length(domain))
 end

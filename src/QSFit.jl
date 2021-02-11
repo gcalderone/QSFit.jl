@@ -1,13 +1,13 @@
 module QSFit
 
-export interpol, QSO, Spectrum, add_spec!, fit, multiepoch_fit
+export QSO, Spectrum, add_spec!, fit, multiepoch_fit
 
 import GFit: Domain, CompEval,
     Parameter, AbstractComponent, prepare!, evaluate!, fit!
 
 using CMPFit, GFit
 using Pkg, Pkg.Artifacts
-using Statistics, DelimitedFiles, DataFrames, FFTW, Interpolations, QuadGK, Printf, DataStructures
+using Statistics, DelimitedFiles, DataFrames, FFTW, Dierckx, QuadGK, Printf, DataStructures
 using Unitful, UnitfulAstro
 
 # GFit.showsettings.showfixed = true
