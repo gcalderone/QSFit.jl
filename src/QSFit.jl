@@ -7,7 +7,7 @@ import GFit: Domain, CompEval,
 
 using CMPFit, GFit
 using Pkg, Pkg.Artifacts
-using Statistics, DelimitedFiles, DataFrames, FFTW, Dierckx, QuadGK, Printf, DataStructures
+using Statistics, DelimitedFiles, FFTW, Dierckx, QuadGK, Printf, DataStructures
 using Unitful, UnitfulAstro
 
 # GFit.showsettings.showfixed = true
