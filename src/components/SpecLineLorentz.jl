@@ -25,6 +25,10 @@ mutable struct SpecLineLorentz <: AbstractComponent
 end
 
 function prepare!(comp::SpecLineLorentz, domain::Domain{1})
+    resolution = get(domain.meta, :resolution, 0.)
+    if resolution != 0.
+        @warn "Instrument resolution is not yet implemented for Lorentz profile"
+    end
     comp.index = collect(1:length(domain))
     return fill(NaN, length(domain))
 end

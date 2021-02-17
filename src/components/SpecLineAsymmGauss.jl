@@ -28,6 +28,10 @@ mutable struct SpecLineAsymmGauss <: AbstractComponent
 end
 
 function prepare!(comp::SpecLineAsymmGauss, domain::Domain{1})
+    resolution = get(domain.meta, :resolution, 0.)
+    if resolution != 0.
+        @warn "Instrument resolution is not yet implemented for asymmetric Gaussian profile"
+    end
     comp.index = collect(1:length(domain))
     return fill(NaN, length(domain))
 end

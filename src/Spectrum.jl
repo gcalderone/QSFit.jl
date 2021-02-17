@@ -21,6 +21,7 @@ struct Spectrum
     meta::Dict{Symbol, Any}
     function Spectrum(λ::Vector{T}, flux::Vector{T}, err::Vector{T};
                       good::Union{Nothing, Vector{Bool}}=nothing,
+                      resolution=NaN,
                       label="") where T <: AbstractFloat
         if good == nothing
             good = fill(true, length(λ))
@@ -35,8 +36,13 @@ struct Spectrum
         ii = sortperm(λ)
         λ = λ[ii]
 
-        # Estimate average spectral resolution in km/s
-        resolution = median((λ[2:end] .- λ[1:end-1]) ./ ((λ[2:end] .+ λ[1:end-1]) ./ 2)) * 3e5
+        # Estimate sampling resolution in km/s
+        est_res = median((λ[2:end] .- λ[1:end-1]) ./ ((λ[2:end] .+ λ[1:end-1]) ./ 2)) * 3e5
+        if isnan(resolution)
+            @warn "Resolution is not provided, assuming it is equal to twice the sampling resolution..."
+            resolution = 2 * est_res
+        end
+        @assert est_res < resolution
 
         return new(label, λ, flux[ii], err[ii], good, resolution,
                    Dict{Symbol, Any}())
@@ -75,12 +81,12 @@ function Spectrum(::Val{:SDSS_DR10}, file::AbstractString; ndrop=100)
         good[end-ndrop+1:end] .= false
     end
     
-    out = Spectrum(λ, flux, sqrt.(1 ./ ivar), good=good, label=file)
+    out = Spectrum(λ, flux, sqrt.(1 ./ ivar), good=good, label=file, resolution=150.)  # TODO: Check resolution is correct
     return out
 end
 
 
-function Spectrum(::Val{:ASCII}, file::AbstractString; columns=[1,2,3])
+function Spectrum(::Val{:ASCII}, file::AbstractString; columns=[1,2,3], kw...)
     @assert length(columns) >= 2
     
     λ    = Vector{Float64}()
@@ -98,7 +104,7 @@ function Spectrum(::Val{:ASCII}, file::AbstractString; columns=[1,2,3])
         end
     end
     good = fill(true, length(λ))
-    out = Spectrum(λ, flux, unc, label=file)
+    out = Spectrum(λ, flux, unc, label=file; kw...)
     return out
 end
 

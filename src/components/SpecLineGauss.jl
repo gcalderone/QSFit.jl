@@ -7,7 +7,7 @@ mutable struct SpecLineGauss <: AbstractComponent
     fwhm::Parameter
     voff::Parameter
     index::Vector{Int}  # optimization
-    resolution::Float64
+    resolution::Float64 # km / s
 
     function SpecLineGauss(center::Number)
         out = new(Parameter(1),
@@ -28,6 +28,7 @@ mutable struct SpecLineGauss <: AbstractComponent
 end
 
 function prepare!(comp::SpecLineGauss, domain::Domain{1})
+    comp.resolution = get(domain.meta, :resolution, 0.)
     comp.index = collect(1:length(domain))
     return fill(NaN, length(domain))
 end

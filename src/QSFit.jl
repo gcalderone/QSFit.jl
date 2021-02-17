@@ -191,6 +191,7 @@ function add_spec!(source::QSO, data::Spectrum)
 
     ii = findall(data.good)
     dom = Domain(data.λ[ii] ./ (1 + source.z))
+    dom.meta[:resolution] = data.resolution
     lum = Measures(data.flux[ii] .* dered[ii] .* source.flux2lum .* (1 + source.z),
                    data.err[ ii] .* dered[ii] .* source.flux2lum .* (1 + source.z))
     lum.meta[:label] = data.label
