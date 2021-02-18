@@ -160,7 +160,7 @@ function fit(source::QSO{TRecipe}; id=1) where TRecipe <: DefaultRecipe
     # Balmer continuum and pseudo-continuum
     if source.options[:use_balmer]
         tmp = [:qso_cont, :balmer]
-        source.options[:use_host_template]  &&  push!(tmp, :galaxy)
+        (:galaxy in keys(model))  &&  push!(tmp, :galaxy)
         add!(model, :Continuum => Reducer(sum, tmp),
              :balmer => QSFit.balmercont(0.1, 0.5))
         c = model[:balmer]
@@ -194,8 +194,8 @@ function fit(source::QSO{TRecipe}; id=1) where TRecipe <: DefaultRecipe
         println(source.log, "Skipping cont. renormalization")
     end
     freeze(model, :qso_cont)
-    source.options[:use_host_template]  &&  freeze(model, :galaxy)
-    source.options[:use_balmer]         &&  freeze(model, :balmer)
+    (:galaxy in keys(model))  &&  freeze(model, :galaxy)
+    (:balmer in keys(model))  &&  freeze(model, :balmer)
     evaluate!(model)
 
     # Fit iron templates
@@ -386,8 +386,8 @@ function fit(source::QSO{TRecipe}; id=1) where TRecipe <: DefaultRecipe
     # Last run with all parameters free
     println(source.log, "\nLast run with all parameters free...")
     thaw(model, :qso_cont)
-    source.options[:use_host_template]  &&  thaw(model, :galaxy)
-    source.options[:use_balmer]         &&  thaw(model, :balmer)
+    (:galaxy in keys(model))     &&  thaw(model, :galaxy)
+    (:balmer in keys(model))     &&  thaw(model, :balmer)
     (:ironuv    in keys(model))  &&  thaw(model, :ironuv)
     (:ironoptbr in keys(model))  &&  thaw(model, :ironoptbr)
     (:ironoptna in keys(model))  &&  thaw(model, :ironoptna)

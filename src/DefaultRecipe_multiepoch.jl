@@ -45,7 +45,7 @@ function multiepoch_fit(source::QSO{TRecipe}; ref_id=1) where TRecipe <: Default
         # Balmer continuum and pseudo-continuum
         if source.options[:use_balmer]
             tmp = [:qso_cont, :balmer]
-            source.options[:use_host_template]  &&  push!(tmp, :galaxy)
+            (:galaxy in keys(model[id]))  &&  push!(tmp, :galaxy)
             add!(model[id], :Continuum => Reducer(sum, tmp),
                  :balmer => QSFit.balmercont(0.1, 0.5))
             c = model[id][:balmer]
@@ -85,8 +85,8 @@ function multiepoch_fit(source::QSO{TRecipe}; ref_id=1) where TRecipe <: Default
             println(source.log, "$id: Skipping cont. renormalization")
         end
         freeze(model[id], :qso_cont)
-        source.options[:use_host_template]  &&  freeze(model[id], :galaxy)
-        source.options[:use_balmer]         &&  freeze(model[id], :balmer)
+        (:galaxy in keys(model[id]))  &&  freeze(model[id], :galaxy)
+        (:balmer in keys(model[id]))  &&  freeze(model[id], :balmer)
     end
     evaluate!(model)
 
@@ -344,8 +344,8 @@ function multiepoch_fit(source::QSO{TRecipe}; ref_id=1) where TRecipe <: Default
     println(source.log, "\nLast run with all parameters free...")
     for id in 1:Nspec
         thaw(model[id], :qso_cont)
-        source.options[:use_host_template]  &&  thaw(model[id], :galaxy)
-        source.options[:use_balmer]         &&  thaw(model[id], :balmer)
+        (:galaxy in keys(model[id]))        &&  thaw(model[id], :galaxy)
+        (:balmer in keys(model[id]))        &&  thaw(model[id], :balmer)
         (:ironuv    in keys(model[id]))     &&  thaw(model[id], :ironuv)
         (:ironoptbr in keys(model[id]))     &&  thaw(model[id], :ironoptbr)
         (:ironoptna in keys(model[id]))     &&  thaw(model[id], :ironoptna)
