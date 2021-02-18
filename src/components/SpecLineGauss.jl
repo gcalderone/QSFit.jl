@@ -7,13 +7,14 @@ mutable struct SpecLineGauss <: AbstractComponent
     fwhm::Parameter
     voff::Parameter
     index::Vector{Int}  # optimization
+    spec_res_kms::Float64
 
     function SpecLineGauss(center::Number)
         out = new(Parameter(1),
                   Parameter(center),
                   Parameter(3000),
                   Parameter(0),
-                  Vector{Int}())
+                  Vector{Int}(), 0.)
 
         @assert center > 0
         out.norm.low = 0
@@ -42,9 +43,10 @@ function evaluate!(buffer, comp::SpecLineGauss, x::Domain{1},
     empty!(comp.index)
 
     x0 = center - (voff / 3.e5) * center
-    hwhm = fwhm / 3.e5 * center / 2  # Note: this is in `center` units
+    sigma_line = fwhm / 2.355      / 3.e5 * center
+    sigma_spec = comp.spec_res_kms / 3.e5 * center
+    sigma = sqrt(sigma_line^2 + sigma_spec^2)
 
-    sigma = hwhm / (2.355 / 2)
     X = (x .- x0) ./ sigma
     i = findall(abs.(X) .< 4)  # optimization
     append!(comp.index, i)

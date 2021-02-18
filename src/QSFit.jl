@@ -154,7 +154,7 @@ function add_spec!(source::QSO, data::Spectrum)
     if goodfraction(data) < 0.5
         error("Good fraction < 0.5")
     end
-    println(source.log, "  resolution: ~", @sprintf("%.4g", data.resolution), " km / s")
+    println(source.log, "  resolution: ", @sprintf("%.4g", data.resolution), " km / s")
 
     λ = data.λ ./ (1 + source.z)
     data.good[findall(λ .< source.options[:wavelength_range][1])] .= false

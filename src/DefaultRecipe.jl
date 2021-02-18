@@ -274,6 +274,22 @@ function fit(source::QSO{TRecipe}; id=1) where TRecipe <: DefaultRecipe
         yatline = Spline1D(λ, y, k=1, bc="error")(c.center.val)
         c.norm.val = 1.
         c.norm.val = abs(yatline) / QSFit.maxvalue(model[cname])
+
+        # If instrumental broadening is not used and the line profile
+        # is a Gaussian one take spectral resolution into account.
+        # This is significantly faster than convolving with an
+        # instrument response but has some limitations:
+        # - works only with Gaussian profiles;
+        # - all components must be additive (i.e. no absorptions)
+        # - further narrow components (besides known emission lines)
+        #   will not be corrected for instrumetal resolution
+        if !source.options[:instr_broadening]
+            if isa(c, SpecLineGauss)
+                c.spec_res_kms = source.spectra[1].resolution
+            else
+                println(source.log, "Line $cname is not a Gaussian profile: Can't take spectral resolution into account")
+            end
+        end
     end
 
     # Patch parameters
