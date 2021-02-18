@@ -6,6 +6,7 @@ version = "0.1.0"
 [deps]
 CMPFit = "a5944310-3432-5d93-8bb2-e3b5eb62a58f"
 Cosmology = "76746363-e552-5dba-9a5a-cef6fa9cc5ab"
+DSP = "717857b8-e6f2-59f4-9121-6e50c889abd2"
 DataStructures = "864edb3b-99cc-5e75-8d2d-829cb0a9cfe8"
 DelimitedFiles = "8bb1440f-4735-579b-a4ab-409b98df4dab"
 Dierckx = "39dd38d3-220a-591b-8e3c-4c3a8c710a94"

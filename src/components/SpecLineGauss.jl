@@ -7,15 +7,13 @@ mutable struct SpecLineGauss <: AbstractComponent
     fwhm::Parameter
     voff::Parameter
     index::Vector{Int}  # optimization
-    resolution::Float64 # km / s
 
     function SpecLineGauss(center::Number)
         out = new(Parameter(1),
                   Parameter(center),
                   Parameter(3000),
                   Parameter(0),
-                  Vector{Int}(),
-                  0.)
+                  Vector{Int}())
 
         @assert center > 0
         out.norm.low = 0
@@ -28,7 +26,6 @@ mutable struct SpecLineGauss <: AbstractComponent
 end
 
 function prepare!(comp::SpecLineGauss, domain::Domain{1})
-    comp.resolution = get(domain.meta, :resolution, 0.)
     comp.index = collect(1:length(domain))
     return fill(NaN, length(domain))
 end
@@ -45,7 +42,7 @@ function evaluate!(buffer, comp::SpecLineGauss, x::Domain{1},
     empty!(comp.index)
 
     x0 = center - (voff / 3.e5) * center
-    hwhm = sqrt(fwhm^2 + comp.resolution^2) / 3.e5 * center / 2  # Note: this is in `center` units
+    hwhm = fwhm / 3.e5 * center / 2  # Note: this is in `center` units
 
     sigma = hwhm / (2.355 / 2)
     X = (x .- x0) ./ sigma

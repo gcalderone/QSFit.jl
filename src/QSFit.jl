@@ -34,6 +34,7 @@ function default_options(::Type{T}) where T <: AbstractRecipe
     out[:wavelength_range] = [1215, 7.3e3]
     out[:min_spectral_coverage] = Dict{Symbol, Float64}(:default => 0.6)
     out[:skip_lines] = Vector{Symbol}()
+    out[:instr_broadening] = false
     return out
 end
 
@@ -191,7 +192,6 @@ function add_spec!(source::QSO, data::Spectrum)
 
     ii = findall(data.good)
     dom = Domain(data.λ[ii] ./ (1 + source.z))
-    dom.meta[:resolution] = data.resolution
     lum = Measures(data.flux[ii] .* dered[ii] .* source.flux2lum .* (1 + source.z),
                    data.err[ ii] .* dered[ii] .* source.flux2lum .* (1 + source.z))
     lum.meta[:label] = data.label

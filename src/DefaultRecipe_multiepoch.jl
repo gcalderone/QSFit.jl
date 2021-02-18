@@ -20,6 +20,11 @@ function multiepoch_fit(source::QSO{TRecipe}; ref_id=1) where TRecipe <: Default
         λ = source.domain[id][:]
         pred = Prediction(source.domain[id], :Continuum => Reducer(sum, [:qso_cont]),
                           :qso_cont => QSFit.qso_cont_component(TRecipe))
+
+        if source.options[:instr_broadening]
+            GFit.set_instr_response!(pred, (l, f) -> instrumental_broadening(l, f, source.spectra[id].resolution))
+        end
+
         push!(preds, pred)
         c = pred[:qso_cont]
         c.x0.val = median(λ)

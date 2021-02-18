@@ -140,6 +140,11 @@ function fit(source::QSO{TRecipe}; id=1) where TRecipe <: DefaultRecipe
     λ = source.domain[id][:]
     model = Model(source.domain[id], :Continuum => Reducer(sum, [:qso_cont]),
                   :qso_cont => QSFit.qso_cont_component(TRecipe))
+
+    if source.options[:instr_broadening]
+        GFit.set_instr_response!(model[1], (l, f) -> instrumental_broadening(l, f, source.spectra[1].resolution))
+    end
+
     c = model[:qso_cont]
     c.x0.val = median(λ)
     c.norm.val = Spline1D(λ, source.data[id].val, k=1, bc="error")(c.x0.val)
