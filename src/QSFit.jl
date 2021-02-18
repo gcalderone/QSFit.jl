@@ -34,7 +34,6 @@ function default_options(::Type{T}) where T <: AbstractRecipe
     out[:wavelength_range] = [1215, 7.3e3]
     out[:min_spectral_coverage] = Dict{Symbol, Float64}(:default => 0.6)
     out[:skip_lines] = Vector{Symbol}()
-    out[:instr_broadening] = false
     return out
 end
 

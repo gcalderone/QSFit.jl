@@ -12,6 +12,7 @@ function default_options(::Type{T}) where T <: DefaultRecipe
     out[:use_ironopt] = true
     out[:n_unk] = 10
     out[:unk_avoid] = [4863 .+ [-1,1] .* 50, 6565 .+ [-1,1] .* 150]
+    out[:instr_broadening] = false
     return out
 end
 
