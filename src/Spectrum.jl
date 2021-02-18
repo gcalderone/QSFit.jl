@@ -114,6 +114,10 @@ goodfraction(d::Spectrum) = length(findall(d.good)) / length(d.good)
 
 
 function instrumental_broadening(λ, flux, σ_kms)
+    # In some case the main reducer may evaluate to a single value
+    # (rather than a vector)
+    (length(flux) == 1)  &&  (return flux)
+
     #=
     A regular log-λ grid is characterized by:
     log10(λ_i+1) - log10(λ_i)  =  log10(λ_i+1 / λ_i)  =  costant step
