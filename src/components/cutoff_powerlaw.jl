@@ -26,8 +26,5 @@ end
 
 function evaluate!(buffer, comp::cutoff_powerlaw, x::Domain{1},
                    norm, x0, alpha, beta)
-    if alpha * beta < 0
-        @warn "alpha and beta should have the same sign"
-    end        
     buffer .= norm .* (x ./ x0).^alpha .* exp.(1 .- ((x ./ x0) .^ beta))
 end
