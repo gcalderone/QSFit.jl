@@ -98,7 +98,7 @@ function multiepoch_fit(source::QSO{TRecipe}; ref_id=1) where TRecipe <: Default
         iron_components = Vector{Symbol}()
         if source.options[:use_ironuv]
             fwhm = 3000.
-            source.options[:instr_broadening]  ||  (fwhm = sqrt(fwhm^2 + source.spectra[id].resolution^2))
+            source.options[:instr_broadening]  ||  (fwhm = sqrt(fwhm^2 + (source.spectra[id].resolution * 2.355)^2))
             comp = QSFit.ironuv(fwhm)
             (_1, _2, coverage) = spectral_coverage(λ, source.spectra[id].resolution, comp)
             threshold = get(source.options[:min_spectral_coverage], :ironuv, source.options[:min_spectral_coverage][:default])
@@ -113,13 +113,13 @@ function multiepoch_fit(source::QSO{TRecipe}; ref_id=1) where TRecipe <: Default
 
         if source.options[:use_ironopt]
             fwhm = 3000.
-            source.options[:instr_broadening]  ||  (fwhm = sqrt(fwhm^2 + source.spectra[id].resolution^2))
+            source.options[:instr_broadening]  ||  (fwhm = sqrt(fwhm^2 + (source.spectra[id].resolution * 2.355)^2))
             comp = QSFit.ironopt_broad(fwhm)
             (_1, _2, coverage) = spectral_coverage(λ, source.spectra[id].resolution, comp)
             threshold = get(source.options[:min_spectral_coverage], :ironopt, source.options[:min_spectral_coverage][:default])
             if coverage >= threshold
                 fwhm = 500.
-                source.options[:instr_broadening]  ||  (fwhm = sqrt(fwhm^2 + source.spectra[id].resolution^2))
+                source.options[:instr_broadening]  ||  (fwhm = sqrt(fwhm^2 + (source.spectra[id].resolution * 2.355)^2))
                 add!(model[id],
                      :ironoptbr => comp,
                      :ironoptna => QSFit.ironopt_narrow(fwhm))

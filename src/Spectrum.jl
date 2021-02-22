@@ -117,5 +117,5 @@ function instrumental_broadening(λ, flux, σ_kms)
     # (rather than a vector)
     (length(flux) == 1)  &&  (return flux)
 
-    return conv_gauss_cont(λ, flux, σ_kms)
+    return conv_gauss(λ, flux, σ_kms)
 end

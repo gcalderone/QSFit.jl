@@ -39,7 +39,7 @@ end
 function prepare!(comp::ironuv, domain::Domain{1})
     @assert comp.fwhm > 900
     λ, L = ironuv_read()
-    L = QSFit.conv_gauss(λ, L, sqrt(comp.fwhm^2. - 900^2) / 2.35)
+    L = QSFit.conv_gauss(λ, L, sqrt(comp.fwhm^2. - 900^2) / 2.355)
     L ./= int_tabulated(λ, L)[1]
     comp.L = Spline1D(λ, L, k=1, bc="zero")(domain[:])
     return fill(NaN, length(domain))

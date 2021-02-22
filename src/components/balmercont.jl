@@ -68,7 +68,7 @@ function eval_balmer_pseudocont(Temp, Ne, fwhm)
     cont = fill(0., length(λ))       # Lum. density (arbitrary units)
     
     # Broadening of high order Balmer lines ==> pseudo-continuum
-    σ = (fwhm / 3.e5) .* wave ./ 2.35
+    σ = (fwhm / 3.e5) .* wave ./ 2.355
     for i in 1:length(wave)
         cont += norm[i] * gauss.(λ, wave[i], σ[i])
     end
@@ -93,7 +93,7 @@ function eval_balmer_continuum(Temp, Tau, fwhm)
     cont ./= maximum(cont)
 
     # Broadening
-    σ = fwhm / 3.e5 / 2.35 * edge
+    σ = fwhm / 3.e5 / 2.355 * edge
     σ = 2.51705 * 6 # TODO: this is to match IDL results, above formula is the correct one
     kernel = gauss(λ, mean(λ), σ)
     kernel = kernel[findall(kernel .> maximum(kernel) / 1e3)]
