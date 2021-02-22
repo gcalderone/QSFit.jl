@@ -143,7 +143,7 @@ function fit(source::QSO{TRecipe}; id=1) where TRecipe <: DefaultRecipe
                   :qso_cont => QSFit.qso_cont_component(TRecipe))
 
     if source.options[:instr_broadening]
-        GFit.set_instr_response!(model[1], (l, f) -> instrumental_broadening(l, f, source.spectra[1].resolution))
+        GFit.set_instr_response!(model[1], (l, f) -> instrumental_broadening(l, f, source.spectra[id].resolution))
     end
 
     c = model[:qso_cont]
@@ -202,8 +202,10 @@ function fit(source::QSO{TRecipe}; id=1) where TRecipe <: DefaultRecipe
     println(source.log, "\nFit iron templates...")
     iron_components = Vector{Symbol}()
     if source.options[:use_ironuv]
-        comp = QSFit.ironuv(3000)
-        (_1, _2, coverage) = spectral_coverage(λ, source.spectra[1].resolution, comp)
+        fwhm = 3000.
+        source.options[:instr_broadening]  ||  (fwhm = sqrt(fwhm^2 + source.spectra[id].resolution^2))
+        comp = QSFit.ironuv(fwhm)
+        (_1, _2, coverage) = spectral_coverage(λ, source.spectra[id].resolution, comp)
         threshold = get(source.options[:min_spectral_coverage], :ironuv, source.options[:min_spectral_coverage][:default])
         if coverage >= threshold
             add!(model, :ironuv => comp)
@@ -215,13 +217,17 @@ function fit(source::QSO{TRecipe}; id=1) where TRecipe <: DefaultRecipe
     end
 
     if source.options[:use_ironopt]
-        comp = QSFit.ironopt_broad(3000)
-        (_1, _2, coverage) = spectral_coverage(λ, source.spectra[1].resolution, comp)
+        fwhm = 3000.
+        source.options[:instr_broadening]  ||  (fwhm = sqrt(fwhm^2 + source.spectra[id].resolution^2))
+        comp = QSFit.ironopt_broad(fwhm)
+        (_1, _2, coverage) = spectral_coverage(λ, source.spectra[id].resolution, comp)
         threshold = get(source.options[:min_spectral_coverage], :ironopt, source.options[:min_spectral_coverage][:default])
         if coverage >= threshold
+            fwhm = 500.
+            source.options[:instr_broadening]  ||  (fwhm = sqrt(fwhm^2 + source.spectra[id].resolution^2))
             add!(model,
                  :ironoptbr => comp,
-                 :ironoptna => QSFit.ironopt_narrow(500))
+                 :ironoptna => QSFit.ironopt_narrow(fwhm))
             model[:ironoptbr].norm.val = 0.5
             model[:ironoptna].norm.val = 0.0
             freeze(model, :ironoptna)  # will be freed during last run
@@ -271,7 +277,7 @@ function fit(source::QSO{TRecipe}; id=1) where TRecipe <: DefaultRecipe
     y = source.data[id].val - model()
     for cname in line_names
         c = model[cname]
-        yatline = Spline1D(λ, y, k=1, bc="error")(c.center.val)
+        yatline = Spline1D(λ, y, k=1, bc="nearest")(c.center.val)
         c.norm.val = 1.
         c.norm.val = abs(yatline) / QSFit.maxvalue(model[cname])
 
@@ -285,7 +291,7 @@ function fit(source::QSO{TRecipe}; id=1) where TRecipe <: DefaultRecipe
         #   will not be corrected for instrumetal resolution
         if !source.options[:instr_broadening]
             if isa(c, SpecLineGauss)
-                c.spec_res_kms = source.spectra[1].resolution
+                c.spec_res_kms = source.spectra[id].resolution
             else
                 println(source.log, "Line $cname is not a Gaussian profile: Can't take spectral resolution into account")
             end

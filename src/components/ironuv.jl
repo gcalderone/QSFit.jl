@@ -39,21 +39,9 @@ end
 function prepare!(comp::ironuv, domain::Domain{1})
     @assert comp.fwhm > 900
     λ, L = ironuv_read()
-    σ0 = comp.fwhm / 2.35 / 3.e5
-    lmin, lmax = extrema(λ)
-    lmin -= 3 * σ0 * lmin
-    lmax += 3 * σ0 * lmax
-    lmin -= 100
-    lmax += 100
-
-    logλ = collect(log10(lmin):log10(lmax/(lmax-σ0*lmax)):log10(lmax))
-    logL = Spline1D(λ, L, k=1, bc="error")(10 .^logλ)
-    σ = sqrt(comp.fwhm^2. - 900^2) / 2.35 / 3.e5
-    kernel = gauss(logλ, mean(logλ), σ)
-
-    conv = real.(ifft(fft(logL) .* fft(kernel)))
-    conv = [conv[div(length(conv), 2):end]; conv[1:div(length(conv), 2)-1]]
-    comp.L = Spline1D(10 .^logλ, conv, k=1, bc="error")(domain[:])
+    L = QSFit.conv_gauss(λ, L, sqrt(comp.fwhm^2. - 900^2) / 2.35)
+    L ./= int_tabulated(λ, L)[1]
+    comp.L = Spline1D(λ, L, k=1, bc="zero")(domain[:])
     return fill(NaN, length(domain))
 end
 
@@ -62,4 +50,3 @@ function evaluate!(buffer, comp::ironuv, domain::Domain{1},
                    norm)
     buffer .= norm .* comp.L
 end
-

@@ -7,7 +7,7 @@ import GFit: Domain, CompEval,
 
 using CMPFit, GFit
 using Pkg, Pkg.Artifacts
-using Statistics, DelimitedFiles, FFTW, Dierckx, QuadGK, Printf, DataStructures
+using Statistics, DelimitedFiles, Dierckx, QuadGK, Printf, DataStructures
 using Unitful, UnitfulAstro
 
 # GFit.showsettings.showfixed = true
@@ -24,6 +24,7 @@ include("components/SpecLineGauss.jl")
 include("components/SpecLineAsymmGauss.jl")
 include("components/SpecLineLorentz.jl")
 include("utils.jl")
+include("convolutions.jl")
 include("Spectrum.jl")
 
 

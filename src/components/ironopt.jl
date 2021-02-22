@@ -52,19 +52,9 @@ function prepare!(comp::ironopt, domain::Domain{1})
     for (key, val) in df
         df[key] = val[ii]
     end
-    λ0 = df[:wavelength]
-    A0 = df[:wht]
 
-    σ0 = comp.fwhm / 2.35 / 3.e5
-    lmin, lmax = extrema(λ0)
-    lmin -= 3 * σ0 * lmin
-    lmax += 3 * σ0 * lmax
-    λ = collect(lmin:(σ0*lmin/5):lmax)
-    L = fill(0., length(λ))
-    for ii in 1:length(A0)
-        L .+= A0[ii] .* gauss(λ, λ0[ii], σ0 * λ0[ii])
-    end
-    L ./= sum(A0)
+    λ, L = delta_conv_gauss(df[:wavelength], df[:wht], comp.fwhm / 2.35)
+    L ./= int_tabulated(λ, L)[1]
     comp.L = Spline1D(λ, L, k=1, bc="zero")(domain[:])
     return fill(NaN, length(domain))
 end

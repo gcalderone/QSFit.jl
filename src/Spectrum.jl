@@ -112,58 +112,10 @@ end
 goodfraction(d::Spectrum) = length(findall(d.good)) / length(d.good)
 
 
-
 function instrumental_broadening(λ, flux, σ_kms)
     # In some case the main reducer may evaluate to a single value
     # (rather than a vector)
     (length(flux) == 1)  &&  (return flux)
 
-    #=
-    A regular log-λ grid is characterized by:
-    log10(λ_i+1) - log10(λ_i)  =  log10(λ_i+1 / λ_i)  =  costant step
-
-    hence:
-    λ_i+1 / λ_i  =  cost.
-    λ_i+1 / λ_i - 1  =  cost.
-    (λ_i+1 - λ_i) / λ_i  =  Δλ / λ  =  1/R   is constant ∀i
-
-    i.e. it has a constant spectral resolution given by:
-    R = c / σ_kms
-
-    The step of the grid is:
-    log10(σ_kms / c + 1)
-    =#
-    oversampling = 1
-    step = log10(σ_kms / 3e5 + 1) / oversampling
-
-    # Interpolate input flux on the regular log-λ grid with proper resolution
-    ll = 10. .^ range(log10(minimum(λ)), log10(maximum(λ)), step=step)
-    # check with: extrema([(ll[i+1] - ll[i]) / ll[i] * 3e5 for i in 1:length(ll)-1]) .* oversampling, σ_kms
-    ff = Spline1D(λ, flux, k=1)(ll)
-
-    # Instrument response
-    gauss(x; μ=0., σ=1.) = exp(-0.5 .* ((x .- μ) ./ σ).^2) ./ sqrt(2pi) ./ σ
-    response = gauss.(-5:1. / oversampling:5)
-
-    # Convolve model with instrument response
-    i1 = div(length(response), 2) + 1
-    i2 = i1 + length(ff) - 1
-    out = conv(ff, response)[i1:i2] ./ oversampling
-
-    # Interpolate back to original domain
-    out = Spline1D(ll, out, k=1, bc="extrapolate")(λ)
-
-    # Replace data close to the edges
-    ee = (1 + 2σ_kms / 3e5) * minimum(λ)
-    i = findall(λ  .< ee)
-    out[i] = Spline1D(ll, ff, k=1, bc="extrapolate")(λ[i])
-
-    ee = (1 - 2σ_kms / 3e5) * maximum(λ)
-    i = findall(λ  .> ee)
-    out[i] = Spline1D(ll, ff, k=1, bc="extrapolate")(λ[i])
-
-    # @gp    λ flux "w lp t 'Model'"
-    # @gp :- λ out  "w lp t 'Instrumental'"
-
-    return out
+    return conv_gauss_cont(λ, flux, σ_kms)
 end

@@ -97,7 +97,9 @@ function multiepoch_fit(source::QSO{TRecipe}; ref_id=1) where TRecipe <: Default
 
         iron_components = Vector{Symbol}()
         if source.options[:use_ironuv]
-            comp = QSFit.ironuv(3000)
+            fwhm = 3000.
+            source.options[:instr_broadening]  ||  (fwhm = sqrt(fwhm^2 + source.spectra[id].resolution^2))
+            comp = QSFit.ironuv(fwhm)
             (_1, _2, coverage) = spectral_coverage(λ, source.spectra[id].resolution, comp)
             threshold = get(source.options[:min_spectral_coverage], :ironuv, source.options[:min_spectral_coverage][:default])
             if coverage >= threshold
@@ -110,13 +112,17 @@ function multiepoch_fit(source::QSO{TRecipe}; ref_id=1) where TRecipe <: Default
         end
 
         if source.options[:use_ironopt]
-            comp = QSFit.ironopt_broad(3000)
+            fwhm = 3000.
+            source.options[:instr_broadening]  ||  (fwhm = sqrt(fwhm^2 + source.spectra[id].resolution^2))
+            comp = QSFit.ironopt_broad(fwhm)
             (_1, _2, coverage) = spectral_coverage(λ, source.spectra[id].resolution, comp)
             threshold = get(source.options[:min_spectral_coverage], :ironopt, source.options[:min_spectral_coverage][:default])
             if coverage >= threshold
+                fwhm = 500.
+                source.options[:instr_broadening]  ||  (fwhm = sqrt(fwhm^2 + source.spectra[id].resolution^2))
                 add!(model[id],
                      :ironoptbr => comp,
-                     :ironoptna => QSFit.ironopt_narrow(500))
+                     :ironoptna => QSFit.ironopt_narrow(fwhm))
                 model[id][:ironoptbr].norm.val = 0.5
                 model[id][:ironoptna].norm.val = 0.0
                 freeze(model[id], :ironoptna)  # will be freed during last run
@@ -170,7 +176,7 @@ function multiepoch_fit(source::QSO{TRecipe}; ref_id=1) where TRecipe <: Default
         y = source.data[id].val - model[id]()
         for cname in line_names[id]
             c = model[id][cname]
-            yatline = Spline1D(λ, y, k=1, bc="error")(c.center.val)
+            yatline = Spline1D(λ, y, k=1, bc="nearest")(c.center.val)
             c.norm.val = 1.
             c.norm.val = abs(yatline) / QSFit.maxvalue(model[id][cname])
 
