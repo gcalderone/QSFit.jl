@@ -5,7 +5,7 @@ mutable struct cutoff_powerlaw <: AbstractComponent
     norm::Parameter
     x0::Parameter
     alpha::Parameter
-    beta::Parameter
+    beta::Parameter # when beta is positive the cutoff affects x > x0 (and viceversa)
 
     function cutoff_powerlaw(x0::Number)
         out = new(Parameter(1),
@@ -18,7 +18,6 @@ mutable struct cutoff_powerlaw <: AbstractComponent
         out.alpha.high = 5
         out.beta.low = 0.1
         out.beta.high = 10.
-        
         return out
     end
 end
@@ -26,5 +25,5 @@ end
 
 function evaluate!(buffer, comp::cutoff_powerlaw, x::Domain{1},
                    norm, x0, alpha, beta)
-    buffer .= norm .* (x ./ x0).^alpha .* exp.(1 .- ((x ./ x0) .^ beta))
+    buffer .= norm .* (x ./ x0).^alpha .* exp.(1 .- ((x ./ x0) .^beta))
 end
