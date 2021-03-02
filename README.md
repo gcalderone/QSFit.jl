@@ -19,25 +19,25 @@ comp = QSFit.SpecLineGauss(center);
 comp.fwhm.val = fwhm;
 ceval = GFit.CompEval(comp, x);
 GFit.evaluate_cached(ceval);
-@gp :- x[1] ceval.buffer "w l tit 'Gaussian' lw 2"
-@info "FWHM=" QSFit.estimate_fwhm(x[1], ceval.buffer) / center * 3e5 / fwhm
-@info "Area=" QSFit.estimate_area(x[1], ceval.buffer)
+@gp :- x[:] ceval.buffer "w l tit 'Gaussian' lw 2"
+@info "FWHM=" QSFit.estimate_fwhm(x[:], ceval.buffer) / center * 3e5
+@info "Area=" QSFit.int_tabulated(x[:], ceval.buffer)
 
 comp = QSFit.SpecLineAsymmGauss(center);
 comp.fwhm.val = fwhm;
 comp.asymm.val = -1;
 ceval = GFit.CompEval(comp, x);
 GFit.evaluate_cached(ceval);
-@gp :- x[1] ceval.buffer "w l tit 'Asymm. Gaussian' lw 2"
-@info "FWHM=" QSFit.estimate_fwhm(x[1], ceval.buffer) / center * 3e5 / fwhm
-@info "Area=" QSFit.estimate_area(x[1], ceval.buffer)
+@gp :- x[:] ceval.buffer "w l tit 'Asymm. Gaussian' lw 2"
+@info "FWHM=" QSFit.estimate_fwhm(x[:], ceval.buffer) / center * 3e5
+@info "Area=" QSFit.int_tabulated(x[:], ceval.buffer)
 
 comp = QSFit.SpecLineLorentz(center);
 comp.fwhm.val = fwhm;
 ceval = GFit.CompEval(comp, x);
 GFit.evaluate_cached(ceval);
-@gp :- x[1] ceval.buffer "w l tit 'Lorentzian' lw 2"
-@info "FWHM=" QSFit.estimate_fwhm(x[1], ceval.buffer) / center * 3e5 / fwhm
-@info "Area=" QSFit.estimate_area(x[1], ceval.buffer)
+@gp :- x[:] ceval.buffer "w l tit 'Lorentzian' lw 2"
+@info "FWHM=" QSFit.estimate_fwhm(x[:], ceval.buffer) / center * 3e5
+@info "Area=" QSFit.int_tabulated(x[:], ceval.buffer)
 
 ```

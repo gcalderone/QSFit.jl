@@ -177,8 +177,7 @@ function multiepoch_fit(source::QSO{TRecipe}; ref_id=1) where TRecipe <: Default
         for cname in line_names[id]
             c = model[id][cname]
             yatline = Spline1D(λ, y, k=1, bc="nearest")(c.center.val)
-            c.norm.val = 1.
-            c.norm.val = abs(yatline) / QSFit.maxvalue(model[id][cname])
+            c.norm.val *= abs(yatline) / maximum(model[id](cname))
 
             # If instrumental broadening is not used and the line profile
             # is a Gaussian one take spectral resolution into account.

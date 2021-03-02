@@ -8,13 +8,14 @@ mutable struct SpecLineGauss <: AbstractComponent
     voff::Parameter
     index::Vector{Int}  # optimization
     spec_res_kms::Float64
+    norm_integrated::Bool
 
     function SpecLineGauss(center::Number)
         out = new(Parameter(1),
                   Parameter(center),
                   Parameter(3000),
                   Parameter(0),
-                  Vector{Int}(), 0.)
+                  Vector{Int}(), 0., true)
 
         @assert center > 0
         out.norm.low = 0
@@ -31,12 +32,6 @@ function prepare!(comp::SpecLineGauss, domain::Domain{1})
     return fill(NaN, length(domain))
 end
 
-function maxvalue(comp::SpecLineGauss)
-    ceval = CompEval(comp, Domain([comp.center.val]))
-    GFit.evaluate_cached(ceval)
-    return ceval.buffer[1]
-end
-
 function evaluate!(buffer, comp::SpecLineGauss, x::Domain{1},
                    norm, center, fwhm, voff)
     buffer[comp.index] .= 0.
@@ -50,7 +45,10 @@ function evaluate!(buffer, comp::SpecLineGauss, x::Domain{1},
     X = (x .- x0) ./ sigma
     i = findall(abs.(X) .< 4)  # optimization
     append!(comp.index, i)
-    buffer[i] .= (norm / sqrt(2pi) / sigma) * exp.(-X[i].^2 ./ 2)
+    buffer[i] .= norm * exp.(-X[i].^2 ./ 2)
+    if comp.norm_integrated
+        buffer[i] ./= sqrt(2pi) * sigma
+    end
 end
 
 

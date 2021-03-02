@@ -8,6 +8,7 @@ mutable struct SpecLineAsymmGauss <: AbstractComponent
     voff::Parameter
     asymm::Parameter
     index::Vector{Int}  # optimization
+    norm_integrated::Bool
 
     function SpecLineAsymmGauss(center::Number)
         out = new(Parameter(1),
@@ -15,7 +16,7 @@ mutable struct SpecLineAsymmGauss <: AbstractComponent
                   Parameter(3000),
                   Parameter(0),
                   Parameter(0),
-                  Vector{Float64}())
+                  Vector{Float64}(), true)
 
         @assert center > 0
         out.norm.low = 0
@@ -32,12 +33,6 @@ function prepare!(comp::SpecLineAsymmGauss, domain::Domain{1})
     return fill(NaN, length(domain))
 end
 
-function maxvalue(comp::SpecLineAsymmGauss)
-    ceval = CompEval(comp, Domain([comp.center.val]))
-    GFit.evaluate_cached(ceval)
-    return ceval.buffer[1]
-end
-
 function evaluate!(buffer, comp::SpecLineAsymmGauss, x::Domain{1},
                    norm, center, fwhm, voff, asymm)
     buffer[comp.index] .= 0.
@@ -51,7 +46,10 @@ function evaluate!(buffer, comp::SpecLineAsymmGauss, x::Domain{1},
     X = (x .- x0) ./ sigma
     i = findall(abs.(X) .< 4) # optimization
     append!(comp.index, i)
-    buffer[i] .= (norm / sqrt(2pi) / sigma0) * exp.(-X[i].^2 ./ 2)
+    buffer[i] .= norm * exp.(-X[i].^2 ./ 2)
+    if comp.norm_integrated
+        buffer[i] ./= sqrt(2pi) * sigma0
+    end
 end
 
 
