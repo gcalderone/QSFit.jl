@@ -170,6 +170,9 @@ function multiepoch_fit(source::QSO{TRecipe}; ref_id=1) where TRecipe <: Default
             model[id][:OIII_5007_bw].voff.low  = 0
             model[id][:OIII_5007_bw].voff.high = 2e3
         end
+        for cname in line_names[id]
+            model[id][cname].norm_integrated = source.options[:norm_integrated]
+        end
 
         # Guess values
         evaluate!(model)

@@ -3,7 +3,9 @@ abstract type DefaultRecipe <: AbstractRecipe end
 function default_options(::Type{T}) where T <: DefaultRecipe
     out = OrderedDict{Symbol, Any}()
     out[:wavelength_range] = [1215, 7.3e3]
-    out[:min_spectral_coverage] = Dict(:default => 0.6)
+    out[:min_spectral_coverage] = Dict(:default => 0.6,
+                                       :ironuv  => 0.3,
+                                       :ironopt => 0.3)
     out[:skip_lines] = [:OIII_5007_bw] #, Ha_base
     out[:host_template] = "Ell5"
     out[:use_host_template] = true
@@ -13,6 +15,7 @@ function default_options(::Type{T}) where T <: DefaultRecipe
     out[:n_unk] = 10
     out[:unk_avoid] = [4863 .+ [-1,1] .* 50, 6565 .+ [-1,1] .* 150]
     out[:instr_broadening] = false
+    out[:norm_integrated] = true
     return out
 end
 
@@ -270,6 +273,9 @@ function fit(source::QSO{TRecipe}; id=1) where TRecipe <: DefaultRecipe
         model[:OIII_5007_bw].fwhm.high = 1e3
         model[:OIII_5007_bw].voff.low  = 0
         model[:OIII_5007_bw].voff.high = 2e3
+    end
+    for cname in line_names
+        model[cname].norm_integrated = source.options[:norm_integrated]
     end
 
     # Guess values
