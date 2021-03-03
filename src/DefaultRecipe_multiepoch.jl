@@ -152,7 +152,7 @@ function multiepoch_fit(source::QSO{TRecipe}; ref_id=1) where TRecipe <: Default
     println(source.log, "\nFit known emission lines...")
     for id in 1:Nspec
         λ = source.domain[id][:]
-
+        resid = source.data[id].val - model[id]()  # will be used to guess line normalization
         add!(model[id], source.line_comps[id])
         for (group, lnames) in invert_dictionary(source.line_names[id])
             add!(model[id], group => Reducer(sum, lnames))
@@ -179,8 +179,8 @@ function multiepoch_fit(source::QSO{TRecipe}; ref_id=1) where TRecipe <: Default
         y = source.data[id].val - model[id]()
         for cname in line_names[id]
             c = model[id][cname]
-            yatline = Spline1D(λ, y, k=1, bc="nearest")(c.center.val)
-            c.norm.val *= abs(yatline) / maximum(model[id](cname))
+            resid_at_line = Spline1D(λ, resid, k=1, bc="nearest")(c.center.val)
+            c.norm.val *= abs(resid_at_line) / maximum(model[id](cname))
 
             # If instrumental broadening is not used and the line profile
             # is a Gaussian one take spectral resolution into account.
@@ -189,7 +189,7 @@ function multiepoch_fit(source::QSO{TRecipe}; ref_id=1) where TRecipe <: Default
             # - works only with Gaussian profiles;
             # - all components must be additive (i.e. no absorptions)
             # - further narrow components (besides known emission lines)
-            #   will not be corrected for instrumetal resolution
+            #   will not be corrected for instrumental resolution
             if !source.options[:instr_broadening]
                 if isa(c, SpecLineGauss)
                     c.spec_res_kms = source.spectra[id].resolution
@@ -247,6 +247,7 @@ function multiepoch_fit(source::QSO{TRecipe}; ref_id=1) where TRecipe <: Default
             tmp = OrderedDict{Symbol, AbstractComponent}()
             for j in 1:source.options[:n_unk]
                 tmp[Symbol(:unk, j)] = line_component(TRecipe, UnkLine(5e3))
+                tmp[Symbol(:unk, j)].norm_integrated = source.options[:norm_integrated]
             end
             add!(model[id], :UnkLines => Reducer(sum, collect(keys(tmp))), tmp)
             add!(model[id], :main => Reducer(sum, [:Continuum, :Iron, line_groups[id]..., :UnkLines]))
@@ -274,7 +275,7 @@ function multiepoch_fit(source::QSO{TRecipe}; ref_id=1) where TRecipe <: Default
             evaluate!(model)
             Δ = (source.data[id].val - model[id]()) ./ source.data[id].unc
 
-            # Avoid considering again the same region (within 1A)
+            # Avoid considering again the same region (within 1A) TODO: within resolution
             for l in λunk
                 Δ[findall(abs.(l .- λ) .< 1)] .= 0.
             end

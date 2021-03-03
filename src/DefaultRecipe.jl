@@ -257,6 +257,7 @@ function fit(source::QSO{TRecipe}; id=1) where TRecipe <: DefaultRecipe
     line_names = collect(keys(source.line_names[id]))
     line_groups = unique(collect(values(source.line_names[id])))
     println(source.log, "\nFit known emission lines...")
+    resid = source.data[id].val - model()  # will be used to guess line normalization
     add!(model, source.line_comps[id])
     for (group, lnames) in invert_dictionary(source.line_names[id])
         add!(model, group  => Reducer(sum, lnames))
@@ -283,8 +284,8 @@ function fit(source::QSO{TRecipe}; id=1) where TRecipe <: DefaultRecipe
     y = source.data[id].val - model()
     for cname in line_names
         c = model[cname]
-        yatline = Spline1D(λ, y, k=1, bc="nearest")(c.center.val)
-        c.norm.val *= abs(yatline) / maximum(model(cname))
+        resid_at_line = Spline1D(λ, resid, k=1, bc="nearest")(c.center.val)
+        c.norm.val *= abs(resid_at_line) / maximum(model(cname))
 
         # If instrumental broadening is not used and the line profile
         # is a Gaussian one take spectral resolution into account.
@@ -293,7 +294,7 @@ function fit(source::QSO{TRecipe}; id=1) where TRecipe <: DefaultRecipe
         # - works only with Gaussian profiles;
         # - all components must be additive (i.e. no absorptions)
         # - further narrow components (besides known emission lines)
-        #   will not be corrected for instrumetal resolution
+        #   will not be corrected for instrumental resolution
         if !source.options[:instr_broadening]
             if isa(c, SpecLineGauss)
                 c.spec_res_kms = source.spectra[id].resolution
@@ -346,6 +347,7 @@ function fit(source::QSO{TRecipe}; id=1) where TRecipe <: DefaultRecipe
         tmp = OrderedDict{Symbol, AbstractComponent}()
         for j in 1:source.options[:n_unk]
             tmp[Symbol(:unk, j)] = line_component(TRecipe, UnkLine(5e3))
+            tmp[Symbol(:unk, j)].norm_integrated = source.options[:norm_integrated]
         end
         add!(model, :UnkLines => Reducer(sum, collect(keys(tmp))), tmp)
         add!(model, :main => Reducer(sum, [:Continuum, :Iron, line_groups..., :UnkLines]))
@@ -363,7 +365,7 @@ function fit(source::QSO{TRecipe}; id=1) where TRecipe <: DefaultRecipe
             evaluate!(model)
             Δ = (source.data[id].val - model()) ./ source.data[id].unc
 
-            # Avoid considering again the same region (within 1A)
+            # Avoid considering again the same region (within 1A) TODO: within resolution
             for l in λunk
                 Δ[findall(abs.(l .- λ) .< 1)] .= 0.
             end
