@@ -222,6 +222,17 @@ function multi_fit(source::QSO{TRecipe}; ref_id=1) where TRecipe <: DefaultRecip
             end
         end
 
+        if  haskey(model[id], :br_Hb)  &&
+            haskey(model[id], :bb_Hb)
+            # Ensure luminosity at peak of the broad base component is
+            # smaller than the associated broad component:
+            model[id][:bb_Hb].norm.high = 1
+            model[id][:bb_Hb].norm.val  = 0.5
+            patch!(model) do m
+                m[id][:bb_Hb].norm *= m[id][:br_Hb].norm / m[id][:br_Hb].fwhm * m[id][:bb_Hb].fwhm
+            end
+        end
+
         if  haskey(model[id], :br_Ha)  &&
             haskey(model[id], :bb_Ha)
             # Ensure luminosity at peak of the broad base component is

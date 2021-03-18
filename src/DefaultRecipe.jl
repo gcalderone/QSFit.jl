@@ -327,6 +327,17 @@ function fit(source::QSO{TRecipe}; id=1) where TRecipe <: DefaultRecipe
         end
     end
 
+    if  haskey(model, :br_Hb)  &&
+        haskey(model, :bb_Hb)
+        # Ensure luminosity at peak of the broad base component is
+        # smaller than the associated broad component:
+        model[:bb_Hb].norm.high = 1
+        model[:bb_Hb].norm.val  = 0.5
+        patch!(model) do m
+            m[:bb_Hb].norm *= m[:br_Hb].norm / m[:br_Hb].fwhm * m[:bb_Hb].fwhm
+        end
+    end
+
     if  haskey(model, :br_Ha)  &&
         haskey(model, :bb_Ha)
         # Ensure luminosity at peak of the broad base component is
