@@ -217,6 +217,6 @@ end
 
 
 include("DefaultRecipe.jl")
-include("DefaultRecipe_multiepoch.jl")
+include("DefaultRecipe_multi.jl")
 
 end  # module
