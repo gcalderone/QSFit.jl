@@ -1,6 +1,6 @@
 module QSFit
 
-export QSO, Spectrum, add_spec!, fit, multiepoch_fit
+export QSO, Spectrum, add_spec!, fit, multi_fit
 
 import GFit: Domain, CompEval,
     Parameter, AbstractComponent, prepare!, evaluate!, fit!

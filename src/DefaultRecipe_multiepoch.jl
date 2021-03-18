@@ -1,6 +1,6 @@
 calibsum(calib, args...) = calib .* (.+(args...))
 
-function multiepoch_fit(source::QSO{TRecipe}; ref_id=1) where TRecipe <: DefaultRecipe
+function multi_fit(source::QSO{TRecipe}; ref_id=1) where TRecipe <: DefaultRecipe
     Nspec = length(source.domain)
 
     elapsed = time()
@@ -191,7 +191,7 @@ function multiepoch_fit(source::QSO{TRecipe}; ref_id=1) where TRecipe <: Default
             # - further narrow components (besides known emission lines)
             #   will not be corrected for instrumental resolution
             if !source.options[:instr_broadening]
-                if isa(c, SpecLineGauss)
+                if isa(c, QSFit.SpecLineGauss)
                     c.spec_res_kms = source.spectra[id].resolution
                 else
                     println(source.log, "Line $cname is not a Gaussian profile: Can't take spectral resolution into account")
@@ -222,6 +222,17 @@ function multiepoch_fit(source::QSO{TRecipe}; ref_id=1) where TRecipe <: Default
             end
         end
 
+        if  haskey(model[id], :br_Ha)  &&
+            haskey(model[id], :bb_Ha)
+            # Ensure luminosity at peak of the broad base component is
+            # smaller than the associated broad component:
+            model[id][:bb_Ha].norm.high = 1
+            model[id][:bb_Ha].norm.val  = 0.5
+            patch!(model) do m
+                m[id][:bb_Ha].norm *= m[id][:br_Ha].norm / m[id][:br_Ha].fwhm * m[id][:bb_Ha].fwhm
+            end
+        end
+
         #=
         model[id][:br_Hb].voff.fixed = 1
         model[id][:br_Hb].fwhm.fixed = 1
@@ -244,9 +255,9 @@ function multiepoch_fit(source::QSO{TRecipe}; ref_id=1) where TRecipe <: Default
     println(source.log, "\nFit unknown emission lines...")
     if source.options[:n_unk] > 0
         for id in 1:Nspec
-            tmp = OrderedDict{Symbol, AbstractComponent}()
+            tmp = OrderedDict{Symbol, GFit.AbstractComponent}()
             for j in 1:source.options[:n_unk]
-                tmp[Symbol(:unk, j)] = line_component(TRecipe, UnkLine(5e3))
+                tmp[Symbol(:unk, j)] = line_component(TRecipe, QSFit.UnkLine(5e3))
                 tmp[Symbol(:unk, j)].norm_integrated = source.options[:norm_integrated]
             end
             add!(model[id], :UnkLines => Reducer(sum, collect(keys(tmp))), tmp)
@@ -407,8 +418,8 @@ function multiepoch_fit(source::QSO{TRecipe}; ref_id=1) where TRecipe <: Default
 
     elapsed = time() - elapsed
     println(source.log, "\nElapsed time: $elapsed s")
-    close_log(source)
+    QSFit.close_log(source)
 
-    populate_metadata!(source, model)
+    QSFit.populate_metadata!(source, model)
     return (model, bestfit)
 end

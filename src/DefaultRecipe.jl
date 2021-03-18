@@ -6,7 +6,7 @@ function default_options(::Type{T}) where T <: DefaultRecipe
     out[:min_spectral_coverage] = Dict(:default => 0.6,
                                        :ironuv  => 0.3,
                                        :ironopt => 0.3)
-    out[:skip_lines] = [:OIII_5007_bw] #, Ha_base
+    out[:skip_lines] = [:OIII_5007_bw] #, bb_Ha
     out[:host_template] = "Ell5"
     out[:use_host_template] = true
     out[:use_balmer] = true
@@ -126,7 +126,7 @@ function known_spectral_lines(::Type{T}) where T <: DefaultRecipe
     list[:OI_6364     ] = NarrowLine(   6364.00 )  # TODO: Check wavelength is correct
     list[:NII_6549    ] = NarrowLine(   6549.86 )
     list[:Ha          ] = CombinedLine( 6564.61 )
-    list[:Ha_base     ] = BroadBaseLine(6564.61 )
+    list[:bb_Ha       ] = BroadBaseLine(6564.61 )
     list[:NII_6583    ] = NarrowLine(   6585.27 )
     list[:SII_6716    ] = NarrowLine(   6718.29 )
     list[:SII_6731    ] = NarrowLine(   6732.67 )
@@ -296,7 +296,7 @@ function fit(source::QSO{TRecipe}; id=1) where TRecipe <: DefaultRecipe
         # - further narrow components (besides known emission lines)
         #   will not be corrected for instrumental resolution
         if !source.options[:instr_broadening]
-            if isa(c, SpecLineGauss)
+            if isa(c, QSFit.SpecLineGauss)
                 c.spec_res_kms = source.spectra[id].resolution
             else
                 println(source.log, "Line $cname is not a Gaussian profile: Can't take spectral resolution into account")
@@ -327,6 +327,17 @@ function fit(source::QSO{TRecipe}; id=1) where TRecipe <: DefaultRecipe
         end
     end
 
+    if  haskey(model, :br_Ha)  &&
+        haskey(model, :bb_Ha)
+        # Ensure luminosity at peak of the broad base component is
+        # smaller than the associated broad component:
+        model[:bb_Ha].norm.high = 1
+        model[:bb_Ha].norm.val  = 0.5
+        patch!(model) do m
+            m[:bb_Ha].norm *= m[:br_Ha].norm / m[:br_Ha].fwhm * m[:bb_Ha].fwhm
+        end
+    end
+
     #=
     model[:br_Hb].voff.fixed = 1
     model[:br_Hb].fwhm.fixed = 1
@@ -344,9 +355,9 @@ function fit(source::QSO{TRecipe}; id=1) where TRecipe <: DefaultRecipe
     # Add unknown lines
     println(source.log, "\nFit unknown emission lines...")
     if source.options[:n_unk] > 0
-        tmp = OrderedDict{Symbol, AbstractComponent}()
+        tmp = OrderedDict{Symbol, GFit.AbstractComponent}()
         for j in 1:source.options[:n_unk]
-            tmp[Symbol(:unk, j)] = line_component(TRecipe, UnkLine(5e3))
+            tmp[Symbol(:unk, j)] = line_component(TRecipe, QSFit.UnkLine(5e3))
             tmp[Symbol(:unk, j)].norm_integrated = source.options[:norm_integrated]
         end
         add!(model, :UnkLines => Reducer(sum, collect(keys(tmp))), tmp)
@@ -447,8 +458,8 @@ function fit(source::QSO{TRecipe}; id=1) where TRecipe <: DefaultRecipe
 
     elapsed = time() - elapsed
     println(source.log, "\nElapsed time: $elapsed s")
-    close_log(source)
+    QSFit.close_log(source)
 
-    populate_metadata!(source, model)
+    QSFit.populate_metadata!(source, model)
     return (model, bestfit)
 end
