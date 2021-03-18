@@ -72,11 +72,13 @@ function multi_fit(source::QSO{TRecipe}; ref_id=1) where TRecipe <: DefaultRecip
     for id in 1:Nspec
         freeze(model[id], :qso_cont)
         c = model[id][:qso_cont]
+        initialnorm = c.norm.val
         if c.norm.val > 0
             println(source.log, "$id: Cont. norm. (before): ", c.norm.val)
             while true
                 residuals = (model[id]() - source.data[id].val) ./ source.data[id].unc
                 (count(residuals .< 0) / length(residuals) > 0.9)  &&  break
+                (c.norm.val < initialnorm / 5)  &&  break # give up
                 c.norm.val *= 0.99
                 evaluate!(model)
             end

@@ -186,9 +186,11 @@ function fit(source::QSO{TRecipe}; id=1) where TRecipe <: DefaultRecipe
     c = model[:qso_cont]
     if c.norm.val > 0
         println(source.log, "Cont. norm. (before): ", c.norm.val)
+        initialnorm = c.norm.val
         while true
             residuals = (model() - source.data[id].val) ./ source.data[id].unc
             (count(residuals .< 0) / length(residuals) > 0.9)  &&  break
+            (c.norm.val < initialnorm / 5)  &&  break # give up
             c.norm.val *= 0.99
             evaluate!(model)
         end
