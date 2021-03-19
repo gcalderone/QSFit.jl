@@ -106,7 +106,7 @@ function multi_fit(source::QSO{TRecipe}; ref_id=1) where TRecipe <: DefaultRecip
             threshold = get(source.options[:min_spectral_coverage], :ironuv, source.options[:min_spectral_coverage][:default])
             if coverage >= threshold
                 add!(model[id], :ironuv => comp)
-                model[:ironuv].norm.val = 0.5
+                model[id][:ironuv].norm.val = 0.5
                 push!(iron_components, :ironuv)
             else
                 println(source.log, "Ignoring ironuv component on prediction $id (threshold: $threshold)")
@@ -284,7 +284,7 @@ function multi_fit(source::QSO{TRecipe}; ref_id=1) where TRecipe <: DefaultRecip
         # Here we need a :UnkLines reducer, even when n_unk is 0
         for id in 1:Nspec
             add!(model[id], :UnkLines => Reducer(() -> [0.], Symbol[]))
-            add!(model[id], :main => Reducer(sum, [:Continuum, :Iron, line_groups[id]..., :UnkLines]))
+            add!(model[id], :main => Reducer(sum, [:Continuum, :Iron, line_groups[id]...]))
         end
     end
     evaluate!(model)
@@ -336,7 +336,10 @@ function multi_fit(source::QSO{TRecipe}; ref_id=1) where TRecipe <: DefaultRecip
     # components
     rval = [galaxy_best[ref_id], OIII_best[ref_id]]
     runc = [galaxy_unc[ ref_id], OIII_unc[ ref_id]]
-    @assert count((rval .!= 0)  .&  (runc .!= 0)) == 2
+    @assert all(isfinite.(rval))
+    @assert all(rval .!= 0)
+    @assert all(isfinite.(runc))
+    @assert all(runc .!= 0)
 
     # Estimate calibration in all epochs w.r.t. reference epoch
     for id in 1:Nspec
@@ -348,14 +351,11 @@ function multi_fit(source::QSO{TRecipe}; ref_id=1) where TRecipe <: DefaultRecip
             R = val[j] ./ rval[j]
             R_unc = (unc[j] ./ val[j] .+ runc[j] ./ rval[j]) .* R
             ratio = sum(R ./ R_unc) ./ sum(1 ./ R_unc)
-            for cname in keys(preds[id].cevals)
-                if :norm in propertynames(model[cname])
-                    model[cname].norm.val /= ratio
+            for cname in keys(model[id].cevals)
+                if :norm in propertynames(model[id][cname])
+                    model[id][cname].norm.val /= ratio
                 end
             end
-            model[id][:galaxy].norm.fixed = true
-            model[id][:OIII_5007].norm.fixed = true
-
             add!(model[id],
                  :main => Reducer(calibsum, [:calib, :Continuum, :Iron, line_groups[id]..., :UnkLines]),
                  :calib => ratio)
@@ -365,9 +365,15 @@ function multi_fit(source::QSO{TRecipe}; ref_id=1) where TRecipe <: DefaultRecip
 
     for id in 1:Nspec
         if id != ref_id
+            model[id][:galaxy].norm.fixed = true
+            model[id][:OIII_5007].norm.fixed = true
+            model[id][:OIII_5007].fwhm.fixed = 1
+            model[id][:OIII_5007].voff.fixed = 1
             patch!(model) do m
                 m[id][   :galaxy].norm = m[ref_id][   :galaxy].norm
                 m[id][:OIII_5007].norm = m[ref_id][:OIII_5007].norm
+                m[id][:OIII_5007].fwhm = m[ref_id][:OIII_5007].fwhm
+                m[id][:OIII_5007].voff = m[ref_id][:OIII_5007].voff
             end
         end
     end
