@@ -323,9 +323,9 @@ function multi_fit(source::QSO{TRecipe}; ref_id=1) where TRecipe <: DefaultRecip
             model[id][cname].center.low  = λ[iadd] - λ[iadd]/10. # allow to shift 10%
             model[id][cname].center.high = λ[iadd] + λ[iadd]/10.
 
-            thaw(model, cname)
+            thaw(model[id], cname)
             bestfit = fit!(model, only_id=id, source.data, minimizer=mzer); show(source.log, bestfit)
-            freeze(model, cname)
+            freeze(model[id], cname)
         end
     end
     evaluate!(model)
