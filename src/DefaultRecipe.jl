@@ -261,7 +261,7 @@ function fit(source::QSO{TRecipe}; id=1) where TRecipe <: DefaultRecipe
     println(source.log, "\nFit known emission lines...")
     resid = source.data[id].val - model()  # will be used to guess line normalization
     add!(model, source.line_comps[id])
-    for (group, lnames) in invert_dictionary(source.line_names[id])
+    for (group, lnames) in QSFit.invert_dictionary(source.line_names[id])
         add!(model, group  => Reducer(sum, lnames))
     end
     add!(model, :main => Reducer(sum, [:Continuum, :Iron, line_groups...]))

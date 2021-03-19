@@ -156,7 +156,7 @@ function multi_fit(source::QSO{TRecipe}; ref_id=1) where TRecipe <: DefaultRecip
         λ = source.domain[id][:]
         resid = source.data[id].val - model[id]()  # will be used to guess line normalization
         add!(model[id], source.line_comps[id])
-        for (group, lnames) in invert_dictionary(source.line_names[id])
+        for (group, lnames) in QSFit.invert_dictionary(source.line_names[id])
             add!(model[id], group => Reducer(sum, lnames))
         end
         add!(model[id], :main => Reducer(sum, [:Continuum, :Iron, line_groups[id]...]))
