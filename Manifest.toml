@@ -205,7 +205,7 @@ version = "0.10.17"
 
 [[GFit]]
 deps = ["CMPFit", "DataStructures", "Distributions", "ExprTools", "LsqFit", "PrettyTables", "Printf", "Random", "Statistics"]
-git-tree-sha1 = "4693d5e59c2c57c99a3d99ae7109aa146ea06a9c"
+git-tree-sha1 = "f7872d86e6caeb218a3e822e47c447dbdfc34111"
 repo-rev = "master"
 repo-url = "https://github.com/gcalderone/GFit.jl"
 uuid = "ac42e6ba-c0bf-4fcf-827d-deea44b16255"
