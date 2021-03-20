@@ -352,6 +352,7 @@ function multi_fit(source::QSO{TRecipe}; ref_id=1) where TRecipe <: DefaultRecip
             R_unc = (unc[j] ./ val[j] .+ runc[j] ./ rval[j]) .* R
             ratio = sum(R ./ R_unc) ./ sum(1 ./ R_unc)
             for cname in keys(model[id].cevals)
+                (string(cname)[1:3] == "bb_")  &&  continue  # this is a patched param, no need to apply calib. factor
                 if :norm in propertynames(model[id][cname])
                     model[id][cname].norm.val /= ratio
                 end
