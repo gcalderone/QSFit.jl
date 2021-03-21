@@ -64,8 +64,10 @@ function multi_fit(source::QSO{TRecipe}; ref_id=1) where TRecipe <: DefaultRecip
 
     for id in 1:Nspec
         bestfit = fit!(model, only_id=id, source.data, minimizer=mzer);  show(source.log, bestfit)
-        push!(galaxy_best, bestfit[id][:galaxy].norm.val)
-        push!(galaxy_unc , bestfit[id][:galaxy].norm.unc)
+        if :galaxy in keys(model[id])
+            push!(galaxy_best, bestfit[id][:galaxy].norm.val)
+            push!(galaxy_unc , bestfit[id][:galaxy].norm.unc)
+        end
     end
 
     # QSO continuum renormalization
@@ -334,8 +336,13 @@ function multi_fit(source::QSO{TRecipe}; ref_id=1) where TRecipe <: DefaultRecip
     # Constrain component normalization across epochs.  Note:
     # reference spectrum must have reliable estimation of all common
     # components
-    rval = [galaxy_best[ref_id], OIII_best[ref_id]]
-    runc = [galaxy_unc[ ref_id], OIII_unc[ ref_id]]
+    if :galaxy in keys(model[ref_id])
+        rval = [galaxy_best[ref_id], OIII_best[ref_id]]
+        runc = [galaxy_unc[ ref_id], OIII_unc[ ref_id]]
+    else
+        rval = [OIII_best[ref_id]]
+        runc = [OIII_unc[ ref_id]]
+    end
     @assert all(isfinite.(rval))
     @assert all(rval .!= 0)
     @assert all(isfinite.(runc))
@@ -344,8 +351,13 @@ function multi_fit(source::QSO{TRecipe}; ref_id=1) where TRecipe <: DefaultRecip
     # Estimate calibration in all epochs w.r.t. reference epoch
     for id in 1:Nspec
         if id != ref_id
+            if :galaxy in keys(model[id])
             val = [galaxy_best[id], OIII_best[id]]
             unc = [galaxy_unc[ id], OIII_unc[ id]]
+            else
+                val = [OIII_best[id]]
+                unc = [OIII_unc[ id]]
+            end
             j = findall((val .!= 0)  .&  (unc .!= 0))
 
             R = val[j] ./ rval[j]
@@ -353,6 +365,7 @@ function multi_fit(source::QSO{TRecipe}; ref_id=1) where TRecipe <: DefaultRecip
             ratio = sum(R ./ R_unc) ./ sum(1 ./ R_unc)
             for cname in keys(model[id].cevals)
                 (string(cname)[1:3] == "bb_")  &&  continue  # this is a patched param, no need to apply calib. factor
+                (cname == :balmer)  &&  continue
                 if :norm in propertynames(model[id][cname])
                     model[id][cname].norm.val /= ratio
                 end
@@ -366,12 +379,12 @@ function multi_fit(source::QSO{TRecipe}; ref_id=1) where TRecipe <: DefaultRecip
 
     for id in 1:Nspec
         if id != ref_id
-            model[id][:galaxy].norm.fixed = true
+            (:galaxy in keys(model[id]))  &&  (model[id][:galaxy].norm.fixed = true)
             model[id][:OIII_5007].norm.fixed = true
             model[id][:OIII_5007].fwhm.fixed = 1
             model[id][:OIII_5007].voff.fixed = 1
             patch!(model) do m
-                m[id][   :galaxy].norm = m[ref_id][   :galaxy].norm
+                (:galaxy in keys(model[id]))  &&  (m[id][   :galaxy].norm = m[ref_id][   :galaxy].norm)
                 m[id][:OIII_5007].norm = m[ref_id][:OIII_5007].norm
                 m[id][:OIII_5007].fwhm = m[ref_id][:OIII_5007].fwhm
                 m[id][:OIII_5007].voff = m[ref_id][:OIII_5007].voff
