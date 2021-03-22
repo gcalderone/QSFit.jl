@@ -154,7 +154,8 @@ function fit(source::QSO{TRecipe}; id=1) where TRecipe <: DefaultRecipe
     c.norm.val = Spline1D(λ, source.data[id].val, k=1, bc="error")(c.x0.val)
 
     # Host galaxy template
-    if source.options[:use_host_template]
+    if source.options[:use_host_template]  &&
+        (minimum(λ) .< 5500 .< maximum(λ))
         add!(model, :Continuum => Reducer(sum, [:qso_cont, :galaxy]),
              :galaxy => QSFit.hostgalaxy(source.options[:host_template]))
         model[:galaxy].norm.val = Spline1D(λ, source.data[id].val, k=1, bc="error")(5500.)

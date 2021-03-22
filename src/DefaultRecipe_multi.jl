@@ -36,7 +36,8 @@ function multi_fit(source::QSO{TRecipe}; ref_id=1) where TRecipe <: DefaultRecip
         λ = source.domain[id][:]
 
         # Host galaxy template
-        if source.options[:use_host_template]
+        if source.options[:use_host_template]   &&
+            (minimum(λ) .< 5500 .< maximum(λ))
             add!(model[id], :Continuum => Reducer(sum, [:qso_cont, :galaxy]),
                  :galaxy => QSFit.hostgalaxy(source.options[:host_template]))
             model[id][:galaxy].norm.val = Spline1D(λ, source.data[id].val, k=1, bc="error")(5500.)
