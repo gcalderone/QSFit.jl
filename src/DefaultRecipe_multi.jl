@@ -55,7 +55,7 @@ function multi_fit(source::QSO{TRecipe}; ref_id=1) where TRecipe <: DefaultRecip
             c.norm.high = 0.5
             c.ratio.val = 0.5
             c.ratio.fixed = false
-            c.ratio.low  = 0.3
+            c.ratio.low  = 0.1
             c.ratio.high = 1
             patch!(model) do m
                 m[id][:balmer].norm *= m[id][:qso_cont].norm
