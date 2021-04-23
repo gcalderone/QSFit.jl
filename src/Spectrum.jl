@@ -42,7 +42,7 @@ struct Spectrum
             @warn "Resolution is not provided, assuming it is equal to twice the sampling resolution..."
             resolution = 2 * est_res
         end
-        @assert est_res < resolution
+        @assert est_res < resolution "Estimated resolution ($est_res) < provided resolution ($resolution)"
 
         return new(label, λ, flux[ii], err[ii], good, resolution,
                    Dict{Symbol, Any}())
