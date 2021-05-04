@@ -454,6 +454,5 @@ function multi_fit(source::QSO{TRecipe}; ref_id=1) where TRecipe <: DefaultRecip
     println(source.log, "\nElapsed time: $elapsed s")
     QSFit.close_log(source)
 
-    QSFit.populate_metadata!(source, model)
     return (model, bestfit)
 end

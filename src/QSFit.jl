@@ -5,6 +5,9 @@ export QSO, Spectrum, add_spec!, fit, multi_fit
 import GFit: Domain, CompEval,
     Parameter, AbstractComponent, prepare!, evaluate!, fit!
 
+import GFitViewer: ViewerData, viewer
+
+
 using CMPFit, GFit
 using Pkg, Pkg.Artifacts
 using Statistics, DelimitedFiles, Dierckx, QuadGK, Printf, DataStructures
@@ -194,7 +197,7 @@ function add_spec!(source::QSO, data::Spectrum)
     dom = Domain(data.λ[ii] ./ (1 + source.z))
     lum = Measures(data.flux[ii] .* dered[ii] .* source.flux2lum .* (1 + source.z),
                    data.err[ ii] .* dered[ii] .* source.flux2lum .* (1 + source.z))
-    lum.meta[:label] = data.label
+    # TODO lum.meta[:label] = data.label
 
     push!(source.spectra, data)
     push!(source.domain, dom)
@@ -204,17 +207,51 @@ function add_spec!(source::QSO, data::Spectrum)
 end
 
 
-function populate_metadata!(source, model)
+function ViewerData(model::Model, source::QSO, bestfit::GFit.BestFitResult; kw...)
+    vd = ViewerData(model, source.data, bestfit; kw...)
+
     for id in 1:length(model.preds)
-        model.meta[id][:label] = source.name * ", z=" * string(source.z) * ", E(B-V)=" * string(source.mw_ebv)
-        model.meta[id][:label_x] = "Rest frame wavelength"
-        model.meta[id][:unit_x]  = string(QSFit.unit_λ())
-        model.meta[id][:label_y] = "Lum. density"
-        model.meta[id][:unit_y]  = string(QSFit.unit_lum_density())
-        model.meta[id][:scale_y] = string(QSFit.scale_lum())
+        m = vd.gfit[:predictions][id][:meta]
+        m[:label] = source.name * ", z=" * string(source.z) * ", E(B-V)=" * string(source.mw_ebv)
+        m[:label_x] = "Rest frame wavelength"
+        m[:unit_x]  = string(QSFit.unit_λ())
+        m[:label_y] = "Lum. density"
+        m[:unit_y]  = string(QSFit.unit_lum_density())
+        m[:scale_y] = string(QSFit.scale_lum())
+        vd.gfit[:data][id][:meta][:label] = source.spectra[id].label
+
+        vd.extra[id][:extratab_1] = GFitViewer.MDict()
+        vd.extra[id][:extratab_1][:label] = "First extra table"
+        vd.extra[id][:extratab_1][:fields] = GFitViewer.MDict()
+        vd.extra[id][:extratab_1][:fields][:fname_1] = GFitViewer.MDict()
+        vd.extra[id][:extratab_1][:fields][:fname_1][:meta] = GFitViewer.MDict()
+        vd.extra[id][:extratab_1][:fields][:fname_1][:meta][:desc] = "Optional. In case we want to add metedata."
+        vd.extra[id][:extratab_1][:fields][:fname_1][:data] = [102, 203, 304]
+        vd.extra[id][:extratab_1][:fields][:fname_2] = GFitViewer.MDict()
+        vd.extra[id][:extratab_1][:fields][:fname_2][:meta] = GFitViewer.MDict()
+        vd.extra[id][:extratab_1][:fields][:fname_2][:data] = [10.2, 20.3, 30.4]
+        vd.extra[id][:extratab_1][:fields][:fname_3] = GFitViewer.MDict()
+        vd.extra[id][:extratab_1][:fields][:fname_3][:meta] = GFitViewer.MDict()
+        vd.extra[id][:extratab_1][:fields][:fname_3][:data] = ["String_1", "String_2", "String_3"]
+
+        vd.extra[id][:extratab_2] = GFitViewer.MDict()
+        vd.extra[id][:extratab_2][:label] = "Second extra table"
+        vd.extra[id][:extratab_2][:fields] = GFitViewer.MDict()
+        vd.extra[id][:extratab_2][:fields][:fname_1] = GFitViewer.MDict()
+        vd.extra[id][:extratab_2][:fields][:fname_1][:meta] = GFitViewer.MDict()
+        vd.extra[id][:extratab_2][:fields][:fname_1][:meta][:desc] = "Optional. In case we want to add metedata."
+        vd.extra[id][:extratab_2][:fields][:fname_1][:data] = [102, 203, 304]
+        vd.extra[id][:extratab_2][:fields][:fname_2] = GFitViewer.MDict()
+        vd.extra[id][:extratab_2][:fields][:fname_2][:meta] = GFitViewer.MDict()
+        vd.extra[id][:extratab_2][:fields][:fname_2][:data] = [10.2, 20.3, 30.4]
+        vd.extra[id][:extratab_2][:fields][:fname_3] = GFitViewer.MDict()
+        vd.extra[id][:extratab_2][:fields][:fname_3][:meta] = GFitViewer.MDict()
+        vd.extra[id][:extratab_2][:fields][:fname_3][:data] = ["String_1", "String_2", "String_3"]
     end
 end
 
+viewer(model::Model, source::QSO, bestfit::GFit.BestFitResult; filename=nothing, offline=false, kw...) =
+    viewer(ViewerData(model, source, bestfit; filename=filename, offline=offline, kw...)
 
 include("DefaultRecipe.jl")
 include("DefaultRecipe_multi.jl")

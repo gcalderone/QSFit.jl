@@ -96,9 +96,9 @@ end
 function known_spectral_lines(::Type{T}) where T <: DefaultRecipe
     list = OrderedDict{Symbol, AbstractSpectralLine}()
     list[:Lyb         ] = CombinedLine( 1026.0  )
-    # list[:OV          ] = NarrowLine(   1213.8  )     # Ferland+92, Shields+95
+    # list[:OV        ] = NarrowLine(   1213.8  )  # Ferland+92, Shields+95
     list[:Lya         ] = CombinedLine( 1215.24 )
-    # list[:OV          ] = NarrowLine(   1218.3  )     # Ferland+92, Shields+95
+    # list[:OV        ] = NarrowLine(   1218.3  )  # Ferland+92, Shields+95
     list[:NV_1241     ] = NarrowLine(   1240.81 )
     list[:OI_1306     ] = BroadLine(    1305.53 )
     list[:CII_1335    ] = BroadLine(    1335.31 )
@@ -476,6 +476,5 @@ function fit(source::QSO{TRecipe}; id=1) where TRecipe <: DefaultRecipe
     println(source.log, "\nElapsed time: $elapsed s")
     QSFit.close_log(source)
 
-    QSFit.populate_metadata!(source, model)
     return (model, bestfit)
 end
