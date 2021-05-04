@@ -251,7 +251,7 @@ function ViewerData(model::Model, source::QSO, bestfit::GFit.BestFitResult; kw..
 end
 
 viewer(model::Model, source::QSO, bestfit::GFit.BestFitResult; filename=nothing, offline=false, kw...) =
-    viewer(ViewerData(model, source, bestfit; filename=filename, offline=offline, kw...)
+    viewer(ViewerData(model, source, bestfit; kw...); filename=filename, offline=offline)
 
 include("DefaultRecipe.jl")
 include("DefaultRecipe_multi.jl")
