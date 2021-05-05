@@ -5,6 +5,7 @@ export QSO, Spectrum, add_spec!, fit, multi_fit
 import GFit: Domain, CompEval,
     Parameter, AbstractComponent, prepare!, evaluate!, fit!
 
+using GFitViewer
 import GFitViewer: ViewerData, viewer
 
 
@@ -209,7 +210,8 @@ end
 
 function ViewerData(model::Model, source::QSO, bestfit::GFit.BestFitResult; kw...)
     vd = ViewerData(model, source.data, bestfit; kw...)
-
+    vd.params[:appname] = "QSFit"
+    vd.params[:version] = "0.1"
     for id in 1:length(model.preds)
         m = vd.gfit[:predictions][id][:meta]
         m[:label] = source.name * ", z=" * string(source.z) * ", E(B-V)=" * string(source.mw_ebv)
@@ -248,6 +250,7 @@ function ViewerData(model::Model, source::QSO, bestfit::GFit.BestFitResult; kw..
         vd.extra[id][:extratab_2][:fields][:fname_3][:meta] = GFitViewer.MDict()
         vd.extra[id][:extratab_2][:fields][:fname_3][:data] = ["String_1", "String_2", "String_3"]
     end
+    return vd
 end
 
 viewer(model::Model, source::QSO, bestfit::GFit.BestFitResult; filename=nothing, offline=false, kw...) =
