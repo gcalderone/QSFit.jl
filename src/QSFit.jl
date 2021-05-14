@@ -13,7 +13,7 @@ using CMPFit, GFit
 using Pkg, Pkg.Artifacts
 using Statistics, DelimitedFiles, Dierckx, QuadGK, Printf, DataStructures
 using Unitful, UnitfulAstro
-
+using Dates
 # GFit.showsettings.showfixed = true
 
 include("cosmology.jl")
@@ -210,16 +210,27 @@ end
 
 function ViewerData(model::Model, source::QSO, bestfit::GFit.BestFitResult; kw...)
     vd = ViewerData(model, source.data, bestfit; kw...)
-    vd.params[:appname] = "QSFit"
-    vd.params[:version] = "0.1"
+    vd.params[:banner] = "QSFit (v0.1)<br />Date: " * string(trunc(bestfit.timestamp, Second))
+
     for id in 1:length(model.preds)
         m = vd.gfit[:predictions][id][:meta]
         m[:label] = source.name * ", z=" * string(source.z) * ", E(B-V)=" * string(source.mw_ebv)
         m[:label_x] = "Rest frame wavelength"
         m[:unit_x]  = string(QSFit.unit_λ())
+        m[:log10scale_x] = 0
         m[:label_y] = "Lum. density"
-        m[:unit_y]  = string(QSFit.unit_lum_density())
-        m[:scale_y] = string(QSFit.scale_lum())
+
+        if "UNITFUL_FANCY_EXPONENTS" in keys(ENV)
+            orig = ENV["UNITFUL_FANCY_EXPONENTS"]
+            ENV["UNITFUL_FANCY_EXPONENTS"] = true
+            m[:unit_y]  = string(QSFit.unit_lum_density())
+            ENV["UNITFUL_FANCY_EXPONENTS"] = orig
+        else
+            ENV["UNITFUL_FANCY_EXPONENTS"] = true
+            m[:unit_y]  = string(QSFit.unit_lum_density())
+            delete!(ENV, "UNITFUL_FANCY_EXPONENTS")
+        end
+        m[:log10scale_y] = QSFit.log10_scale_lum()
         vd.gfit[:data][id][:meta][:label] = source.spectra[id].label
 
         vd.extra[id][:extratab_1] = GFitViewer.MDict()

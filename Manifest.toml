@@ -17,9 +17,9 @@ uuid = "0dad84c5-d112-42e6-8d28-ef12dabb789f"
 
 [[ArrayInterface]]
 deps = ["IfElse", "LinearAlgebra", "Requires", "SparseArrays", "Static"]
-git-tree-sha1 = "d84e8967b7f04f52c9bca21714bae54a553a53fc"
+git-tree-sha1 = "b09fe16aa9dc587cccce838e6cb6d6e1f4831d7f"
 uuid = "4fba245c-0d91-5ea0-9b3e-6abc04ee57a9"
-version = "3.1.10"
+version = "3.1.12"
 
 [[Artifacts]]
 uuid = "56f22d72-fd6d-98f1-02f0-08ddc0907c33"
@@ -41,15 +41,15 @@ version = "3.49.0+0"
 
 [[CMPFit]]
 deps = ["Pkg", "Printf", "Test"]
-git-tree-sha1 = "63dddd9c920c1b3700c1e9345ff826f0a4919997"
+git-tree-sha1 = "e3faebce409211daebcb69caceb018f553180ecf"
 uuid = "a5944310-3432-5d93-8bb2-e3b5eb62a58f"
-version = "0.3.2"
+version = "0.3.3"
 
 [[ChainRulesCore]]
 deps = ["Compat", "LinearAlgebra", "SparseArrays"]
-git-tree-sha1 = "bd0cc939d94b8bd736dce5bbbe0d635db9f94af7"
+git-tree-sha1 = "e6b23566e025d3b0d9ccc397f5c7a134af552e27"
 uuid = "d360d2e6-b24c-11e9-a2a3-2a2ae2dbcce4"
-version = "0.9.41"
+version = "0.9.42"
 
 [[CommonSubexpressions]]
 deps = ["MacroTools", "Test"]
@@ -69,9 +69,9 @@ uuid = "e66e0078-7015-5450-92f7-15fbd957f2ae"
 
 [[ConstructionBase]]
 deps = ["LinearAlgebra"]
-git-tree-sha1 = "48920211c95a6da1914a06c44ec94be70e84ffff"
+git-tree-sha1 = "1dc43957fb9a1574fa1b7a449e101bd1fd3a9fb7"
 uuid = "187b0558-2788-49d3-abe0-74a17ed4e7c9"
-version = "1.1.0"
+version = "1.2.1"
 
 [[Cosmology]]
 deps = ["QuadGK", "Unitful", "UnitfulAstro"]
@@ -218,14 +218,16 @@ uuid = "f6369f11-7733-5829-9624-2563aa707210"
 version = "0.10.18"
 
 [[GFit]]
-deps = ["CMPFit", "DataStructures", "Distributions", "ExprTools", "LsqFit", "PrettyTables", "Printf", "Random", "Statistics"]
+deps = ["CMPFit", "DataStructures", "Dates", "Distributions", "ExprTools", "LsqFit", "PrettyTables", "Printf", "Random", "Statistics"]
 path = "/home/gcalderone/.julia/dev/GFit"
 uuid = "ac42e6ba-c0bf-4fcf-827d-deea44b16255"
 version = "0.1.0"
 
 [[GFitViewer]]
 deps = ["DataStructures", "DefaultApplication", "GFit", "JSON", "Pkg", "Statistics"]
-path = "/home/gcalderone/.julia/dev/GFitViewer"
+git-tree-sha1 = "bbeb87eb8a2897f632fb59c7bc6cdd36d9fd1038"
+repo-rev = "master"
+repo-url = "https://github.com/lnicastro/GFitViewer.jl"
 uuid = "5d93b50e-5cc7-4feb-a740-ec85257caa01"
 version = "0.1.0"
 
@@ -374,9 +376,9 @@ uuid = "ca575930-c2e3-43a9-ace4-1e988b2c1908"
 
 [[OffsetArrays]]
 deps = ["Adapt"]
-git-tree-sha1 = "87a728aebb76220bd72855e1c85284c5fdb9774c"
+git-tree-sha1 = "47b443d2ccc8297a4c538f55f8fd828ad58599ab"
 uuid = "6fe1bfb0-de20-5000-8ca7-80f57d26f881"
-version = "1.7.0"
+version = "1.8.0"
 
 [[OpenSpecFun_jll]]
 deps = ["Artifacts", "CompilerSupportLibraries_jll", "JLLWrappers", "Libdl", "Pkg"]
@@ -391,9 +393,9 @@ uuid = "87e2bd06-a317-5318-96d9-3ecbac512eee"
 version = "2.0.1"
 
 [[OrderedCollections]]
-git-tree-sha1 = "4fa2ba51070ec13fcc7517db714445b4ab986bdf"
+git-tree-sha1 = "85f8e6578bf1f9ee0d11e7bb1b1456435479d47c"
 uuid = "bac558e1-5e72-5ebc-8fee-abe8a469f55d"
-version = "1.4.0"
+version = "1.4.1"
 
 [[PDMats]]
 deps = ["LinearAlgebra", "SparseArrays", "SuiteSparse"]
@@ -419,9 +421,9 @@ version = "1.2.1"
 
 [[Preferences]]
 deps = ["TOML"]
-git-tree-sha1 = "ea79e4c9077208cd3bc5d29631a26bc0cff78902"
+git-tree-sha1 = "00cfd92944ca9c760982747e9a1d0d5d86ab1e5a"
 uuid = "21216c6a-2e73-6563-6e65-726566657250"
-version = "1.2.1"
+version = "1.2.2"
 
 [[PrettyTables]]
 deps = ["Crayons", "Formatting", "Markdown", "Reexport", "Tables"]
@@ -513,9 +515,9 @@ version = "0.2.4"
 
 [[StaticArrays]]
 deps = ["LinearAlgebra", "Random", "Statistics"]
-git-tree-sha1 = "2653e9c769343808781a8bd5010ee7a17c01152e"
+git-tree-sha1 = "fb46e45ef2cade8be20bb445b3ffeca3c6d6f7d3"
 uuid = "90137ffa-7385-5640-81b9-e52037218182"
-version = "1.1.2"
+version = "1.1.3"
 
 [[Statistics]]
 deps = ["LinearAlgebra", "SparseArrays"]
@@ -567,10 +569,10 @@ deps = ["InteractiveUtils", "Logging", "Random", "Serialization"]
 uuid = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [[TimeZones]]
-deps = ["Dates", "EzXML", "Mocking", "Pkg", "Printf", "RecipesBase", "Serialization", "Unicode"]
-git-tree-sha1 = "3f6f0be07f33e33bd986a58b4cf2d6c9fd2b7f18"
+deps = ["Dates", "EzXML", "LazyArtifacts", "Mocking", "Pkg", "Printf", "RecipesBase", "Serialization", "Unicode"]
+git-tree-sha1 = "960099aed321e05ac649c90d583d59c9309faee1"
 uuid = "f269a46b-ccf7-5d73-abea-4c690281aa53"
-version = "1.5.4"
+version = "1.5.5"
 
 [[UUIDs]]
 deps = ["Random", "SHA"]

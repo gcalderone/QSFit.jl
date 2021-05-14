@@ -7,9 +7,13 @@ unit_lum() =  u"erg" / u"s"
 unit_flux_density() = unit_flux() / unit_λ()
 unit_lum_density() = unit_lum() / unit_λ()
 
-scale_λ() = 1.
-scale_flux() = 1.e-17
-scale_lum() = 1.e42
+log10_scale_λ()    = 0
+log10_scale_flux() = -17
+log10_scale_lum()  = 42
+
+scale_λ()    = 10. ^log10_scale_λ()
+scale_flux() = 10. ^log10_scale_flux()
+scale_lum()  = 10. ^log10_scale_lum()
 
 struct Spectrum
     label::String
