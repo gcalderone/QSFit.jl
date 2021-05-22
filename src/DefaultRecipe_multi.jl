@@ -57,8 +57,8 @@ function multi_fit(source::QSO{TRecipe}; ref_id=1) where TRecipe <: DefaultRecip
             c.ratio.fixed = false
             c.ratio.low  = 0.1
             c.ratio.high = 1
-            patch!(model) do m
-                m[id][:balmer].norm *= m[id][:qso_cont].norm
+            patch!(model[id]) do m
+                m[:balmer].norm *= m[:qso_cont].norm
             end
         end
     end
@@ -208,22 +208,22 @@ function multi_fit(source::QSO{TRecipe}; ref_id=1) where TRecipe <: DefaultRecip
         if  haskey(model[id], :OIII_4959)  &&
             haskey(model[id], :OIII_5007)
             model[id][:OIII_4959].voff.fixed = true
-            patch!(model) do m
-                m[id][:OIII_4959].voff = m[id][:OIII_5007].voff
+            patch!(model[id]) do m
+                m[:OIII_4959].voff = m[:OIII_5007].voff
             end
         end
         if  haskey(model[id], :NII_6549)  &&
             haskey(model[id], :NII_6583)
             model[id][:NII_6549].voff.fixed = true
-            patch!(model) do m
-                m[id][:NII_6549].voff = m[id][:NII_6583].voff
+            patch!(model[id]) do m
+                m[:NII_6549].voff = m[:NII_6583].voff
             end
         end
         if  haskey(model[id], :OIII_5007_bw)  &&
             haskey(model[id], :OIII_5007)
-            patch!(model) do m
-                m[id][:OIII_5007_bw].voff += m[id][:OIII_5007].voff
-                m[id][:OIII_5007_bw].fwhm += m[id][:OIII_5007].fwhm
+            patch!(model[id]) do m
+                m[:OIII_5007_bw].voff += m[:OIII_5007].voff
+                m[:OIII_5007_bw].fwhm += m[:OIII_5007].fwhm
             end
         end
 
@@ -233,8 +233,8 @@ function multi_fit(source::QSO{TRecipe}; ref_id=1) where TRecipe <: DefaultRecip
             # smaller than the associated broad component:
             model[id][:bb_Hb].norm.high = 1
             model[id][:bb_Hb].norm.val  = 0.5
-            patch!(model) do m
-                m[id][:bb_Hb].norm *= m[id][:br_Hb].norm / m[id][:br_Hb].fwhm * m[id][:bb_Hb].fwhm
+            patch!(model[id]) do m
+                m[:bb_Hb].norm *= m[:br_Hb].norm / m[:br_Hb].fwhm * m[:bb_Hb].fwhm
             end
         end
 
@@ -244,17 +244,17 @@ function multi_fit(source::QSO{TRecipe}; ref_id=1) where TRecipe <: DefaultRecip
             # smaller than the associated broad component:
             model[id][:bb_Ha].norm.high = 1
             model[id][:bb_Ha].norm.val  = 0.5
-            patch!(model) do m
-                m[id][:bb_Ha].norm *= m[id][:br_Ha].norm / m[id][:br_Ha].fwhm * m[id][:bb_Ha].fwhm
+            patch!(model[id]) do m
+                m[:bb_Ha].norm *= m[:br_Ha].norm / m[:br_Ha].fwhm * m[:bb_Ha].fwhm
             end
         end
 
         #=
         model[id][:br_Hb].voff.fixed = 1
         model[id][:br_Hb].fwhm.fixed = 1
-        patch!(model) do m
-            m[id][:br_Hb].voff = m[id][:br_Ha].voff
-            m[id][:br_Hb].fwhm = m[id][:br_Ha].fwhm
+        patch!(model[id]) do m
+            m[:br_Hb].voff = m[:br_Ha].voff
+            m[:br_Hb].fwhm = m[:br_Ha].fwhm
         end
         =#
 
@@ -385,7 +385,7 @@ function multi_fit(source::QSO{TRecipe}; ref_id=1) where TRecipe <: DefaultRecip
             model[id][:OIII_5007].fwhm.fixed = 1
             model[id][:OIII_5007].voff.fixed = 1
             patch!(model) do m
-                (:galaxy in keys(model[id]))  &&  (m[id][   :galaxy].norm = m[ref_id][   :galaxy].norm)
+                (:galaxy in keys(model[id]))  &&  (m[id][:galaxy].norm = m[ref_id][:galaxy].norm)
                 m[id][:OIII_5007].norm = m[ref_id][:OIII_5007].norm
                 m[id][:OIII_5007].fwhm = m[ref_id][:OIII_5007].fwhm
                 m[id][:OIII_5007].voff = m[ref_id][:OIII_5007].voff
