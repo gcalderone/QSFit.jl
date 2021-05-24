@@ -144,7 +144,7 @@ function fit(source::QSO{TRecipe}; id=1) where TRecipe <: DefaultRecipe
     # Initialize components and guess initial values
     println(source.log, "\nFit continuum components...")
     λ = source.domain[id][:]
-    model = Model(source.domain[id], :Continuum => Reducer(sum, [:qso_cont]),
+    model = Model(source.domain[id], :Continuum => reducer_sum([:qso_cont]),
                   :qso_cont => QSFit.qso_cont_component(TRecipe))
 
     if source.options[:instr_broadening]
@@ -158,7 +158,7 @@ function fit(source::QSO{TRecipe}; id=1) where TRecipe <: DefaultRecipe
     # Host galaxy template
     if source.options[:use_host_template]  &&
         (minimum(λ) .< 5500 .< maximum(λ))
-        add!(model, :Continuum => Reducer(sum, [:qso_cont, :galaxy]),
+        add!(model, :Continuum => reducer_sum([:qso_cont, :galaxy]),
              :galaxy => QSFit.hostgalaxy(source.options[:host_template]))
         model[:galaxy].norm.val = Spline1D(λ, source.data[id].val, k=1, bc="error")(5500.)
     end
@@ -167,7 +167,7 @@ function fit(source::QSO{TRecipe}; id=1) where TRecipe <: DefaultRecipe
     if source.options[:use_balmer]
         tmp = [:qso_cont, :balmer]
         (:galaxy in keys(model))  &&  push!(tmp, :galaxy)
-        add!(model, :Continuum => Reducer(sum, tmp),
+        add!(model, :Continuum => reducer_sum(tmp),
              :balmer => QSFit.balmercont(0.1, 0.5))
         c = model[:balmer]
         c.norm.val  = 0.1
@@ -177,9 +177,7 @@ function fit(source::QSO{TRecipe}; id=1) where TRecipe <: DefaultRecipe
         c.ratio.fixed = false
         c.ratio.low  = 0.1
         c.ratio.high = 1
-        patch!(model) do m
-            m[:balmer].norm *= m[:qso_cont].norm
-        end
+        @patch! model m -> m[:balmer].norm *= m[:qso_cont].norm
     end
 
     bestfit = fit!(model, source.data, minimizer=mzer);  show(source.log, bestfit)
@@ -245,13 +243,13 @@ function fit(source::QSO{TRecipe}; id=1) where TRecipe <: DefaultRecipe
         end
     end
     if length(iron_components) > 0
-        add!(model, :Iron => Reducer(sum, iron_components))
-        add!(model, :main => Reducer(sum, [:Continuum, :Iron]))
+        add!(model, :Iron => reducer_sum(iron_components))
+        add!(model, :main => reducer_sum([:Continuum, :Iron]))
         evaluate!(model)
         bestfit = fit!(model, source.data, minimizer=mzer); show(source.log, bestfit)
     else
-        add!(model, :Iron => Reducer(() -> [0.], Symbol[]))
-        add!(model, :main => Reducer(sum, [:Continuum, :Iron]))
+        add!(model, :Iron => @reducer(() -> [0.]))
+        add!(model, :main => reducer_sum([:Continuum, :Iron]))
     end
     (:ironuv    in keys(model))  &&  freeze(model, :ironuv)
     (:ironoptbr in keys(model))  &&  freeze(model, :ironoptbr)
@@ -265,9 +263,9 @@ function fit(source::QSO{TRecipe}; id=1) where TRecipe <: DefaultRecipe
     resid = source.data[id].val - model()  # will be used to guess line normalization
     add!(model, source.line_comps[id])
     for (group, lnames) in QSFit.invert_dictionary(source.line_names[id])
-        add!(model, group  => Reducer(sum, lnames))
+        add!(model, group  => reducer_sum(lnames))
     end
-    add!(model, :main => Reducer(sum, [:Continuum, :Iron, line_groups...]))
+    add!(model, :main => reducer_sum([:Continuum, :Iron, line_groups...]))
 
     if haskey(model, :MgII_2798)
         model[:MgII_2798].voff.low  = -1000
@@ -313,20 +311,16 @@ function fit(source::QSO{TRecipe}; id=1) where TRecipe <: DefaultRecipe
     if  haskey(model, :OIII_4959)  &&
         haskey(model, :OIII_5007)
         model[:OIII_4959].voff.fixed = true
-        patch!(model) do m
-            m[:OIII_4959].voff = m[:OIII_5007].voff
-        end
+        @patch! model m -> m[:OIII_4959].voff = m[:OIII_5007].voff
     end
     if  haskey(model, :NII_6549)  &&
         haskey(model, :NII_6583)
         model[:NII_6549].voff.fixed = true
-        patch!(model) do m
-            m[:NII_6549].voff = m[:NII_6583].voff
-        end
+        @patch! model m -> m[:NII_6549].voff = m[:NII_6583].voff
     end
     if  haskey(model, :OIII_5007_bw)  &&
         haskey(model, :OIII_5007)
-        patch!(model) do m
+        @patch! model m -> begin
             m[:OIII_5007_bw].voff += m[:OIII_5007].voff
             m[:OIII_5007_bw].fwhm += m[:OIII_5007].fwhm
         end
@@ -338,9 +332,7 @@ function fit(source::QSO{TRecipe}; id=1) where TRecipe <: DefaultRecipe
         # smaller than the associated broad component:
         model[:bb_Hb].norm.high = 1
         model[:bb_Hb].norm.val  = 0.5
-        patch!(model) do m
-            m[:bb_Hb].norm *= m[:br_Hb].norm / m[:br_Hb].fwhm * m[:bb_Hb].fwhm
-        end
+        @patch! model m -> m[:bb_Hb].norm *= m[:br_Hb].norm / m[:br_Hb].fwhm * m[:bb_Hb].fwhm
     end
 
     if  haskey(model, :br_Ha)  &&
@@ -349,15 +341,13 @@ function fit(source::QSO{TRecipe}; id=1) where TRecipe <: DefaultRecipe
         # smaller than the associated broad component:
         model[:bb_Ha].norm.high = 1
         model[:bb_Ha].norm.val  = 0.5
-        patch!(model) do m
-            m[:bb_Ha].norm *= m[:br_Ha].norm / m[:br_Ha].fwhm * m[:bb_Ha].fwhm
-        end
+        @patch! model m -> m[:bb_Ha].norm *= m[:br_Ha].norm / m[:br_Ha].fwhm * m[:bb_Ha].fwhm
     end
 
     #=
     model[:br_Hb].voff.fixed = 1
     model[:br_Hb].fwhm.fixed = 1
-    patch!(model) do m
+    @patch! model m -> begin
         m[:br_Hb].voff = m[:br_Ha].voff
         m[:br_Hb].fwhm = m[:br_Ha].fwhm
     end
@@ -376,8 +366,8 @@ function fit(source::QSO{TRecipe}; id=1) where TRecipe <: DefaultRecipe
             tmp[Symbol(:unk, j)] = line_component(TRecipe, QSFit.UnkLine(5e3))
             tmp[Symbol(:unk, j)].norm_integrated = source.options[:norm_integrated]
         end
-        add!(model, :UnkLines => Reducer(sum, collect(keys(tmp))), tmp)
-        add!(model, :main => Reducer(sum, [:Continuum, :Iron, line_groups..., :UnkLines]))
+        add!(model, :UnkLines => reducer_sum(collect(keys(tmp))), tmp)
+        add!(model, :main => reducer_sum([:Continuum, :Iron, line_groups..., :UnkLines]))
         evaluate!(model)
         for j in 1:source.options[:n_unk]
             freeze(model, Symbol(:unk, j))

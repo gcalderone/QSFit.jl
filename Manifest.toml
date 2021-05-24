@@ -218,8 +218,8 @@ uuid = "f6369f11-7733-5829-9624-2563aa707210"
 version = "0.10.18"
 
 [[GFit]]
-deps = ["CMPFit", "DataStructures", "Dates", "Distributions", "ExprTools", "LsqFit", "PrettyTables", "Printf", "Random", "Statistics"]
-git-tree-sha1 = "74ce632e28589f614ec90929500216cf9fcd62d2"
+deps = ["CMPFit", "DataStructures", "Dates", "Distributions", "LsqFit", "MacroTools", "PrettyTables", "Printf", "Random", "Statistics"]
+git-tree-sha1 = "f4e1a2908f3491c08c09b6153ce72fd6f17bb28e"
 repo-rev = "master"
 repo-url = "https://github.com/gcalderone/GFit.jl"
 uuid = "ac42e6ba-c0bf-4fcf-827d-deea44b16255"

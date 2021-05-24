@@ -18,7 +18,7 @@ function multi_fit(source::QSO{TRecipe}; ref_id=1) where TRecipe <: DefaultRecip
     preds = Vector{Prediction}()
     for id in 1:Nspec
         λ = source.domain[id][:]
-        pred = Prediction(source.domain[id], :Continuum => Reducer(sum, [:qso_cont]),
+        pred = Prediction(source.domain[id], :Continuum => reducer_sum([:qso_cont]),
                           :qso_cont => QSFit.qso_cont_component(TRecipe))
 
         if source.options[:instr_broadening]
@@ -38,7 +38,7 @@ function multi_fit(source::QSO{TRecipe}; ref_id=1) where TRecipe <: DefaultRecip
         # Host galaxy template
         if source.options[:use_host_template]   &&
             (minimum(λ) .< 5500 .< maximum(λ))
-            add!(model[id], :Continuum => Reducer(sum, [:qso_cont, :galaxy]),
+            add!(model[id], :Continuum => reducer_sum([:qso_cont, :galaxy]),
                  :galaxy => QSFit.hostgalaxy(source.options[:host_template]))
             model[id][:galaxy].norm.val = Spline1D(λ, source.data[id].val, k=1, bc="error")(5500.)
         end
@@ -47,7 +47,7 @@ function multi_fit(source::QSO{TRecipe}; ref_id=1) where TRecipe <: DefaultRecip
         if source.options[:use_balmer]
             tmp = [:qso_cont, :balmer]
             (:galaxy in keys(model[id]))  &&  push!(tmp, :galaxy)
-            add!(model[id], :Continuum => Reducer(sum, tmp),
+            add!(model[id], :Continuum => reducer_sum(tmp),
                  :balmer => QSFit.balmercont(0.1, 0.5))
             c = model[id][:balmer]
             c.norm.val  = 0.1
@@ -57,9 +57,7 @@ function multi_fit(source::QSO{TRecipe}; ref_id=1) where TRecipe <: DefaultRecip
             c.ratio.fixed = false
             c.ratio.low  = 0.1
             c.ratio.high = 1
-            patch!(model[id]) do m
-                m[:balmer].norm *= m[:qso_cont].norm
-            end
+            @patch! model[id] m -> m[:balmer].norm *= m[:qso_cont].norm
         end
     end
 
@@ -137,13 +135,13 @@ function multi_fit(source::QSO{TRecipe}; ref_id=1) where TRecipe <: DefaultRecip
             end
         end
         if length(iron_components) > 0
-            add!(model[id], :Iron => Reducer(sum, iron_components))
-            add!(model[id], :main => Reducer(sum, [:Continuum, :Iron]))
+            add!(model[id], :Iron => reducer_sum(iron_components))
+            add!(model[id], :main => reducer_sum([:Continuum, :Iron]))
             evaluate!(model)
             bestfit = fit!(model, only_id=id, source.data, minimizer=mzer); show(source.log, bestfit)
         else
-            add!(model[id], :Iron => Reducer(() -> [0.], Symbol[]))
-            add!(model[id], :main => Reducer(sum, [:Continuum, :Iron]))
+            add!(model[id], :Iron => @reducer(() -> [0.]))
+            add!(model[id], :main => reducer_sum([:Continuum, :Iron]))
         end
         (:ironuv    in keys(model[id]))  &&  freeze(model[id], :ironuv)
         (:ironoptbr in keys(model[id]))  &&  freeze(model[id], :ironoptbr)
@@ -160,9 +158,9 @@ function multi_fit(source::QSO{TRecipe}; ref_id=1) where TRecipe <: DefaultRecip
         resid = source.data[id].val - model[id]()  # will be used to guess line normalization
         add!(model[id], source.line_comps[id])
         for (group, lnames) in QSFit.invert_dictionary(source.line_names[id])
-            add!(model[id], group => Reducer(sum, lnames))
+            add!(model[id], group => reducer_sum(lnames))
         end
-        add!(model[id], :main => Reducer(sum, [:Continuum, :Iron, line_groups[id]...]))
+        add!(model[id], :main => reducer_sum([:Continuum, :Iron, line_groups[id]...]))
 
         if haskey(model[id], :MgII_2798)
             model[id][:MgII_2798].voff.low  = -1000
@@ -208,20 +206,16 @@ function multi_fit(source::QSO{TRecipe}; ref_id=1) where TRecipe <: DefaultRecip
         if  haskey(model[id], :OIII_4959)  &&
             haskey(model[id], :OIII_5007)
             model[id][:OIII_4959].voff.fixed = true
-            patch!(model[id]) do m
-                m[:OIII_4959].voff = m[:OIII_5007].voff
-            end
+            @patch! model[id] m -> m[:OIII_4959].voff = m[:OIII_5007].voff
         end
         if  haskey(model[id], :NII_6549)  &&
             haskey(model[id], :NII_6583)
             model[id][:NII_6549].voff.fixed = true
-            patch!(model[id]) do m
-                m[:NII_6549].voff = m[:NII_6583].voff
-            end
+            @patch! model[id] m -> m[:NII_6549].voff = m[:NII_6583].voff
         end
         if  haskey(model[id], :OIII_5007_bw)  &&
             haskey(model[id], :OIII_5007)
-            patch!(model[id]) do m
+            @patch! model[id] m -> begin
                 m[:OIII_5007_bw].voff += m[:OIII_5007].voff
                 m[:OIII_5007_bw].fwhm += m[:OIII_5007].fwhm
             end
@@ -233,9 +227,7 @@ function multi_fit(source::QSO{TRecipe}; ref_id=1) where TRecipe <: DefaultRecip
             # smaller than the associated broad component:
             model[id][:bb_Hb].norm.high = 1
             model[id][:bb_Hb].norm.val  = 0.5
-            patch!(model[id]) do m
-                m[:bb_Hb].norm *= m[:br_Hb].norm / m[:br_Hb].fwhm * m[:bb_Hb].fwhm
-            end
+            @patch! model[id] m -> m[:bb_Hb].norm *= m[:br_Hb].norm / m[:br_Hb].fwhm * m[:bb_Hb].fwhm
         end
 
         if  haskey(model[id], :br_Ha)  &&
@@ -244,15 +236,13 @@ function multi_fit(source::QSO{TRecipe}; ref_id=1) where TRecipe <: DefaultRecip
             # smaller than the associated broad component:
             model[id][:bb_Ha].norm.high = 1
             model[id][:bb_Ha].norm.val  = 0.5
-            patch!(model[id]) do m
-                m[:bb_Ha].norm *= m[:br_Ha].norm / m[:br_Ha].fwhm * m[:bb_Ha].fwhm
-            end
+            @patch! model[id] m -> m[:bb_Ha].norm *= m[:br_Ha].norm / m[:br_Ha].fwhm * m[:bb_Ha].fwhm
         end
 
         #=
         model[id][:br_Hb].voff.fixed = 1
         model[id][:br_Hb].fwhm.fixed = 1
-        patch!(model[id]) do m
+        @patch! model[id] m -> begin
             m[:br_Hb].voff = m[:br_Ha].voff
             m[:br_Hb].fwhm = m[:br_Ha].fwhm
         end
@@ -276,8 +266,8 @@ function multi_fit(source::QSO{TRecipe}; ref_id=1) where TRecipe <: DefaultRecip
                 tmp[Symbol(:unk, j)] = line_component(TRecipe, QSFit.UnkLine(5e3))
                 tmp[Symbol(:unk, j)].norm_integrated = source.options[:norm_integrated]
             end
-            add!(model[id], :UnkLines => Reducer(sum, collect(keys(tmp))), tmp)
-            add!(model[id], :main => Reducer(sum, [:Continuum, :Iron, line_groups[id]..., :UnkLines]))
+            add!(model[id], :UnkLines => reducer_sum(collect(keys(tmp))), tmp)
+            add!(model[id], :main => reducer_sum([:Continuum, :Iron, line_groups[id]..., :UnkLines]))
             evaluate!(model)
             for j in 1:source.options[:n_unk]
                 freeze(model[id], Symbol(:unk, j))
@@ -286,8 +276,8 @@ function multi_fit(source::QSO{TRecipe}; ref_id=1) where TRecipe <: DefaultRecip
     else
         # Here we need a :UnkLines reducer, even when n_unk is 0
         for id in 1:Nspec
-            add!(model[id], :UnkLines => Reducer(() -> [0.], Symbol[]))
-            add!(model[id], :main => Reducer(sum, [:Continuum, :Iron, line_groups[id]...]))
+            add!(model[id], :UnkLines => @reducer(() -> [0.]))
+            add!(model[id], :main => reducer_sum([:Continuum, :Iron, line_groups[id]...]))
         end
     end
     evaluate!(model)
@@ -384,7 +374,7 @@ function multi_fit(source::QSO{TRecipe}; ref_id=1) where TRecipe <: DefaultRecip
             model[id][:OIII_5007].norm.fixed = true
             model[id][:OIII_5007].fwhm.fixed = 1
             model[id][:OIII_5007].voff.fixed = 1
-            patch!(model) do m
+            @patch! model m -> begin
                 (:galaxy in keys(model[id]))  &&  (m[id][:galaxy].norm = m[ref_id][:galaxy].norm)
                 m[id][:OIII_5007].norm = m[ref_id][:OIII_5007].norm
                 m[id][:OIII_5007].fwhm = m[ref_id][:OIII_5007].fwhm
