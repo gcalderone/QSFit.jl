@@ -6,20 +6,14 @@ git-tree-sha1 = "485ee0867925449198280d4af84bdb46a2a404d0"
 uuid = "621f4979-c628-5d54-868e-fcf4e3e8185c"
 version = "1.0.1"
 
-[[Adapt]]
-deps = ["LinearAlgebra"]
-git-tree-sha1 = "f1b523983a58802c4695851926203b36e28f09db"
-uuid = "79e6a3ab-5dfb-504d-930d-738a2a938a0e"
-version = "3.3.0"
-
 [[ArgTools]]
 uuid = "0dad84c5-d112-42e6-8d28-ef12dabb789f"
 
 [[ArrayInterface]]
 deps = ["IfElse", "LinearAlgebra", "Requires", "SparseArrays", "Static"]
-git-tree-sha1 = "af516010f3d8c690d2207b12445aaa45da63e9fb"
+git-tree-sha1 = "4e988d6883cf3935e267f93f53cfc34792e0700f"
 uuid = "4fba245c-0d91-5ea0-9b3e-6abc04ee57a9"
-version = "3.1.14"
+version = "3.1.15"
 
 [[Artifacts]]
 uuid = "56f22d72-fd6d-98f1-02f0-08ddc0907c33"
@@ -85,10 +79,10 @@ uuid = "a8cc5b0e-0ffa-5ad4-8c14-923d3ee1735f"
 version = "4.0.4"
 
 [[DSP]]
-deps = ["FFTW", "IterTools", "LinearAlgebra", "Polynomials", "Random", "Reexport", "SpecialFunctions", "Statistics"]
-git-tree-sha1 = "2a63cb5fc0e8c1f0f139475ef94228c7441dc7d0"
+deps = ["Compat", "FFTW", "IterTools", "LinearAlgebra", "Polynomials", "Random", "Reexport", "SpecialFunctions", "Statistics"]
+git-tree-sha1 = "e554cce73670aa1119eb3a6977f26df3641ddff2"
 uuid = "717857b8-e6f2-59f4-9121-6e50c889abd2"
-version = "0.6.10"
+version = "0.7.0"
 
 [[DataAPI]]
 git-tree-sha1 = "dfb3b7e89e395be1e25c2ad6d7690dc29cc53b1d"
@@ -219,7 +213,7 @@ version = "0.10.18"
 
 [[GFit]]
 deps = ["CMPFit", "DataStructures", "Dates", "Distributions", "LsqFit", "MacroTools", "PrettyTables", "Printf", "Random", "Statistics"]
-git-tree-sha1 = "f4e1a2908f3491c08c09b6153ce72fd6f17bb28e"
+git-tree-sha1 = "cab4db55edf44b25406a10debee16dfd1d964438"
 repo-rev = "master"
 repo-url = "https://github.com/gcalderone/GFit.jl"
 uuid = "ac42e6ba-c0bf-4fcf-827d-deea44b16255"
@@ -227,7 +221,7 @@ version = "0.1.0"
 
 [[GFitViewer]]
 deps = ["DataStructures", "DefaultApplication", "GFit", "JSON", "Pkg", "Statistics"]
-git-tree-sha1 = "cd58fff09f13974c8e37e7c89ad499be40bab569"
+git-tree-sha1 = "27f74538b097316e43da7a283de986acfe1c7dad"
 repo-rev = "master"
 repo-url = "https://github.com/lnicastro/GFitViewer.jl"
 uuid = "5d93b50e-5cc7-4feb-a740-ec85257caa01"
@@ -362,6 +356,12 @@ version = "0.7.1"
 [[MozillaCACerts_jll]]
 uuid = "14a3606d-f60d-562e-9121-12d972cd8159"
 
+[[MutableArithmetics]]
+deps = ["LinearAlgebra", "SparseArrays", "Test"]
+git-tree-sha1 = "ad9b2bce6021631e0e20706d361972343a03e642"
+uuid = "d8a4904e-b15c-11e9-3269-09a3773c0cb0"
+version = "0.2.19"
+
 [[NLSolversBase]]
 deps = ["DiffResults", "Distributed", "FiniteDiff", "ForwardDiff"]
 git-tree-sha1 = "50608f411a1e178e0129eab4110bd56efd08816f"
@@ -375,12 +375,6 @@ version = "0.3.5"
 
 [[NetworkOptions]]
 uuid = "ca575930-c2e3-43a9-ace4-1e988b2c1908"
-
-[[OffsetArrays]]
-deps = ["Adapt"]
-git-tree-sha1 = "47b443d2ccc8297a4c538f55f8fd828ad58599ab"
-uuid = "6fe1bfb0-de20-5000-8ca7-80f57d26f881"
-version = "1.8.0"
 
 [[OpenSpecFun_jll]]
 deps = ["Artifacts", "CompilerSupportLibraries_jll", "JLLWrappers", "Libdl", "Pkg"]
@@ -416,10 +410,10 @@ deps = ["Artifacts", "Dates", "Downloads", "LibGit2", "Libdl", "Logging", "Markd
 uuid = "44cfe95a-1eb2-52ea-b672-e2afdf69b78f"
 
 [[Polynomials]]
-deps = ["Intervals", "LinearAlgebra", "OffsetArrays", "RecipesBase"]
-git-tree-sha1 = "0b15f3597b01eb76764dd03c3c23d6679a3c32c8"
+deps = ["Intervals", "LinearAlgebra", "MutableArithmetics", "RecipesBase"]
+git-tree-sha1 = "3606b3e972f7a58b62432c95aa2bdab3f3d97831"
 uuid = "f27b6e38-b328-58d1-80ce-0feddd5e7a45"
-version = "1.2.1"
+version = "2.0.10"
 
 [[Preferences]]
 deps = ["TOML"]
@@ -505,9 +499,9 @@ uuid = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
 
 [[SpecialFunctions]]
 deps = ["ChainRulesCore", "LogExpFunctions", "OpenSpecFun_jll"]
-git-tree-sha1 = "c467f25b6ec4167ea3a9a4351c66c2e1cba5da33"
+git-tree-sha1 = "371204984184315ed7228bcc604d08e1bbc18f31"
 uuid = "276daf66-3868-5448-9aa4-cd146d93841b"
-version = "1.4.1"
+version = "1.4.2"
 
 [[Static]]
 deps = ["IfElse"]
@@ -517,9 +511,9 @@ version = "0.2.4"
 
 [[StaticArrays]]
 deps = ["LinearAlgebra", "Random", "Statistics"]
-git-tree-sha1 = "c635017268fd51ed944ec429bcc4ad010bcea900"
+git-tree-sha1 = "a1f226ebe197578c25fcf948bfff3d0d12f2ff20"
 uuid = "90137ffa-7385-5640-81b9-e52037218182"
-version = "1.2.0"
+version = "1.2.1"
 
 [[Statistics]]
 deps = ["LinearAlgebra", "SparseArrays"]
@@ -558,9 +552,9 @@ version = "1.0.1"
 
 [[Tables]]
 deps = ["DataAPI", "DataValueInterfaces", "IteratorInterfaceExtensions", "LinearAlgebra", "TableTraits", "Test"]
-git-tree-sha1 = "c9d2d262e9a327be1f35844df25fe4561d258dc9"
+git-tree-sha1 = "aa30f8bb63f9ff3f8303a06c604c8500a69aa791"
 uuid = "bd369af6-aec1-5ad0-b16a-f7cc5008161c"
-version = "1.4.2"
+version = "1.4.3"
 
 [[Tar]]
 deps = ["ArgTools", "SHA"]

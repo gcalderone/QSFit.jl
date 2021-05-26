@@ -210,10 +210,10 @@ end
 
 function ViewerData(model::Model, source::QSO, bestfit::GFit.BestFitResult; kw...)
     vd = ViewerData(model, source.data, bestfit; kw...)
-    vd.params[:banner] = "QSFit (v0.1)<br />Date: " * string(trunc(bestfit.timestamp, Second))
+    vd.dict[:meta][:banner] = "QSFit (v0.1)<br />Date: " * string(trunc(bestfit.timestamp, Second))
 
     for id in 1:length(model.preds)
-        m = vd.gfit[:predictions][id][:meta]
+        m = vd.dict[:predictions][id][:meta]
         m[:label] = source.name * ", z=" * string(source.z) * ", E(B-V)=" * string(source.mw_ebv)
         m[:label_x] = "Rest frame wavelength"
         m[:unit_x]  = string(QSFit.unit_λ())
@@ -231,35 +231,36 @@ function ViewerData(model::Model, source::QSO, bestfit::GFit.BestFitResult; kw..
             delete!(ENV, "UNITFUL_FANCY_EXPONENTS")
         end
         m[:log10scale_y] = QSFit.log10_scale_lum()
-        vd.gfit[:data][id][:meta][:label] = source.spectra[id].label
+        vd.dict[:data][id][:meta][:label] = source.spectra[id].label
 
-        vd.extra[id][:extratab_1] = GFitViewer.MDict()
-        vd.extra[id][:extratab_1][:label] = "First extra table"
-        vd.extra[id][:extratab_1][:fields] = GFitViewer.MDict()
-        vd.extra[id][:extratab_1][:fields][:fname_1] = GFitViewer.MDict()
-        vd.extra[id][:extratab_1][:fields][:fname_1][:meta] = GFitViewer.MDict()
-        vd.extra[id][:extratab_1][:fields][:fname_1][:meta][:desc] = "Optional. In case we want to add metedata."
-        vd.extra[id][:extratab_1][:fields][:fname_1][:data] = [102, 203, 304]
-        vd.extra[id][:extratab_1][:fields][:fname_2] = GFitViewer.MDict()
-        vd.extra[id][:extratab_1][:fields][:fname_2][:meta] = GFitViewer.MDict()
-        vd.extra[id][:extratab_1][:fields][:fname_2][:data] = [10.2, 20.3, 30.4]
-        vd.extra[id][:extratab_1][:fields][:fname_3] = GFitViewer.MDict()
-        vd.extra[id][:extratab_1][:fields][:fname_3][:meta] = GFitViewer.MDict()
-        vd.extra[id][:extratab_1][:fields][:fname_3][:data] = ["String_1", "String_2", "String_3"]
+        m = vd.dict[:extra]
+        m[id][:extratab_1] = GFitViewer.MDict()
+        m[id][:extratab_1][:label] = "First extra table"
+        m[id][:extratab_1][:fields] = GFitViewer.MDict()
+        m[id][:extratab_1][:fields][:fname_1] = GFitViewer.MDict()
+        m[id][:extratab_1][:fields][:fname_1][:meta] = GFitViewer.MDict()
+        m[id][:extratab_1][:fields][:fname_1][:meta][:desc] = "Optional. In case we want to add metedata."
+        m[id][:extratab_1][:fields][:fname_1][:data] = [102, 203, 304]
+        m[id][:extratab_1][:fields][:fname_2] = GFitViewer.MDict()
+        m[id][:extratab_1][:fields][:fname_2][:meta] = GFitViewer.MDict()
+        m[id][:extratab_1][:fields][:fname_2][:data] = [10.2, 20.3, 30.4]
+        m[id][:extratab_1][:fields][:fname_3] = GFitViewer.MDict()
+        m[id][:extratab_1][:fields][:fname_3][:meta] = GFitViewer.MDict()
+        m[id][:extratab_1][:fields][:fname_3][:data] = ["String_1", "String_2", "String_3"]
 
-        vd.extra[id][:extratab_2] = GFitViewer.MDict()
-        vd.extra[id][:extratab_2][:label] = "Second extra table"
-        vd.extra[id][:extratab_2][:fields] = GFitViewer.MDict()
-        vd.extra[id][:extratab_2][:fields][:fname_1] = GFitViewer.MDict()
-        vd.extra[id][:extratab_2][:fields][:fname_1][:meta] = GFitViewer.MDict()
-        vd.extra[id][:extratab_2][:fields][:fname_1][:meta][:desc] = "Optional. In case we want to add metedata."
-        vd.extra[id][:extratab_2][:fields][:fname_1][:data] = [102, 203, 304]
-        vd.extra[id][:extratab_2][:fields][:fname_2] = GFitViewer.MDict()
-        vd.extra[id][:extratab_2][:fields][:fname_2][:meta] = GFitViewer.MDict()
-        vd.extra[id][:extratab_2][:fields][:fname_2][:data] = [10.2, 20.3, 30.4]
-        vd.extra[id][:extratab_2][:fields][:fname_3] = GFitViewer.MDict()
-        vd.extra[id][:extratab_2][:fields][:fname_3][:meta] = GFitViewer.MDict()
-        vd.extra[id][:extratab_2][:fields][:fname_3][:data] = ["String_1", "String_2", "String_3"]
+        m[id][:extratab_2] = GFitViewer.MDict()
+        m[id][:extratab_2][:label] = "Second extra table"
+        m[id][:extratab_2][:fields] = GFitViewer.MDict()
+        m[id][:extratab_2][:fields][:fname_1] = GFitViewer.MDict()
+        m[id][:extratab_2][:fields][:fname_1][:meta] = GFitViewer.MDict()
+        m[id][:extratab_2][:fields][:fname_1][:meta][:desc] = "Optional. In case we want to add metedata."
+        m[id][:extratab_2][:fields][:fname_1][:data] = [102, 203, 304]
+        m[id][:extratab_2][:fields][:fname_2] = GFitViewer.MDict()
+        m[id][:extratab_2][:fields][:fname_2][:meta] = GFitViewer.MDict()
+        m[id][:extratab_2][:fields][:fname_2][:data] = [10.2, 20.3, 30.4]
+        m[id][:extratab_2][:fields][:fname_3] = GFitViewer.MDict()
+        m[id][:extratab_2][:fields][:fname_3][:meta] = GFitViewer.MDict()
+        m[id][:extratab_2][:fields][:fname_3][:data] = ["String_1", "String_2", "String_3"]
     end
     return vd
 end
