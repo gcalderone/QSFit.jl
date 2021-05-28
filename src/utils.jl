@@ -39,11 +39,6 @@ function estimate_fwhm(λ, f)
 end
 
 
-function int_tabulated(λ, f; int_k=3)
-    @assert issorted(λ)
-    itp = Spline1D(λ, f, k=int_k, bc="error")
-    return quadgk(itp, λ[1], λ[end])
-end
 
 
 spectral_coverage(spec_λ, resolution, line::Union{SpecLineGauss, SpecLineAsymmGauss, SpecLineLorentz}; kw...) =

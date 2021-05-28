@@ -444,5 +444,5 @@ function multi_fit(source::QSO{TRecipe}; ref_id=1) where TRecipe <: DefaultRecip
     println(source.log, "\nElapsed time: $elapsed s")
     QSFit.close_log(source)
 
-    return (model, bestfit)
+    return reduce(source, model, bestfit)
 end

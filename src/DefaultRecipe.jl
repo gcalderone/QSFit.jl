@@ -466,5 +466,5 @@ function fit(source::QSO{TRecipe}; id=1) where TRecipe <: DefaultRecipe
     println(source.log, "\nElapsed time: $elapsed s")
     QSFit.close_log(source)
 
-    return (model, bestfit)
+    return reduce(source, model, bestfit)
 end
