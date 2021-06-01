@@ -41,9 +41,9 @@ version = "0.3.3"
 
 [[ChainRulesCore]]
 deps = ["Compat", "LinearAlgebra", "SparseArrays"]
-git-tree-sha1 = "b391f22252b8754f4440de1f37ece49d8a7314bb"
+git-tree-sha1 = "4b28f88cecf5d9a07c85b9ce5209a361ecaff34a"
 uuid = "d360d2e6-b24c-11e9-a2a3-2a2ae2dbcce4"
-version = "0.9.44"
+version = "0.9.45"
 
 [[CommonSubexpressions]]
 deps = ["MacroTools", "Test"]
@@ -212,8 +212,8 @@ uuid = "f6369f11-7733-5829-9624-2563aa707210"
 version = "0.10.18"
 
 [[GFit]]
-deps = ["CMPFit", "DataStructures", "Dates", "Distributions", "LsqFit", "MacroTools", "PrettyTables", "Printf", "Random", "Statistics"]
-git-tree-sha1 = "cab4db55edf44b25406a10debee16dfd1d964438"
+deps = ["CMPFit", "DataStructures", "Dates", "Dierckx", "Distributions", "LsqFit", "MacroTools", "PrettyTables", "Printf", "ProgressMeter", "QuadGK", "Random", "Statistics"]
+git-tree-sha1 = "0ef0e424a97b2fa6bfd23dc5c2008c46e797aae6"
 repo-rev = "master"
 repo-url = "https://github.com/gcalderone/GFit.jl"
 uuid = "ac42e6ba-c0bf-4fcf-827d-deea44b16255"
@@ -221,7 +221,7 @@ version = "0.1.0"
 
 [[GFitViewer]]
 deps = ["DataStructures", "DefaultApplication", "GFit", "JSON", "Pkg", "Statistics"]
-git-tree-sha1 = "27f74538b097316e43da7a283de986acfe1c7dad"
+git-tree-sha1 = "a3d56bd2c7adf21589204e6879848e514e54a9eb"
 repo-rev = "master"
 repo-url = "https://github.com/lnicastro/GFitViewer.jl"
 uuid = "5d93b50e-5cc7-4feb-a740-ec85257caa01"
@@ -384,9 +384,9 @@ version = "0.5.4+0"
 
 [[OptimBase]]
 deps = ["NLSolversBase", "Printf", "Reexport"]
-git-tree-sha1 = "4c26a757fbb5b1893b7df19a44e21762d8f8e470"
+git-tree-sha1 = "9cb1fee807b599b5f803809e85c81b582d2009d6"
 uuid = "87e2bd06-a317-5318-96d9-3ecbac512eee"
-version = "2.0.1"
+version = "2.0.2"
 
 [[OrderedCollections]]
 git-tree-sha1 = "85f8e6578bf1f9ee0d11e7bb1b1456435479d47c"
@@ -431,6 +431,12 @@ version = "1.0.1"
 deps = ["Unicode"]
 uuid = "de0858da-6303-5e67-8744-51eddeeeb8d7"
 
+[[ProgressMeter]]
+deps = ["Distributed", "Printf"]
+git-tree-sha1 = "afadeba63d90ff223a6a48d2009434ecee2ec9e8"
+uuid = "92933f4c-e287-5a05-a399-4b506db050ca"
+version = "1.7.1"
+
 [[QuadGK]]
 deps = ["DataStructures", "LinearAlgebra"]
 git-tree-sha1 = "12fbe86da16df6679be7521dfb39fbc861e1dc7b"
@@ -451,10 +457,9 @@ uuid = "3cdcf5f2-1ef4-517c-9805-6587b60abb01"
 version = "1.1.1"
 
 [[Reexport]]
-deps = ["Pkg"]
-git-tree-sha1 = "7b1d07f411bc8ddb7977ec7f377b97b158514fe0"
+git-tree-sha1 = "57d8440b0c7d98fc4f889e478e80f268d534c9d5"
 uuid = "189a3867-3050-52da-a836-e630ba90ab69"
-version = "0.2.0"
+version = "1.0.0"
 
 [[Requires]]
 deps = ["UUIDs"]
@@ -511,9 +516,9 @@ version = "0.2.4"
 
 [[StaticArrays]]
 deps = ["LinearAlgebra", "Random", "Statistics"]
-git-tree-sha1 = "a1f226ebe197578c25fcf948bfff3d0d12f2ff20"
+git-tree-sha1 = "42378d3bab8b4f57aa1ca443821b752850592668"
 uuid = "90137ffa-7385-5640-81b9-e52037218182"
-version = "1.2.1"
+version = "1.2.2"
 
 [[Statistics]]
 deps = ["LinearAlgebra", "SparseArrays"]
@@ -579,9 +584,9 @@ uuid = "4ec0a83e-493e-50e2-b9ac-8f72acf5a8f5"
 
 [[Unitful]]
 deps = ["ConstructionBase", "Dates", "LinearAlgebra", "Random"]
-git-tree-sha1 = "c6bbc170505c5ea36593a0072b61d3be8bf868ae"
+git-tree-sha1 = "b3682a0559219355f1e3c8024e9f97adce2d4623"
 uuid = "1986cc42-f94f-5a68-af5c-568840ba703d"
-version = "1.7.0"
+version = "1.8.0"
 
 [[UnitfulAngles]]
 deps = ["Dates", "Unitful"]

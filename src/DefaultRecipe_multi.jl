@@ -432,11 +432,9 @@ function multi_fit(source::QSO{TRecipe}; ref_id=1) where TRecipe <: DefaultRecip
     end
     if needs_fitting
         println(source.log, "\nRe-run fit...")
-        bestfit = fit!(model, source.data, minimizer=mzer); show(source.log, bestfit)
+        bestfit = fit!(model, source.data, minimizer=mzer)
     end
 
-    println(source.log, "\nFinal model and bestfit:")
-    show(source.log, model)
     println(source.log)
     show(source.log, bestfit)
 
