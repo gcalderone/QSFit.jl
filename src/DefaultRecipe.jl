@@ -433,7 +433,7 @@ function fit(source::QSO{TRecipe}; id=1) where TRecipe <: DefaultRecipe
             freeze(model, cname)
         end
     end
-    bestfit = fit!(model, source.data, minimizer=mzer); show(source.log, bestfit)
+    bestfit = fit!(model, source.data, minimizer=mzer)
 
     # Disable "unknown" lines whose normalization uncertainty is larger
     # than 3 times the normalization

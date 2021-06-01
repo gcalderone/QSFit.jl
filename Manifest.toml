@@ -213,7 +213,7 @@ version = "0.10.18"
 
 [[GFit]]
 deps = ["CMPFit", "DataStructures", "Dates", "Dierckx", "Distributions", "LsqFit", "MacroTools", "PrettyTables", "Printf", "ProgressMeter", "QuadGK", "Random", "Statistics"]
-git-tree-sha1 = "0ef0e424a97b2fa6bfd23dc5c2008c46e797aae6"
+git-tree-sha1 = "3e31cf3e9deff8afa62b7cf139735ab709829067"
 repo-rev = "master"
 repo-url = "https://github.com/gcalderone/GFit.jl"
 uuid = "ac42e6ba-c0bf-4fcf-827d-deea44b16255"

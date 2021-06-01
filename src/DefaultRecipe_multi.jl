@@ -409,7 +409,7 @@ function multi_fit(source::QSO{TRecipe}; ref_id=1) where TRecipe <: DefaultRecip
             thaw(model[id], :calib)  # parameter is fixed in preds[ref_id]
         end
     end
-    bestfit = fit!(model, source.data, minimizer=mzer); show(source.log, bestfit)
+    bestfit = fit!(model, source.data, minimizer=mzer)
 
     # Disable "unknown" lines whose normalization uncertainty is larger
     # than 3 times the normalization
