@@ -7,12 +7,6 @@ function multi_fit(source::QSO{TRecipe}; ref_id=1) where TRecipe <: DefaultRecip
     mzer = GFit.cmpfit()
     mzer.config.ftol = mzer.config.gtol = mzer.config.xtol = 1.e-6
 
-    # Arrays containing best fit values to be constrained across epochs
-    galaxy_best = Vector{Float64}()
-    galaxy_unc  = Vector{Float64}()
-    OIII_best = Vector{Float64}()
-    OIII_unc  = Vector{Float64}()
-
     # Initialize components and guess initial values
     println(source.log, "\nFit continuum components...")
     preds = Vector{Prediction}()
@@ -41,6 +35,10 @@ function multi_fit(source::QSO{TRecipe}; ref_id=1) where TRecipe <: DefaultRecip
             add!(model[id], :Continuum => reducer_sum([:qso_cont, :galaxy]),
                  :galaxy => QSFit.hostgalaxy(source.options[:host_template]))
             model[id][:galaxy].norm.val = Spline1D(λ, source.data[id].val, k=1, bc="error")(5500.)
+            if id != ref_id
+                model[id][:galaxy].norm.fixed = true
+                @patch! model m -> m[id][:galaxy].norm = m[ref_id][:galaxy].norm
+            end
         end
 
         # Balmer continuum and pseudo-continuum
@@ -61,13 +59,7 @@ function multi_fit(source::QSO{TRecipe}; ref_id=1) where TRecipe <: DefaultRecip
         end
     end
 
-    for id in 1:Nspec
-        bestfit = fit!(model, only_id=id, source.data, minimizer=mzer);  show(source.log, bestfit)
-        if :galaxy in keys(model[id])
-            push!(galaxy_best, bestfit[id][:galaxy].norm.val)
-            push!(galaxy_unc , bestfit[id][:galaxy].norm.unc)
-        end
-    end
+    bestfit = fit!(model, source.data, minimizer=mzer);  show(source.log, bestfit)
 
     # QSO continuum renormalization
     for id in 1:Nspec
@@ -205,13 +197,12 @@ function multi_fit(source::QSO{TRecipe}; ref_id=1) where TRecipe <: DefaultRecip
         # Patch parameters
         if  haskey(model[id], :OIII_4959)  &&
             haskey(model[id], :OIII_5007)
+            model[id][:OIII_4959].norm.fixed = true
             model[id][:OIII_4959].voff.fixed = true
-            @patch! model[id] m -> m[:OIII_4959].voff = m[:OIII_5007].voff
-        end
-        if  haskey(model[id], :NII_6549)  &&
-            haskey(model[id], :NII_6583)
-            model[id][:NII_6549].voff.fixed = true
-            @patch! model[id] m -> m[:NII_6549].voff = m[:NII_6583].voff
+            @patch! model[id] m -> begin
+                m[:OIII_4959].norm = m[:OIII_5007].norm / 3
+                m[:OIII_4959].voff = m[:OIII_5007].voff
+            end
         end
         if  haskey(model[id], :OIII_5007_bw)  &&
             haskey(model[id], :OIII_5007)
@@ -220,37 +211,86 @@ function multi_fit(source::QSO{TRecipe}; ref_id=1) where TRecipe <: DefaultRecip
                 m[:OIII_5007_bw].fwhm += m[:OIII_5007].fwhm
             end
         end
+        if  haskey(model[id], :OI_6300)  &&
+            haskey(model[id], :OI_6364)
+            # model[id][:OI_6300].norm.fixed = true
+            model[id][:OI_6300].voff.fixed = true
+            @patch! model[id] m -> begin
+                # m[:OI_6300].norm = m[:OI_6364].norm / 3
+                m[:OI_6300].voff = m[:OI_6364].voff
+            end
+        end
+        if  haskey(model[id], :NII_6549)  &&
+            haskey(model[id], :NII_6583)
+            # model[id][:NII_6549].norm.fixed = true
+            model[id][:NII_6549].voff.fixed = true
+            @patch! model[id] m -> begin
+                # m[:NII_6549].norm = m[:NII_6583].norm / 3
+                m[:NII_6549].voff = m[:NII_6583].voff
+            end
+        end
+        if  haskey(model[id], :SII_6716)  &&
+            haskey(model[id], :SII_6731)
+            # model[id][:SII_6716].norm.fixed = true
+            model[id][:SII_6716].voff.fixed = true
+            @patch! model[id] m -> begin
+                # m[:SII_6716].norm = m[:SII_6731].norm / 1.5
+                m[:SII_6716].voff = m[:SII_6731].voff
+            end
+        end
 
+        if  haskey(model[id], :na_Ha)  &&
+            haskey(model[id], :na_Hb)
+            model[id][:na_Hb].voff.fixed = true
+            @patch! model[id] m -> m[:na_Hb].voff = m[:na_Ha].voff
+        end
+
+        # The following are required to avoid degeneracy with iron
+        # template
+        if  haskey(model[id], :Hg)  &&
+            haskey(model[id], :br_Hb)
+            model[id][:Hg].voff.fixed = true
+            model[id][:Hg].fwhm.fixed = true
+            @patch! model[id] m -> begin
+                m[:Hg].voff = m[:br_Hb].voff
+                m[:Hg].fwhm = m[:br_Hb].fwhm
+            end
+        end
+        if  haskey(model[id], :br_Hg)  &&
+            haskey(model[id], :br_Hb)
+            model[id][:br_Hg].voff.fixed = true
+            model[id][:br_Hg].fwhm.fixed = true
+            @patch! model[id] m -> begin
+                m[:br_Hg].voff = m[:br_Hb].voff
+                m[:br_Hg].fwhm = m[:br_Hb].fwhm
+            end
+        end
+        if  haskey(model[id], :na_Hg)  &&
+            haskey(model[id], :na_Hb)
+            model[id][:na_Hg].voff.fixed = true
+            model[id][:na_Hg].fwhm.fixed = true
+            @patch! model[id] m -> begin
+                m[:na_Hg].voff = m[:na_Hb].voff
+                m[:na_Hg].fwhm = m[:na_Hb].fwhm
+            end
+        end
+
+        # Ensure luminosity at peak of the broad base component is
+        # smaller than the associated broad component:
         if  haskey(model[id], :br_Hb)  &&
             haskey(model[id], :bb_Hb)
-            # Ensure luminosity at peak of the broad base component is
-            # smaller than the associated broad component:
             model[id][:bb_Hb].norm.high = 1
             model[id][:bb_Hb].norm.val  = 0.5
             @patch! model[id] m -> m[:bb_Hb].norm *= m[:br_Hb].norm / m[:br_Hb].fwhm * m[:bb_Hb].fwhm
         end
-
         if  haskey(model[id], :br_Ha)  &&
             haskey(model[id], :bb_Ha)
-            # Ensure luminosity at peak of the broad base component is
-            # smaller than the associated broad component:
             model[id][:bb_Ha].norm.high = 1
             model[id][:bb_Ha].norm.val  = 0.5
             @patch! model[id] m -> m[:bb_Ha].norm *= m[:br_Ha].norm / m[:br_Ha].fwhm * m[:bb_Ha].fwhm
         end
 
-        #=
-        model[id][:br_Hb].voff.fixed = 1
-        model[id][:br_Hb].fwhm.fixed = 1
-        @patch! model[id] m -> begin
-            m[:br_Hb].voff = m[:br_Ha].voff
-            m[:br_Hb].fwhm = m[:br_Ha].fwhm
-        end
-        =#
-
         bestfit = fit!(model, only_id=id, source.data, minimizer=mzer); show(source.log, bestfit)
-        push!(OIII_best, bestfit[id][:OIII_5007].norm.val)
-        push!(OIII_unc , bestfit[id][:OIII_5007].norm.unc)
 
         for lname in line_names[id]
             freeze(model[id], lname)
@@ -324,66 +364,6 @@ function multi_fit(source::QSO{TRecipe}; ref_id=1) where TRecipe <: DefaultRecip
     evaluate!(model)
 
     # ----------------------------------------------------------------
-    # Constrain component normalization across epochs.  Note:
-    # reference spectrum must have reliable estimation of all common
-    # components
-    if :galaxy in keys(model[ref_id])
-        rval = [galaxy_best[ref_id], OIII_best[ref_id]]
-        runc = [galaxy_unc[ ref_id], OIII_unc[ ref_id]]
-    else
-        rval = [OIII_best[ref_id]]
-        runc = [OIII_unc[ ref_id]]
-    end
-    @assert all(isfinite.(rval))
-    @assert all(rval .!= 0)
-    @assert all(isfinite.(runc))
-    @assert all(runc .!= 0)
-
-    # Estimate calibration in all epochs w.r.t. reference epoch
-    for id in 1:Nspec
-        if id != ref_id
-            if :galaxy in keys(model[id])
-            val = [galaxy_best[id], OIII_best[id]]
-            unc = [galaxy_unc[ id], OIII_unc[ id]]
-            else
-                val = [OIII_best[id]]
-                unc = [OIII_unc[ id]]
-            end
-            j = findall((val .!= 0)  .&  (unc .!= 0))
-
-            R = val[j] ./ rval[j]
-            R_unc = (unc[j] ./ val[j] .+ runc[j] ./ rval[j]) .* R
-            ratio = sum(R ./ R_unc) ./ sum(1 ./ R_unc)
-            for cname in keys(model[id].cevals)
-                (string(cname)[1:3] == "bb_")  &&  continue  # this is a patched param, no need to apply calib. factor
-                (cname == :balmer)  &&  continue
-                if :norm in propertynames(model[id][cname])
-                    model[id][cname].norm.val /= ratio
-                end
-            end
-            add!(model[id],
-                 :main => Reducer(calibsum, [:calib, :Continuum, :Iron, line_groups[id]..., :UnkLines]),
-                 :calib => ratio)
-        end
-    end
-    evaluate!(model)
-
-    for id in 1:Nspec
-        if id != ref_id
-            (:galaxy in keys(model[id]))  &&  (model[id][:galaxy].norm.fixed = true)
-            model[id][:OIII_5007].norm.fixed = true
-            model[id][:OIII_5007].fwhm.fixed = 1
-            model[id][:OIII_5007].voff.fixed = 1
-            @patch! model m -> begin
-                (:galaxy in keys(model[id]))  &&  (m[id][:galaxy].norm = m[ref_id][:galaxy].norm)
-                m[id][:OIII_5007].norm = m[ref_id][:OIII_5007].norm
-                m[id][:OIII_5007].fwhm = m[ref_id][:OIII_5007].fwhm
-                m[id][:OIII_5007].voff = m[ref_id][:OIII_5007].voff
-            end
-        end
-    end
-    evaluate!(model)
-
     # Last run with all parameters free
     println(source.log, "\nLast run with all parameters free...")
     for id in 1:Nspec
@@ -404,9 +384,6 @@ function multi_fit(source::QSO{TRecipe}; ref_id=1) where TRecipe <: DefaultRecip
             else
                 freeze(model[id], cname)
             end
-        end
-        if id != ref_id
-            thaw(model[id], :calib)  # parameter is fixed in preds[ref_id]
         end
     end
     bestfit = fit!(model, source.data, minimizer=mzer)

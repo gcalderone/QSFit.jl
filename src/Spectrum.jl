@@ -31,10 +31,11 @@ struct Spectrum
             good = fill(true, length(λ))
         end
         if length(err) == 0
-            @warn "Uncertainties were not provided: assuming 10% of flux"
-            err = 0.1 .* flux
+            @warn "Uncertainties were not provided: assuming 10% of median(flux)"
+            err = fill(0.1 .* median(flux), length(flux))
         end
         @assert length(λ) == length(flux) == length(err) == length(good)
+        @assert minimum(err) > 0 "Uncertainties must be positive!"
 
         # Ensure wavelengths are sorted
         ii = sortperm(λ)
