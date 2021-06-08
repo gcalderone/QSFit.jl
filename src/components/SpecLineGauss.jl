@@ -52,5 +52,5 @@ end
     comp.fwhm.val = 3e4
     ceval = GFit.CompEval(comp, x)
     GFit.evaluate_cached(ceval)
-    @gp x ceval.buffer ./ maximum(ceval.buffer) "w l"
+    @gp x[:] ceval.buffer ./ maximum(ceval.buffer) "w l"
 =#
