@@ -144,7 +144,7 @@ function fit(source::QSO{TRecipe}; id=1) where TRecipe <: DefaultRecipe
     # Initialize components and guess initial values
     println(source.log, "\nFit continuum components...")
     λ = source.domain[id][:]
-    model = Model(source.domain[id], :Continuum => reducer_sum([:qso_cont]),
+    model = Model(source.domain[id], :Continuum => SumReducer([:qso_cont]),
                   :qso_cont => QSFit.qso_cont_component(TRecipe))
 
     if source.options[:instr_broadening]
@@ -158,7 +158,7 @@ function fit(source::QSO{TRecipe}; id=1) where TRecipe <: DefaultRecipe
     # Host galaxy template
     if source.options[:use_host_template]  &&
         (minimum(λ) .< 5500 .< maximum(λ))
-        add!(model, :Continuum => reducer_sum([:qso_cont, :galaxy]),
+        add!(model, :Continuum => SumReducer([:qso_cont, :galaxy]),
              :galaxy => QSFit.hostgalaxy(source.options[:host_template]))
         model[:galaxy].norm.val = Spline1D(λ, source.data[id].val, k=1, bc="error")(5500.)
     end
@@ -167,7 +167,7 @@ function fit(source::QSO{TRecipe}; id=1) where TRecipe <: DefaultRecipe
     if source.options[:use_balmer]
         tmp = [:qso_cont, :balmer]
         (:galaxy in keys(model))  &&  push!(tmp, :galaxy)
-        add!(model, :Continuum => reducer_sum(tmp),
+        add!(model, :Continuum => SumReducer(tmp),
              :balmer => QSFit.balmercont(0.1, 0.5))
         c = model[:balmer]
         c.norm.val  = 0.1
@@ -243,13 +243,13 @@ function fit(source::QSO{TRecipe}; id=1) where TRecipe <: DefaultRecipe
         end
     end
     if length(iron_components) > 0
-        add!(model, :Iron => reducer_sum(iron_components))
-        add!(model, :main => reducer_sum([:Continuum, :Iron]))
+        add!(model, :Iron => SumReducer(iron_components))
+        add!(model, :main => SumReducer([:Continuum, :Iron]))
         evaluate!(model)
         bestfit = fit!(model, source.data, minimizer=mzer); show(source.log, bestfit)
     else
-        add!(model, :Iron => @reducer(() -> [0.]))
-        add!(model, :main => reducer_sum([:Continuum, :Iron]))
+        add!(model, :Iron => @expr(m -> [0.]))
+        add!(model, :main => SumReducer([:Continuum, :Iron]))
     end
     (:ironuv    in keys(model))  &&  freeze(model, :ironuv)
     (:ironoptbr in keys(model))  &&  freeze(model, :ironoptbr)
@@ -263,9 +263,9 @@ function fit(source::QSO{TRecipe}; id=1) where TRecipe <: DefaultRecipe
     resid = source.data[id].val - model()  # will be used to guess line normalization
     add!(model, source.line_comps[id])
     for (group, lnames) in QSFit.invert_dictionary(source.line_names[id])
-        add!(model, group  => reducer_sum(lnames))
+        add!(model, group  => SumReducer(lnames))
     end
-    add!(model, :main => reducer_sum([:Continuum, :Iron, line_groups...]))
+    add!(model, :main => SumReducer([:Continuum, :Iron, line_groups...]))
 
     if haskey(model, :MgII_2798)
         model[:MgII_2798].voff.low  = -1000
@@ -416,8 +416,8 @@ function fit(source::QSO{TRecipe}; id=1) where TRecipe <: DefaultRecipe
             tmp[Symbol(:unk, j)] = line_component(TRecipe, QSFit.UnkLine(5e3))
             tmp[Symbol(:unk, j)].norm_integrated = source.options[:norm_integrated]
         end
-        add!(model, :UnkLines => reducer_sum(collect(keys(tmp))), tmp)
-        add!(model, :main => reducer_sum([:Continuum, :Iron, line_groups..., :UnkLines]))
+        add!(model, :UnkLines => SumReducer(collect(keys(tmp))), tmp)
+        add!(model, :main => SumReducer([:Continuum, :Iron, line_groups..., :UnkLines]))
         evaluate!(model)
         for j in 1:source.options[:n_unk]
             freeze(model, Symbol(:unk, j))

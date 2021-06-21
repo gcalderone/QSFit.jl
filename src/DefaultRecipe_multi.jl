@@ -12,7 +12,7 @@ function multi_fit(source::QSO{TRecipe}; ref_id=1) where TRecipe <: DefaultRecip
     preds = Vector{Prediction}()
     for id in 1:Nspec
         λ = source.domain[id][:]
-        pred = Prediction(source.domain[id], :Continuum => reducer_sum([:qso_cont]),
+        pred = Prediction(source.domain[id], :Continuum => SumReducer([:qso_cont]),
                           :qso_cont => QSFit.qso_cont_component(TRecipe))
 
         if source.options[:instr_broadening]
@@ -32,7 +32,7 @@ function multi_fit(source::QSO{TRecipe}; ref_id=1) where TRecipe <: DefaultRecip
         # Host galaxy template
         if source.options[:use_host_template]   &&
             (minimum(λ) .< 5500 .< maximum(λ))
-            add!(model[id], :Continuum => reducer_sum([:qso_cont, :galaxy]),
+            add!(model[id], :Continuum => SumReducer([:qso_cont, :galaxy]),
                  :galaxy => QSFit.hostgalaxy(source.options[:host_template]))
             model[id][:galaxy].norm.val = Spline1D(λ, source.data[id].val, k=1, bc="error")(5500.)
             if id != ref_id
@@ -45,7 +45,7 @@ function multi_fit(source::QSO{TRecipe}; ref_id=1) where TRecipe <: DefaultRecip
         if source.options[:use_balmer]
             tmp = [:qso_cont, :balmer]
             (:galaxy in keys(model[id]))  &&  push!(tmp, :galaxy)
-            add!(model[id], :Continuum => reducer_sum(tmp),
+            add!(model[id], :Continuum => SumReducer(tmp),
                  :balmer => QSFit.balmercont(0.1, 0.5))
             c = model[id][:balmer]
             c.norm.val  = 0.1
@@ -127,13 +127,13 @@ function multi_fit(source::QSO{TRecipe}; ref_id=1) where TRecipe <: DefaultRecip
             end
         end
         if length(iron_components) > 0
-            add!(model[id], :Iron => reducer_sum(iron_components))
-            add!(model[id], :main => reducer_sum([:Continuum, :Iron]))
+            add!(model[id], :Iron => SumReducer(iron_components))
+            add!(model[id], :main => SumReducer([:Continuum, :Iron]))
             evaluate!(model)
             bestfit = fit!(model, only_id=id, source.data, minimizer=mzer); show(source.log, bestfit)
         else
-            add!(model[id], :Iron => @reducer(() -> [0.]))
-            add!(model[id], :main => reducer_sum([:Continuum, :Iron]))
+            add!(model[id], :Iron => @expr(m -> [0.]))
+            add!(model[id], :main => SumReducer([:Continuum, :Iron]))
         end
         (:ironuv    in keys(model[id]))  &&  freeze(model[id], :ironuv)
         (:ironoptbr in keys(model[id]))  &&  freeze(model[id], :ironoptbr)
@@ -150,9 +150,9 @@ function multi_fit(source::QSO{TRecipe}; ref_id=1) where TRecipe <: DefaultRecip
         resid = source.data[id].val - model[id]()  # will be used to guess line normalization
         add!(model[id], source.line_comps[id])
         for (group, lnames) in QSFit.invert_dictionary(source.line_names[id])
-            add!(model[id], group => reducer_sum(lnames))
+            add!(model[id], group => SumReducer(lnames))
         end
-        add!(model[id], :main => reducer_sum([:Continuum, :Iron, line_groups[id]...]))
+        add!(model[id], :main => SumReducer([:Continuum, :Iron, line_groups[id]...]))
 
         if haskey(model[id], :MgII_2798)
             model[id][:MgII_2798].voff.low  = -1000
@@ -306,8 +306,8 @@ function multi_fit(source::QSO{TRecipe}; ref_id=1) where TRecipe <: DefaultRecip
                 tmp[Symbol(:unk, j)] = line_component(TRecipe, QSFit.UnkLine(5e3))
                 tmp[Symbol(:unk, j)].norm_integrated = source.options[:norm_integrated]
             end
-            add!(model[id], :UnkLines => reducer_sum(collect(keys(tmp))), tmp)
-            add!(model[id], :main => reducer_sum([:Continuum, :Iron, line_groups[id]..., :UnkLines]))
+            add!(model[id], :UnkLines => SumReducer(collect(keys(tmp))), tmp)
+            add!(model[id], :main => SumReducer([:Continuum, :Iron, line_groups[id]..., :UnkLines]))
             evaluate!(model)
             for j in 1:source.options[:n_unk]
                 freeze(model[id], Symbol(:unk, j))
@@ -316,8 +316,8 @@ function multi_fit(source::QSO{TRecipe}; ref_id=1) where TRecipe <: DefaultRecip
     else
         # Here we need a :UnkLines reducer, even when n_unk is 0
         for id in 1:Nspec
-            add!(model[id], :UnkLines => @reducer(() -> [0.]))
-            add!(model[id], :main => reducer_sum([:Continuum, :Iron, line_groups[id]...]))
+            add!(model[id], :UnkLines => @expr(m -> [0.]))
+            add!(model[id], :main => SumReducer([:Continuum, :Iron, line_groups[id]...]))
         end
     end
     evaluate!(model)
