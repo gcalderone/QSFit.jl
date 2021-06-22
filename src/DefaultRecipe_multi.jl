@@ -5,10 +5,10 @@ function multi_fit(source::QSO{TRecipe}; ref_id=1) where TRecipe <: DefaultRecip
 
     elapsed = time()
     mzer = GFit.cmpfit()
-    mzer.config.ftol = mzer.config.gtol = mzer.config.xtol = 1.e-6
+    mzer.Δfitstat_theshold = 1.e-5
 
     # Initialize components and guess initial values
-    println(source.log, "\nFit continuum components...")
+    println(logio(source), "\nFit continuum components...")
     preds = Vector{Prediction}()
     for id in 1:Nspec
         λ = source.domain[id][:]
@@ -59,7 +59,7 @@ function multi_fit(source::QSO{TRecipe}; ref_id=1) where TRecipe <: DefaultRecip
         end
     end
 
-    bestfit = fit!(model, source.data, minimizer=mzer);  show(source.log, bestfit)
+    bestfit = fit!(model, source.data, minimizer=mzer);  show(logio(source), bestfit)
 
     # QSO continuum renormalization
     for id in 1:Nspec
@@ -67,7 +67,7 @@ function multi_fit(source::QSO{TRecipe}; ref_id=1) where TRecipe <: DefaultRecip
         c = model[id][:qso_cont]
         initialnorm = c.norm.val
         if c.norm.val > 0
-            println(source.log, "$id: Cont. norm. (before): ", c.norm.val)
+            println(logio(source), "$id: Cont. norm. (before): ", c.norm.val)
             while true
                 residuals = (model[id]() - source.data[id].val) ./ source.data[id].unc
                 (count(residuals .< 0) / length(residuals) > 0.9)  &&  break
@@ -75,9 +75,9 @@ function multi_fit(source::QSO{TRecipe}; ref_id=1) where TRecipe <: DefaultRecip
                 c.norm.val *= 0.99
                 evaluate!(model)
             end
-            println(source.log, "$id : Cont. norm. (after) : ", c.norm.val)
+            println(logio(source), "$id : Cont. norm. (after) : ", c.norm.val)
         else
-            println(source.log, "$id: Skipping cont. renormalization")
+            println(logio(source), "$id: Skipping cont. renormalization")
         end
         freeze(model[id], :qso_cont)
         (:galaxy in keys(model[id]))  &&  freeze(model[id], :galaxy)
@@ -86,7 +86,7 @@ function multi_fit(source::QSO{TRecipe}; ref_id=1) where TRecipe <: DefaultRecip
     evaluate!(model)
 
     # Fit iron templates
-    println(source.log, "\nFit iron templates...")
+    println(logio(source), "\nFit iron templates...")
     for id in 1:Nspec
         λ = source.domain[id][:]
 
@@ -102,7 +102,7 @@ function multi_fit(source::QSO{TRecipe}; ref_id=1) where TRecipe <: DefaultRecip
                 model[id][:ironuv].norm.val = 0.5
                 push!(iron_components, :ironuv)
             else
-                println(source.log, "Ignoring ironuv component on prediction $id (threshold: $threshold)")
+                println(logio(source), "Ignoring ironuv component on prediction $id (threshold: $threshold)")
             end
         end
 
@@ -123,14 +123,14 @@ function multi_fit(source::QSO{TRecipe}; ref_id=1) where TRecipe <: DefaultRecip
                 freeze(model[id], :ironoptna)  # will be freed during last run
                 push!(iron_components, :ironoptbr, :ironoptna)
             else
-                println(source.log, "Ignoring ironopt component on prediction $id (threshold: $threshold)")
+                println(logio(source), "Ignoring ironopt component on prediction $id (threshold: $threshold)")
             end
         end
         if length(iron_components) > 0
             add!(model[id], :Iron => SumReducer(iron_components))
             add!(model[id], :main => SumReducer([:Continuum, :Iron]))
             evaluate!(model)
-            bestfit = fit!(model, only_id=id, source.data, minimizer=mzer); show(source.log, bestfit)
+            bestfit = fit!(model, only_id=id, source.data, minimizer=mzer); show(logio(source), bestfit)
         else
             add!(model[id], :Iron => @expr(m -> [0.]))
             add!(model[id], :main => SumReducer([:Continuum, :Iron]))
@@ -144,7 +144,7 @@ function multi_fit(source::QSO{TRecipe}; ref_id=1) where TRecipe <: DefaultRecip
     # Add emission lines
     line_names = [collect(keys(source.line_names[id])) for id in 1:Nspec]
     line_groups = [unique(collect(values(source.line_names[id]))) for id in 1:Nspec]
-    println(source.log, "\nFit known emission lines...")
+    println(logio(source), "\nFit known emission lines...")
     for id in 1:Nspec
         λ = source.domain[id][:]
         resid = source.data[id].val - model[id]()  # will be used to guess line normalization
@@ -189,7 +189,7 @@ function multi_fit(source::QSO{TRecipe}; ref_id=1) where TRecipe <: DefaultRecip
                 if isa(c, QSFit.SpecLineGauss)
                     c.spec_res_kms = source.spectra[id].resolution
                 else
-                    println(source.log, "Line $cname is not a Gaussian profile: Can't take spectral resolution into account")
+                    println(logio(source), "Line $cname is not a Gaussian profile: Can't take spectral resolution into account")
                 end
             end
         end
@@ -290,7 +290,7 @@ function multi_fit(source::QSO{TRecipe}; ref_id=1) where TRecipe <: DefaultRecip
             @patch! model[id] m -> m[:bb_Ha].norm *= m[:br_Ha].norm / m[:br_Ha].fwhm * m[:bb_Ha].fwhm
         end
 
-        bestfit = fit!(model, only_id=id, source.data, minimizer=mzer); show(source.log, bestfit)
+        bestfit = fit!(model, only_id=id, source.data, minimizer=mzer); show(logio(source), bestfit)
 
         for lname in line_names[id]
             freeze(model[id], lname)
@@ -298,7 +298,7 @@ function multi_fit(source::QSO{TRecipe}; ref_id=1) where TRecipe <: DefaultRecip
     end
 
     # Add unknown lines
-    println(source.log, "\nFit unknown emission lines...")
+    println(logio(source), "\nFit unknown emission lines...")
     if source.options[:n_unk] > 0
         for id in 1:Nspec
             tmp = OrderedDict{Symbol, GFit.AbstractComponent}()
@@ -357,7 +357,7 @@ function multi_fit(source::QSO{TRecipe}; ref_id=1) where TRecipe <: DefaultRecip
             model[id][cname].center.high = λ[iadd] + λ[iadd]/10.
 
             thaw(model[id], cname)
-            bestfit = fit!(model, only_id=id, source.data, minimizer=mzer); show(source.log, bestfit)
+            bestfit = fit!(model, only_id=id, source.data, minimizer=mzer); show(logio(source), bestfit)
             freeze(model[id], cname)
         end
     end
@@ -365,7 +365,7 @@ function multi_fit(source::QSO{TRecipe}; ref_id=1) where TRecipe <: DefaultRecip
 
     # ----------------------------------------------------------------
     # Last run with all parameters free
-    println(source.log, "\nLast run with all parameters free...")
+    println(logio(source), "\nLast run with all parameters free...")
     for id in 1:Nspec
         thaw(model[id], :qso_cont)
         (:galaxy in keys(model[id]))        &&  thaw(model[id], :galaxy)
@@ -398,26 +398,26 @@ function multi_fit(source::QSO{TRecipe}; ref_id=1) where TRecipe <: DefaultRecip
             if bestfit[id][cname].norm.val == 0.
                 freeze(model[id], cname)
                 needs_fitting = true
-                println(source.log, "Disabling $cname (norm. = 0)")
+                println(logio(source), "Disabling $cname (norm. = 0)")
             elseif bestfit[id][cname].norm.unc / bestfit[id][cname].norm.val > 3
                 model[id][cname].norm.val = 0.
                 freeze(model[id], cname)
                 needs_fitting = true
-                println(source.log, "Disabling $cname (unc. / norm. > 3)")
+                println(logio(source), "Disabling $cname (unc. / norm. > 3)")
             end
         end
     end
     if needs_fitting
-        println(source.log, "\nRe-run fit...")
+        println(logio(source), "\nRe-run fit...")
         bestfit = fit!(model, source.data, minimizer=mzer)
     end
 
-    println(source.log)
-    show(source.log, bestfit)
+    println(logio(source))
+    show(logio(source), bestfit)
 
+    out = reduce(source, model, bestfit)
     elapsed = time() - elapsed
-    println(source.log, "\nElapsed time: $elapsed s")
-    QSFit.close_log(source)
-
-    return reduce(source, model, bestfit)
+    println(logio(source), "\nElapsed time: $elapsed s")
+    QSFit.close_logio(source)
+    return out
 end

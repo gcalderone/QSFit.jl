@@ -6,7 +6,7 @@ function ViewerData(res::QSFitResults{T}; kw...) where T
     vd.dict[:meta][:banner] = "QSFit (v0.1)<br />Date: " * string(trunc(res.bestfit.timestamp, Second))
 
     id = 1
-    m = vd.dict[:predictions][id][:meta]
+    m = vd.dict[:models][id][:meta]
     m[:label] = res.source.name * ", z=" * string(res.source.z) * ", E(B-V)=" * string(res.source.mw_ebv)
     m[:label_x] = "Rest frame wavelength"
     m[:unit_x]  = string(QSFit.unit_λ())
@@ -64,7 +64,7 @@ function ViewerData(res::QSFitMultiResults{T}; kw...) where T
     vd.dict[:meta][:banner] = "QSFit (v0.1)<br />Date: " * string(trunc(res.bestfit.timestamp, Second))
 
     for id in 1:length(res.multi)
-        m = vd.dict[:predictions][id][:meta]
+        m = vd.dict[:models][id][:meta]
         m[:label] = res.source.name * ", z=" * string(res.source.z) * ", E(B-V)=" * string(res.source.mw_ebv)
         m[:label_x] = "Rest frame wavelength"
         m[:unit_x]  = string(QSFit.unit_λ())

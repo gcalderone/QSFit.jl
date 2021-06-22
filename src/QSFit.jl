@@ -1,6 +1,6 @@
 module QSFit
 
-export QSO, Spectrum, add_spec!, fit, multi_fit, spectral_coverage
+export QSO, Spectrum, add_spec!, fit, multi_fit, spectral_coverage, logio, close_logio
 
 import GFit: Domain, CompEval,
     Parameter, AbstractComponent, prepare!, evaluate!, fit!
@@ -44,7 +44,7 @@ struct QSO{T <: AbstractRecipe}
     mw_ebv::Float64
     cosmo::Cosmology.AbstractCosmology
     flux2lum::Float64
-    log::IO
+    logfile::Union{Nothing, String}
     spectra::Vector{Spectrum}
     domain::Vector{GFit.Domain{1}}
     data::Vector{GFit.Measures{1}}
@@ -57,21 +57,7 @@ struct QSO{T <: AbstractRecipe}
         @assert ebv >= 0
         ld = uconvert(u"cm", luminosity_dist(cosmo, float(z)))
         flux2lum = 4pi * ld^2 * (scale_flux() * unit_flux()) / (scale_lum() * unit_lum())
-        if isnothing(logfile)
-            log = stdout
-            GFit.showsettings.plain = false
-        else
-            if isa(logfile, AbstractString)
-                log = open(logfile, "w")
-                GFit.showsettings.plain = true
-            elseif isa(logfile, Bool)  &&  logfile
-                log = open(name * ".log", "w")
-                GFit.showsettings.plain = true
-            else
-                error("Unexpected value for logfile: $logfile")
-            end
-        end
-        return new{T}(string(name), float(z), float(ebv), cosmo, flux2lum, log,
+        return new{T}(string(name), float(z), float(ebv), cosmo, flux2lum, logfile,
                       Vector{Spectrum}(),
                       Vector{GFit.Domain{1}}(), Vector{GFit.Measures{1}}(),
                       Vector{OrderedDict{Symbol, AbstractComponent}}(),
@@ -80,14 +66,34 @@ struct QSO{T <: AbstractRecipe}
     end
 end
 
+const logio_streams = Dict{String, IOStream}()
 
-function close_log(source::QSO)
-    if source.log != stdout
-        close(source.log)
+function logio(source::QSO)
+    if isnothing(source.logfile)
         GFit.showsettings.plain = false
-        # source.log = stdout
+        return stdout
+    end
+    if !haskey(logio_streams, source.logfile)
+        if isfile(source.logfile)
+            f = open(source.logfile, "a")
+        else
+            f = open(source.logfile, "w")
+        end
+        logio_streams[source.logfile] = f
+        println(f, "Timestamp: ", now())
+        GFit.showsettings.plain = true
+    end
+    return logio_streams[source.logfile]
+end
+
+function close_logio(source::QSO)
+    if haskey(logio_streams, source.logfile)
+        close(logio_streams[source.logfile])
+        delete!(logio_streams, source.logfile)
+        GFit.showsettings.plain = false
     end
 end
+
 
 abstract type AbstractSpectralLine end
 
@@ -150,12 +156,12 @@ end
 
 
 function add_spec!(source::QSO, data::Spectrum)
-    println(source.log, "New spectrum: " * data.label)
-    println(source.log, "  good fraction:: ", goodfraction(data))
+    println(logio(source), "New spectrum: " * data.label)
+    println(logio(source), "  good fraction:: ", goodfraction(data))
     if goodfraction(data) < 0.5
         error("Good fraction < 0.5")
     end
-    println(source.log, "  resolution: ", @sprintf("%.4g", data.resolution), " km / s")
+    println(logio(source), "  resolution: ", @sprintf("%.4g", data.resolution), " km / s")
 
     λ = data.λ ./ (1 + source.z)
     data.good[findall(λ .< source.options[:wavelength_range][1])] .= false
@@ -167,27 +173,27 @@ function add_spec!(source::QSO, data::Spectrum)
     sufficient the component should not be added to the model, and
     corresponding spectral samples should be ignored to avoid
     worsening the fit due to missing model components. =#
-    println(source.log, "Good samples before line coverage filter: ", length(findall(data.good)))
+    println(logio(source), "Good samples before line coverage filter: ", length(findall(data.good)))
     line_names, line_comps = line_components_and_groups(source)
     for (lname, comp) in line_comps
         (λmin, λmax, coverage) = spectral_coverage(λ .* data.good, data.resolution, comp)
         coverage = round(coverage * 1e3) / 1e3  # keep just 3 significant digits...
         threshold = get(source.options[:min_spectral_coverage], lname, source.options[:min_spectral_coverage][:default])
-        print(source.log, "Line $lname coverage: $coverage (threshold: $threshold)")
+        print(logio(source), "Line $lname coverage: $coverage (threshold: $threshold)")
         if coverage < threshold
-            print(source.log, "  neglecting range: $λmin < λ <  $λmax")
+            print(logio(source), "  neglecting range: $λmin < λ <  $λmax")
             ii = findall(λmin .<= λ .< λmax)
             data.good[ii] .= false
             delete!(line_names, lname)
             delete!(line_comps, lname)
         end
-        println(source.log)
+        println(logio(source))
     end
-    println(source.log, "Good samples after line coverage filter: ", length(findall(data.good)))
+    println(logio(source), "Good samples after line coverage filter: ", length(findall(data.good)))
 
     # De-reddening
     dered = ccm_unred([1450, 3000, 5100.], source.mw_ebv)
-    println(source.log, "Dereddening factors @ 1450, 3000, 5100 AA: ", dered)
+    println(logio(source), "Dereddening factors @ 1450, 3000, 5100 AA: ", dered)
     dered = ccm_unred(data.λ, source.mw_ebv)
 
     ii = findall(data.good)

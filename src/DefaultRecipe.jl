@@ -139,10 +139,10 @@ end
 function fit(source::QSO{TRecipe}; id=1) where TRecipe <: DefaultRecipe
     elapsed = time()
     mzer = GFit.cmpfit()
-    mzer.config.ftol = mzer.config.gtol = mzer.config.xtol = 1.e-6
+    mzer.Δfitstat_theshold = 1.e-5
 
     # Initialize components and guess initial values
-    println(source.log, "\nFit continuum components...")
+    println(logio(source), "\nFit continuum components...")
     λ = source.domain[id][:]
     model = Model(source.domain[id], :Continuum => SumReducer([:qso_cont]),
                   :qso_cont => QSFit.qso_cont_component(TRecipe))
@@ -180,13 +180,13 @@ function fit(source::QSO{TRecipe}; id=1) where TRecipe <: DefaultRecipe
         @patch! model m -> m[:balmer].norm *= m[:qso_cont].norm
     end
 
-    bestfit = fit!(model, source.data, minimizer=mzer);  show(source.log, bestfit)
+    bestfit = fit!(model, source.data, minimizer=mzer);  show(logio(source), bestfit)
 
     # QSO continuum renormalization
     freeze(model, :qso_cont)
     c = model[:qso_cont]
     if c.norm.val > 0
-        println(source.log, "Cont. norm. (before): ", c.norm.val)
+        println(logio(source), "Cont. norm. (before): ", c.norm.val)
         initialnorm = c.norm.val
         while true
             residuals = (model() - source.data[id].val) ./ source.data[id].unc
@@ -195,9 +195,9 @@ function fit(source::QSO{TRecipe}; id=1) where TRecipe <: DefaultRecipe
             c.norm.val *= 0.99
             evaluate!(model)
         end
-        println(source.log, "Cont. norm. (after) : ", c.norm.val)
+        println(logio(source), "Cont. norm. (after) : ", c.norm.val)
     else
-        println(source.log, "Skipping cont. renormalization")
+        println(logio(source), "Skipping cont. renormalization")
     end
     freeze(model, :qso_cont)
     (:galaxy in keys(model))  &&  freeze(model, :galaxy)
@@ -205,7 +205,7 @@ function fit(source::QSO{TRecipe}; id=1) where TRecipe <: DefaultRecipe
     evaluate!(model)
 
     # Fit iron templates
-    println(source.log, "\nFit iron templates...")
+    println(logio(source), "\nFit iron templates...")
     iron_components = Vector{Symbol}()
     if source.options[:use_ironuv]
         fwhm = 3000.
@@ -218,7 +218,7 @@ function fit(source::QSO{TRecipe}; id=1) where TRecipe <: DefaultRecipe
             model[:ironuv].norm.val = 0.5
             push!(iron_components, :ironuv)
         else
-            println(source.log, "Ignoring ironuv component (threshold: $threshold)")
+            println(logio(source), "Ignoring ironuv component (threshold: $threshold)")
         end
     end
 
@@ -239,14 +239,14 @@ function fit(source::QSO{TRecipe}; id=1) where TRecipe <: DefaultRecipe
             freeze(model, :ironoptna)  # will be freed during last run
             push!(iron_components, :ironoptbr, :ironoptna)
         else
-            println(source.log, "Ignoring ironopt component (threshold: $threshold)")
+            println(logio(source), "Ignoring ironopt component (threshold: $threshold)")
         end
     end
     if length(iron_components) > 0
         add!(model, :Iron => SumReducer(iron_components))
         add!(model, :main => SumReducer([:Continuum, :Iron]))
         evaluate!(model)
-        bestfit = fit!(model, source.data, minimizer=mzer); show(source.log, bestfit)
+        bestfit = fit!(model, source.data, minimizer=mzer); show(logio(source), bestfit)
     else
         add!(model, :Iron => @expr(m -> [0.]))
         add!(model, :main => SumReducer([:Continuum, :Iron]))
@@ -259,7 +259,7 @@ function fit(source::QSO{TRecipe}; id=1) where TRecipe <: DefaultRecipe
     # Add emission lines
     line_names = collect(keys(source.line_names[id]))
     line_groups = unique(collect(values(source.line_names[id])))
-    println(source.log, "\nFit known emission lines...")
+    println(logio(source), "\nFit known emission lines...")
     resid = source.data[id].val - model()  # will be used to guess line normalization
     add!(model, source.line_comps[id])
     for (group, lnames) in QSFit.invert_dictionary(source.line_names[id])
@@ -302,7 +302,7 @@ function fit(source::QSO{TRecipe}; id=1) where TRecipe <: DefaultRecipe
             if isa(c, QSFit.SpecLineGauss)
                 c.spec_res_kms = source.spectra[id].resolution
             else
-                println(source.log, "Line $cname is not a Gaussian profile: Can't take spectral resolution into account")
+                println(logio(source), "Line $cname is not a Gaussian profile: Can't take spectral resolution into account")
             end
         end
     end
@@ -403,13 +403,13 @@ function fit(source::QSO{TRecipe}; id=1) where TRecipe <: DefaultRecipe
         @patch! model m -> m[:bb_Ha].norm *= m[:br_Ha].norm / m[:br_Ha].fwhm * m[:bb_Ha].fwhm
     end
 
-    bestfit = fit!(model, source.data, minimizer=mzer); show(source.log, bestfit)
+    bestfit = fit!(model, source.data, minimizer=mzer); show(logio(source), bestfit)
     for lname in line_names
         freeze(model, lname)
     end
 
     # Add unknown lines
-    println(source.log, "\nFit unknown emission lines...")
+    println(logio(source), "\nFit unknown emission lines...")
     if source.options[:n_unk] > 0
         tmp = OrderedDict{Symbol, GFit.AbstractComponent}()
         for j in 1:source.options[:n_unk]
@@ -457,7 +457,7 @@ function fit(source::QSO{TRecipe}; id=1) where TRecipe <: DefaultRecipe
             model[cname].center.high = λ[iadd] + λ[iadd]/10.
 
             thaw(model, cname)
-            bestfit = fit!(model, source.data, minimizer=mzer); show(source.log, bestfit)
+            bestfit = fit!(model, source.data, minimizer=mzer); show(logio(source), bestfit)
             freeze(model, cname)
         end
     end
@@ -465,7 +465,7 @@ function fit(source::QSO{TRecipe}; id=1) where TRecipe <: DefaultRecipe
 
     # ----------------------------------------------------------------
     # Last run with all parameters free
-    println(source.log, "\nLast run with all parameters free...")
+    println(logio(source), "\nLast run with all parameters free...")
     thaw(model, :qso_cont)
     (:galaxy in keys(model))     &&  thaw(model, :galaxy)
     (:balmer in keys(model))     &&  thaw(model, :balmer)
@@ -495,25 +495,26 @@ function fit(source::QSO{TRecipe}; id=1) where TRecipe <: DefaultRecipe
         if bestfit[cname].norm.val == 0.
             freeze(model, cname)
             needs_fitting = true
-            println(source.log, "Disabling $cname (norm. = 0)")
+            println(logio(source), "Disabling $cname (norm. = 0)")
         elseif bestfit[cname].norm.unc / bestfit[cname].norm.val > 3
             model[cname].norm.val = 0.
             freeze(model, cname)
             needs_fitting = true
-            println(source.log, "Disabling $cname (unc. / norm. > 3)")
+            println(logio(source), "Disabling $cname (unc. / norm. > 3)")
         end
     end
     if needs_fitting
-        println(source.log, "\nRe-run fit...")
+        println(logio(source), "\nRe-run fit...")
         bestfit = fit!(model, source.data, minimizer=mzer)
     end
 
-    println(source.log)
-    show(source.log, bestfit)
+    println(logio(source))
+    show(logio(source), bestfit)
 
+
+    out = reduce(source, model, bestfit)
     elapsed = time() - elapsed
-    println(source.log, "\nElapsed time: $elapsed s")
-    QSFit.close_log(source)
-
-    return reduce(source, model, bestfit)
+    println(logio(source), "\nElapsed time: $elapsed s")
+    QSFit.close_logio(source)
+    return out
 end
