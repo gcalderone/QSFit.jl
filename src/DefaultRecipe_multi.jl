@@ -1,5 +1,3 @@
-calibsum(calib, args...) = calib .* (.+(args...))
-
 function multi_fit(source::QSO{TRecipe}; ref_id=1) where TRecipe <: DefaultRecipe
     Nspec = length(source.domain)
 
@@ -9,45 +7,54 @@ function multi_fit(source::QSO{TRecipe}; ref_id=1) where TRecipe <: DefaultRecip
 
     # Initialize components and guess initial values
     println(logio(source), "\nFit continuum components...")
-    preds = Vector{Prediction}()
+
+    multi = MultiModel()
     for id in 1:Nspec
         λ = source.domain[id][:]
-        pred = Prediction(source.domain[id], :Continuum => SumReducer([:qso_cont]),
-                          :qso_cont => QSFit.qso_cont_component(TRecipe))
+        model = Model(source.domain[id],
+                      :qso_cont => QSFit.qso_cont_component(TRecipe),
+                      :Continuum => SumReducer([:qso_cont]))
 
-        if source.options[:instr_broadening]
-            GFit.set_instr_response!(pred, (l, f) -> instrumental_broadening(l, f, source.spectra[id].resolution))
-        end
+        # TODO if source.options[:instr_broadening]
+        # TODO     GFit.set_instr_response!(model, (l, f) -> instrumental_broadening(l, f, source.spectra[id].resolution))
+        # TODO end
 
-        push!(preds, pred)
-        c = pred[:qso_cont]
+        c = model[:qso_cont]
         c.x0.val = median(λ)
         c.norm.val = Spline1D(λ, source.data[id].val, k=1, bc="error")(c.x0.val)
+        push!(multi, model)
     end
-    model = Model(preds)
 
     for id in 1:Nspec
+        model = multi[id]
         λ = source.domain[id][:]
 
         # Host galaxy template
         if source.options[:use_host_template]   &&
             (minimum(λ) .< 5500 .< maximum(λ))
-            add!(model[id], :Continuum => SumReducer([:qso_cont, :galaxy]),
-                 :galaxy => QSFit.hostgalaxy(source.options[:host_template]))
-            model[id][:galaxy].norm.val = Spline1D(λ, source.data[id].val, k=1, bc="error")(5500.)
+            model[:galaxy] = QSFit.hostgalaxy(source.options[:host_template])
+            model[:Continuum] = SumReducer([:qso_cont, :galaxy])
+
+            # Split total flux between continuum and host galaxy
+            vv = Spline1D(λ, source.data[id].val, k=1, bc="error")(5500.)
+            model[:galaxy].norm.val  = 1/3 * vv
+            model[:qso_cont].x0.val *= 2/3 * vv / Spline1D(λ, model(:qso_cont), k=1, bc="error")(5500.)
+
             if id != ref_id
-                model[id][:galaxy].norm.fixed = true
-                @patch! model m -> m[id][:galaxy].norm = m[ref_id][:galaxy].norm
+                model[:galaxy].norm.fixed = true
+                @patch! multi m -> begin
+                    m[id][:galaxy].norm = m[ref_id][:galaxy].norm
+                end
             end
         end
 
         # Balmer continuum and pseudo-continuum
         if source.options[:use_balmer]
             tmp = [:qso_cont, :balmer]
-            (:galaxy in keys(model[id]))  &&  push!(tmp, :galaxy)
-            add!(model[id], :Continuum => SumReducer(tmp),
-                 :balmer => QSFit.balmercont(0.1, 0.5))
-            c = model[id][:balmer]
+            (:galaxy in keys(model))  &&  push!(tmp, :galaxy)
+            model[:balmer] = QSFit.balmercont(0.1, 0.5)
+            model[:Continuum] = SumReducer(tmp)
+            c = model[:balmer]
             c.norm.val  = 0.1
             c.norm.fixed = false
             c.norm.high = 0.5
@@ -55,21 +62,21 @@ function multi_fit(source::QSO{TRecipe}; ref_id=1) where TRecipe <: DefaultRecip
             c.ratio.fixed = false
             c.ratio.low  = 0.1
             c.ratio.high = 1
-            @patch! model[id] m -> m[:balmer].norm *= m[:qso_cont].norm
+            @patch! model m -> m[:balmer].norm *= m[:qso_cont].norm
         end
     end
-
-    bestfit = fit!(model, source.data, minimizer=mzer);  show(logio(source), bestfit)
+    bestfit = fit!(multi, source.data, minimizer=mzer);  show(logio(source), bestfit)
 
     # QSO continuum renormalization
     for id in 1:Nspec
-        freeze(model[id], :qso_cont)
-        c = model[id][:qso_cont]
+        model = multi[id]
+        freeze(model, :qso_cont)
+        c = model[:qso_cont]
         initialnorm = c.norm.val
         if c.norm.val > 0
             println(logio(source), "$id: Cont. norm. (before): ", c.norm.val)
             while true
-                residuals = (model[id]() - source.data[id].val) ./ source.data[id].unc
+                residuals = (model() - source.data[id].val) ./ source.data[id].unc
                 (count(residuals .< 0) / length(residuals) > 0.9)  &&  break
                 (c.norm.val < initialnorm / 5)  &&  break # give up
                 c.norm.val *= 0.99
@@ -79,15 +86,16 @@ function multi_fit(source::QSO{TRecipe}; ref_id=1) where TRecipe <: DefaultRecip
         else
             println(logio(source), "$id: Skipping cont. renormalization")
         end
-        freeze(model[id], :qso_cont)
-        (:galaxy in keys(model[id]))  &&  freeze(model[id], :galaxy)
-        (:balmer in keys(model[id]))  &&  freeze(model[id], :balmer)
+        freeze(model, :qso_cont)
+        (:galaxy in keys(model))  &&  freeze(model, :galaxy)
+        (:balmer in keys(model))  &&  freeze(model, :balmer)
     end
-    evaluate!(model)
+    evaluate!(multi)
 
     # Fit iron templates
     println(logio(source), "\nFit iron templates...")
     for id in 1:Nspec
+        model = multi[id]
         λ = source.domain[id][:]
 
         iron_components = Vector{Symbol}()
@@ -98,8 +106,8 @@ function multi_fit(source::QSO{TRecipe}; ref_id=1) where TRecipe <: DefaultRecip
             (_1, _2, coverage) = spectral_coverage(λ, source.spectra[id].resolution, comp)
             threshold = get(source.options[:min_spectral_coverage], :ironuv, source.options[:min_spectral_coverage][:default])
             if coverage >= threshold
-                add!(model[id], :ironuv => comp)
-                model[id][:ironuv].norm.val = 0.5
+                model[:ironuv] = comp
+                model[:ironuv].norm.val = 0.5
                 push!(iron_components, :ironuv)
             else
                 println(logio(source), "Ignoring ironuv component on prediction $id (threshold: $threshold)")
@@ -115,67 +123,68 @@ function multi_fit(source::QSO{TRecipe}; ref_id=1) where TRecipe <: DefaultRecip
             if coverage >= threshold
                 fwhm = 500.
                 source.options[:instr_broadening]  ||  (fwhm = sqrt(fwhm^2 + (source.spectra[id].resolution * 2.355)^2))
-                add!(model[id],
-                     :ironoptbr => comp,
-                     :ironoptna => QSFit.ironopt_narrow(fwhm))
-                model[id][:ironoptbr].norm.val = 0.5
-                model[id][:ironoptna].norm.val = 0.0
-                freeze(model[id], :ironoptna)  # will be freed during last run
+                model[:ironoptbr] = comp
+                model[:ironoptna] = QSFit.ironopt_narrow(fwhm)
+                model[:ironoptbr].norm.val = 0.1  # TODO: guess a sensible value
+                model[:ironoptna].norm.val = 0.0
+                freeze(model, :ironoptna)  # will be freed during last run
                 push!(iron_components, :ironoptbr, :ironoptna)
             else
                 println(logio(source), "Ignoring ironopt component on prediction $id (threshold: $threshold)")
             end
         end
         if length(iron_components) > 0
-            add!(model[id], :Iron => SumReducer(iron_components))
-            add!(model[id], :main => SumReducer([:Continuum, :Iron]))
+            model[:Iron] = SumReducer(iron_components)
+            model[:main] = SumReducer([:Continuum, :Iron])
             evaluate!(model)
-            bestfit = fit!(model, only_id=id, source.data, minimizer=mzer); show(logio(source), bestfit)
+            bestfit = fit!(model, source.data[id], minimizer=mzer); show(logio(source), bestfit)
         else
-            add!(model[id], :Iron => @expr(m -> [0.]))
-            add!(model[id], :main => SumReducer([:Continuum, :Iron]))
+            model[:Iron] = @expr m -> [0.]
+            model[:main] = SumReducer([:Continuum, :Iron])
         end
-        (:ironuv    in keys(model[id]))  &&  freeze(model[id], :ironuv)
-        (:ironoptbr in keys(model[id]))  &&  freeze(model[id], :ironoptbr)
-        (:ironoptna in keys(model[id]))  &&  freeze(model[id], :ironoptna)
+        (:ironuv    in keys(model))  &&  freeze(model, :ironuv)
+        (:ironoptbr in keys(model))  &&  freeze(model, :ironoptbr)
+        (:ironoptna in keys(model))  &&  freeze(model, :ironoptna)
     end
-    evaluate!(model)
+    evaluate!(multi)
 
     # Add emission lines
     line_names = [collect(keys(source.line_names[id])) for id in 1:Nspec]
     line_groups = [unique(collect(values(source.line_names[id]))) for id in 1:Nspec]
     println(logio(source), "\nFit known emission lines...")
     for id in 1:Nspec
+        model = multi[id]
         λ = source.domain[id][:]
-        resid = source.data[id].val - model[id]()  # will be used to guess line normalization
-        add!(model[id], source.line_comps[id])
+        resid = source.data[id].val - model()  # will be used to guess line normalization
+        for (cname, comp) in source.line_comps[id]
+            model[cname] = comp
+        end
         for (group, lnames) in QSFit.invert_dictionary(source.line_names[id])
-            add!(model[id], group => SumReducer(lnames))
+            model[group] = SumReducer(lnames)
         end
-        add!(model[id], :main => SumReducer([:Continuum, :Iron, line_groups[id]...]))
+        model[:main] = SumReducer([:Continuum, :Iron, line_groups[id]...])
 
-        if haskey(model[id], :MgII_2798)
-            model[id][:MgII_2798].voff.low  = -1000
-            model[id][:MgII_2798].voff.high =  1000
+        if haskey(model, :MgII_2798)
+            model[:MgII_2798].voff.low  = -1000
+            model[:MgII_2798].voff.high =  1000
         end
-        if haskey(model[id], :OIII_5007_bw)
-            model[id][:OIII_5007_bw].fwhm.val  = 500
-            model[id][:OIII_5007_bw].fwhm.low  = 1e2
-            model[id][:OIII_5007_bw].fwhm.high = 1e3
-            model[id][:OIII_5007_bw].voff.low  = 0
-            model[id][:OIII_5007_bw].voff.high = 2e3
+        if haskey(model, :OIII_5007_bw)
+            model[:OIII_5007_bw].fwhm.val  = 500
+            model[:OIII_5007_bw].fwhm.low  = 1e2
+            model[:OIII_5007_bw].fwhm.high = 1e3
+            model[:OIII_5007_bw].voff.low  = 0
+            model[:OIII_5007_bw].voff.high = 2e3
         end
         for cname in line_names[id]
-            model[id][cname].norm_integrated = source.options[:norm_integrated]
+            model[cname].norm_integrated = source.options[:norm_integrated]
         end
 
         # Guess values
         evaluate!(model)
-        y = source.data[id].val - model[id]()
         for cname in line_names[id]
-            c = model[id][cname]
+            c = model[cname]
             resid_at_line = Spline1D(λ, resid, k=1, bc="nearest")(c.center.val)
-            c.norm.val *= abs(resid_at_line) / maximum(model[id](cname))
+            c.norm.val *= abs(resid_at_line) / maximum(model(cname))
 
             # If instrumental broadening is not used and the line profile
             # is a Gaussian one take spectral resolution into account.
@@ -195,11 +204,11 @@ function multi_fit(source::QSO{TRecipe}; ref_id=1) where TRecipe <: DefaultRecip
         end
 
         # Patch parameters
-        if  haskey(model[id], :OIII_4959)  &&
-            haskey(model[id], :OIII_5007)
-            model[id][:OIII_4959].norm.fixed = true
-            model[id][:OIII_4959].voff.fixed = true
-            @patch! model[id] m -> begin
+        if  haskey(model, :OIII_4959)  &&
+            haskey(model, :OIII_5007)
+            model[:OIII_4959].norm.fixed = true
+            model[:OIII_4959].voff.fixed = true
+            @patch! model m -> begin
                 m[:OIII_4959].norm = m[:OIII_5007].norm / 3
                 m[:OIII_4959].voff = m[:OIII_5007].voff
             end
