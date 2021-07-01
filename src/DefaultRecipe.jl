@@ -164,8 +164,8 @@ function fit(source::QSO{TRecipe}; id=1) where TRecipe <: DefaultRecipe
 
         # Split total flux between continuum and host galaxy
         vv = Spline1D(λ, source.data[id].val, k=1, bc="error")(5500.)
-        model[:galaxy].norm.val  = 1/3 * vv
-        model[:qso_cont].x0.val *= 2/3 * vv / Spline1D(λ, model(:qso_cont), k=1, bc="error")(5500.)
+        model[:galaxy].norm.val  = 1/2 * vv
+        model[:qso_cont].x0.val *= 1/2 * vv / Spline1D(λ, model(:qso_cont), k=1, bc="error")(5500.)
     end
 
     # Balmer continuum and pseudo-continuum
@@ -182,7 +182,7 @@ function fit(source::QSO{TRecipe}; id=1) where TRecipe <: DefaultRecipe
         c.ratio.fixed = false
         c.ratio.low  = 0.1
         c.ratio.high = 1
-        @patch! model m -> m[:balmer].norm *= m[:qso_cont].norm
+        @patch! model[:balmer].norm *= model[:qso_cont].norm
     end
 
     bestfit = fit!(model, source.data[id], minimizer=mzer);  show(logio(source), bestfit)
@@ -313,84 +313,42 @@ function fit(source::QSO{TRecipe}; id=1) where TRecipe <: DefaultRecipe
     end
 
     # Patch parameters
-    if  haskey(model, :OIII_4959)  &&
-        haskey(model, :OIII_5007)
-        model[:OIII_4959].norm.fixed = true
-        model[:OIII_4959].voff.fixed = true
-        @patch! model m -> begin
-            m[:OIII_4959].norm = m[:OIII_5007].norm / 3
-            m[:OIII_4959].voff = m[:OIII_5007].voff
-        end
+    @patch! begin
+         # model[:OIII_4959].norm = model[:OIII_5007].norm / 3
+        model[:OIII_4959].voff = model[:OIII_5007].voff
     end
-    if  haskey(model, :OIII_5007_bw)  &&
-        haskey(model, :OIII_5007)
-        @patch! model m -> begin
-            m[:OIII_5007_bw].voff += m[:OIII_5007].voff
-            m[:OIII_5007_bw].fwhm += m[:OIII_5007].fwhm
-        end
+    @patch! begin
+        model[:OIII_5007_bw].voff += model[:OIII_5007].voff
+        model[:OIII_5007_bw].fwhm += model[:OIII_5007].fwhm
     end
-    if  haskey(model, :OI_6300)  &&
-        haskey(model, :OI_6364)
-        # model[:OI_6300].norm.fixed = true
-        model[:OI_6300].voff.fixed = true
-        @patch! model m -> begin
-            # m[:OI_6300].norm = m[:OI_6364].norm / 3
-            m[:OI_6300].voff = m[:OI_6364].voff
-        end
+    @patch! begin
+        # model[:OI_6300].norm = model[:OI_6364].norm / 3
+        model[:OI_6300].voff = model[:OI_6364].voff
     end
-    if  haskey(model, :NII_6549)  &&
-        haskey(model, :NII_6583)
-        # model[:NII_6549].norm.fixed = true
-        model[:NII_6549].voff.fixed = true
-        @patch! model m -> begin
-            # m[:NII_6549].norm = m[:NII_6583].norm / 3
-            m[:NII_6549].voff = m[:NII_6583].voff
-        end
+    @patch! begin
+        # model[:NII_6549].norm = model[:NII_6583].norm / 3
+        model[:NII_6549].voff = model[:NII_6583].voff
     end
-    if  haskey(model, :SII_6716)  &&
-        haskey(model, :SII_6731)
-        # model[:SII_6716].norm.fixed = true
-        model[:SII_6716].voff.fixed = true
-        @patch! model m -> begin
-            # m[:SII_6716].norm = m[:SII_6731].norm / 1.5
-            m[:SII_6716].voff = m[:SII_6731].voff
-        end
+    @patch! begin
+        # model[:SII_6716].norm = model[:SII_6731].norm / 1.5
+        model[:SII_6716].voff = model[:SII_6731].voff
     end
 
-    if  haskey(model, :na_Ha)  &&
-        haskey(model, :na_Hb)
-        model[:na_Hb].voff.fixed = true
-        @patch! model m -> m[:na_Hb].voff = m[:na_Ha].voff
-    end
+    @patch! model[:na_Hb].voff = model[:na_Ha].voff
 
     # The following are required to avoid degeneracy with iron
     # template
-    if  haskey(model, :Hg)  &&
-        haskey(model, :br_Hb)
-        model[:Hg].voff.fixed = true
-        model[:Hg].fwhm.fixed = true
-        @patch! model m -> begin
-            m[:Hg].voff = m[:br_Hb].voff
-            m[:Hg].fwhm = m[:br_Hb].fwhm
-        end
+    @patch! begin
+        model[:Hg].voff = model[:br_Hb].voff
+        model[:Hg].fwhm = model[:br_Hb].fwhm
     end
-    if  haskey(model, :br_Hg)  &&
-        haskey(model, :br_Hb)
-        model[:br_Hg].voff.fixed = true
-        model[:br_Hg].fwhm.fixed = true
-        @patch! model m -> begin
-            m[:br_Hg].voff = m[:br_Hb].voff
-            m[:br_Hg].fwhm = m[:br_Hb].fwhm
-        end
+    @patch! begin
+        model[:br_Hg].voff = model[:br_Hb].voff
+        model[:br_Hg].fwhm = model[:br_Hb].fwhm
     end
-    if  haskey(model, :na_Hg)  &&
-        haskey(model, :na_Hb)
-        model[:na_Hg].voff.fixed = true
-        model[:na_Hg].fwhm.fixed = true
-        @patch! model m -> begin
-            m[:na_Hg].voff = m[:na_Hb].voff
-            m[:na_Hg].fwhm = m[:na_Hb].fwhm
-        end
+    @patch! begin
+        model[:na_Hg].voff = model[:na_Hb].voff
+        model[:na_Hg].fwhm = model[:na_Hb].fwhm
     end
 
     # Ensure luminosity at peak of the broad base component is
@@ -399,13 +357,13 @@ function fit(source::QSO{TRecipe}; id=1) where TRecipe <: DefaultRecipe
         haskey(model, :bb_Hb)
         model[:bb_Hb].norm.high = 1
         model[:bb_Hb].norm.val  = 0.5
-        @patch! model m -> m[:bb_Hb].norm *= m[:br_Hb].norm / m[:br_Hb].fwhm * m[:bb_Hb].fwhm
+        @patch! model[:bb_Hb].norm *= model[:br_Hb].norm / model[:br_Hb].fwhm * model[:bb_Hb].fwhm
     end
     if  haskey(model, :br_Ha)  &&
         haskey(model, :bb_Ha)
         model[:bb_Ha].norm.high = 1
         model[:bb_Ha].norm.val  = 0.5
-        @patch! model m -> m[:bb_Ha].norm *= m[:br_Ha].norm / m[:br_Ha].fwhm * m[:bb_Ha].fwhm
+        @patch! model[:bb_Ha].norm *= model[:br_Ha].norm / model[:br_Ha].fwhm * model[:bb_Ha].fwhm
     end
 
     bestfit = fit!(model, source.data[id], minimizer=mzer); show(logio(source), bestfit)

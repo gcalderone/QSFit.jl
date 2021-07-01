@@ -37,14 +37,11 @@ function multi_fit(source::QSO{TRecipe}; ref_id=1) where TRecipe <: DefaultRecip
 
             # Split total flux between continuum and host galaxy
             vv = Spline1D(λ, source.data[id].val, k=1, bc="error")(5500.)
-            model[:galaxy].norm.val  = 1/3 * vv
-            model[:qso_cont].x0.val *= 2/3 * vv / Spline1D(λ, model(:qso_cont), k=1, bc="error")(5500.)
+            model[:galaxy].norm.val  = 1/2 * vv
+            model[:qso_cont].x0.val *= 1/2 * vv / Spline1D(λ, model(:qso_cont), k=1, bc="error")(5500.)
 
             if id != ref_id
-                model[:galaxy].norm.fixed = true
-                @patch! multi m -> begin
-                    m[id][:galaxy].norm = m[ref_id][:galaxy].norm
-                end
+                @patch! multi[id][:galaxy].norm = multi[ref_id][:galaxy].norm
             end
         end
 
@@ -62,7 +59,7 @@ function multi_fit(source::QSO{TRecipe}; ref_id=1) where TRecipe <: DefaultRecip
             c.ratio.fixed = false
             c.ratio.low  = 0.1
             c.ratio.high = 1
-            @patch! model m -> m[:balmer].norm *= m[:qso_cont].norm
+            @patch! model[:balmer].norm *= model[:qso_cont].norm
         end
     end
     bestfit = fit!(multi, source.data, minimizer=mzer);  show(logio(source), bestfit)
@@ -204,105 +201,63 @@ function multi_fit(source::QSO{TRecipe}; ref_id=1) where TRecipe <: DefaultRecip
         end
 
         # Patch parameters
-        if  haskey(model, :OIII_4959)  &&
-            haskey(model, :OIII_5007)
-            model[:OIII_4959].norm.fixed = true
-            model[:OIII_4959].voff.fixed = true
-            @patch! model m -> begin
-                m[:OIII_4959].norm = m[:OIII_5007].norm / 3
-                m[:OIII_4959].voff = m[:OIII_5007].voff
-            end
+        @patch! begin
+         # model[:OIII_4959].norm = model[:OIII_5007].norm / 3
+            model[:OIII_4959].voff = model[:OIII_5007].voff
         end
-        if  haskey(model[id], :OIII_5007_bw)  &&
-            haskey(model[id], :OIII_5007)
-            @patch! model[id] m -> begin
-                m[:OIII_5007_bw].voff += m[:OIII_5007].voff
-                m[:OIII_5007_bw].fwhm += m[:OIII_5007].fwhm
-            end
+        @patch! begin
+            model[:OIII_5007_bw].voff += model[:OIII_5007].voff
+            model[:OIII_5007_bw].fwhm += model[:OIII_5007].fwhm
         end
-        if  haskey(model[id], :OI_6300)  &&
-            haskey(model[id], :OI_6364)
-            # model[id][:OI_6300].norm.fixed = true
-            model[id][:OI_6300].voff.fixed = true
-            @patch! model[id] m -> begin
-                # m[:OI_6300].norm = m[:OI_6364].norm / 3
-                m[:OI_6300].voff = m[:OI_6364].voff
-            end
+        @patch! begin
+            # model[:OI_6300].norm = model[:OI_6364].norm / 3
+            model[:OI_6300].voff = model[:OI_6364].voff
         end
-        if  haskey(model[id], :NII_6549)  &&
-            haskey(model[id], :NII_6583)
-            # model[id][:NII_6549].norm.fixed = true
-            model[id][:NII_6549].voff.fixed = true
-            @patch! model[id] m -> begin
-                # m[:NII_6549].norm = m[:NII_6583].norm / 3
-                m[:NII_6549].voff = m[:NII_6583].voff
-            end
+        @patch! begin
+            # model[:NII_6549].norm = model[:NII_6583].norm / 3
+            model[:NII_6549].voff = model[:NII_6583].voff
         end
-        if  haskey(model[id], :SII_6716)  &&
-            haskey(model[id], :SII_6731)
-            # model[id][:SII_6716].norm.fixed = true
-            model[id][:SII_6716].voff.fixed = true
-            @patch! model[id] m -> begin
-                # m[:SII_6716].norm = m[:SII_6731].norm / 1.5
-                m[:SII_6716].voff = m[:SII_6731].voff
-            end
+        @patch! begin
+            # model[:SII_6716].norm = model[:SII_6731].norm / 1.5
+            model[:SII_6716].voff = model[:SII_6731].voff
         end
 
-        if  haskey(model[id], :na_Ha)  &&
-            haskey(model[id], :na_Hb)
-            model[id][:na_Hb].voff.fixed = true
-            @patch! model[id] m -> m[:na_Hb].voff = m[:na_Ha].voff
-        end
+        @patch! model[:na_Hb].voff = model[:na_Ha].voff
 
         # The following are required to avoid degeneracy with iron
         # template
-        if  haskey(model[id], :Hg)  &&
-            haskey(model[id], :br_Hb)
-            model[id][:Hg].voff.fixed = true
-            model[id][:Hg].fwhm.fixed = true
-            @patch! model[id] m -> begin
-                m[:Hg].voff = m[:br_Hb].voff
-                m[:Hg].fwhm = m[:br_Hb].fwhm
-            end
+        @patch! begin
+            model[:Hg].voff = model[:br_Hb].voff
+            model[:Hg].fwhm = model[:br_Hb].fwhm
         end
-        if  haskey(model[id], :br_Hg)  &&
-            haskey(model[id], :br_Hb)
-            model[id][:br_Hg].voff.fixed = true
-            model[id][:br_Hg].fwhm.fixed = true
-            @patch! model[id] m -> begin
-                m[:br_Hg].voff = m[:br_Hb].voff
-                m[:br_Hg].fwhm = m[:br_Hb].fwhm
-            end
+        @patch! begin
+            model[:br_Hg].voff = model[:br_Hb].voff
+            model[:br_Hg].fwhm = model[:br_Hb].fwhm
         end
-        if  haskey(model[id], :na_Hg)  &&
-            haskey(model[id], :na_Hb)
-            model[id][:na_Hg].voff.fixed = true
-            model[id][:na_Hg].fwhm.fixed = true
-            @patch! model[id] m -> begin
-                m[:na_Hg].voff = m[:na_Hb].voff
-                m[:na_Hg].fwhm = m[:na_Hb].fwhm
-            end
+        @patch! begin
+            model[:na_Hg].voff = model[:na_Hb].voff
+            model[:na_Hg].fwhm = model[:na_Hb].fwhm
         end
 
         # Ensure luminosity at peak of the broad base component is
         # smaller than the associated broad component:
-        if  haskey(model[id], :br_Hb)  &&
-            haskey(model[id], :bb_Hb)
-            model[id][:bb_Hb].norm.high = 1
-            model[id][:bb_Hb].norm.val  = 0.5
-            @patch! model[id] m -> m[:bb_Hb].norm *= m[:br_Hb].norm / m[:br_Hb].fwhm * m[:bb_Hb].fwhm
+        if  haskey(model, :br_Hb)  &&
+            haskey(model, :bb_Hb)
+            model[:bb_Hb].norm.high = 1
+            model[:bb_Hb].norm.val  = 0.5
+            @patch! model[:bb_Hb].norm *= model[:br_Hb].norm / model[:br_Hb].fwhm * model[:bb_Hb].fwhm
         end
-        if  haskey(model[id], :br_Ha)  &&
-            haskey(model[id], :bb_Ha)
-            model[id][:bb_Ha].norm.high = 1
-            model[id][:bb_Ha].norm.val  = 0.5
-            @patch! model[id] m -> m[:bb_Ha].norm *= m[:br_Ha].norm / m[:br_Ha].fwhm * m[:bb_Ha].fwhm
+        if  haskey(model, :br_Ha)  &&
+            haskey(model, :bb_Ha)
+            model[:bb_Ha].norm.high = 1
+            model[:bb_Ha].norm.val  = 0.5
+            @patch! model[:bb_Ha].norm *= model[:br_Ha].norm / model[:br_Ha].fwhm * model[:bb_Ha].fwhm
         end
 
-        bestfit = fit!(model, only_id=id, source.data, minimizer=mzer); show(logio(source), bestfit)
+        bestfit = fit!(model, source.data[id], minimizer=mzer); show(logio(source), bestfit)
 
         for lname in line_names[id]
-            freeze(model[id], lname)
+            freeze(model, lname)
         end
     end
 
@@ -310,36 +265,42 @@ function multi_fit(source::QSO{TRecipe}; ref_id=1) where TRecipe <: DefaultRecip
     println(logio(source), "\nFit unknown emission lines...")
     if source.options[:n_unk] > 0
         for id in 1:Nspec
+            model = multi[id]
             tmp = OrderedDict{Symbol, GFit.AbstractComponent}()
             for j in 1:source.options[:n_unk]
                 tmp[Symbol(:unk, j)] = line_component(TRecipe, QSFit.UnkLine(5e3))
                 tmp[Symbol(:unk, j)].norm_integrated = source.options[:norm_integrated]
             end
-            add!(model[id], :UnkLines => SumReducer(collect(keys(tmp))), tmp)
-            add!(model[id], :main => SumReducer([:Continuum, :Iron, line_groups[id]..., :UnkLines]))
+            for (cname, comp) in tmp
+                model[cname] = comp
+            end
+            model[:UnkLines] = SumReducer(collect(keys(tmp)))
+            model[:main] = SumReducer([:Continuum, :Iron, line_groups[id]..., :UnkLines])
             evaluate!(model)
             for j in 1:source.options[:n_unk]
-                freeze(model[id], Symbol(:unk, j))
+                freeze(model, Symbol(:unk, j))
             end
         end
     else
         # Here we need a :UnkLines reducer, even when n_unk is 0
         for id in 1:Nspec
-            add!(model[id], :UnkLines => @expr(m -> [0.]))
-            add!(model[id], :main => SumReducer([:Continuum, :Iron, line_groups[id]...]))
+            model = multi[id]
+            model[:UnkLines] = @expr m -> [0.]
+            model[:main] = SumReducer([:Continuum, :Iron, line_groups[id]...])
         end
     end
-    evaluate!(model)
+    evaluate!(multi)
 
     # Set "unknown" line center wavelength where there is a maximum in
     # the fit residuals, and re-run a fit.
     for id in 1:Nspec
+        model = multi[id]
         λ = source.domain[id][:]
         λunk = Vector{Float64}()
         while true
             (length(λunk) >= source.options[:n_unk])  &&  break
             evaluate!(model)
-            Δ = (source.data[id].val - model[id]()) ./ source.data[id].unc
+            Δ = (source.data[id].val - model()) ./ source.data[id].unc
 
             # Avoid considering again the same region (within 1A) TODO: within resolution
             for l in λunk
@@ -360,57 +321,59 @@ function multi_fit(source::QSO{TRecipe}; ref_id=1) where TRecipe <: DefaultRecip
             push!(λunk, λ[iadd])
 
             cname = Symbol(:unk, length(λunk))
-            model[id][cname].norm.val = 1.
-            model[id][cname].center.val  = λ[iadd]
-            model[id][cname].center.low  = λ[iadd] - λ[iadd]/10. # allow to shift 10%
-            model[id][cname].center.high = λ[iadd] + λ[iadd]/10.
+            model[cname].norm.val = 1.
+            model[cname].center.val  = λ[iadd]
+            model[cname].center.low  = λ[iadd] - λ[iadd]/10. # allow to shift 10%
+            model[cname].center.high = λ[iadd] + λ[iadd]/10.
 
-            thaw(model[id], cname)
-            bestfit = fit!(model, only_id=id, source.data, minimizer=mzer); show(logio(source), bestfit)
-            freeze(model[id], cname)
+            thaw(model, cname)
+            bestfit = fit!(model, source.data[id], minimizer=mzer); show(logio(source), bestfit)
+            freeze(model, cname)
         end
     end
-    evaluate!(model)
+    evaluate!(multi)
 
     # ----------------------------------------------------------------
     # Last run with all parameters free
     println(logio(source), "\nLast run with all parameters free...")
     for id in 1:Nspec
-        thaw(model[id], :qso_cont)
-        (:galaxy in keys(model[id]))        &&  thaw(model[id], :galaxy)
-        (:balmer in keys(model[id]))        &&  thaw(model[id], :balmer)
-        (:ironuv    in keys(model[id]))     &&  thaw(model[id], :ironuv)
-        (:ironoptbr in keys(model[id]))     &&  thaw(model[id], :ironoptbr)
-        (:ironoptna in keys(model[id]))     &&  thaw(model[id], :ironoptna)
+        model = multi[id]
+        thaw(model, :qso_cont)
+        (:galaxy in keys(model))        &&  thaw(model, :galaxy)
+        (:balmer in keys(model))        &&  thaw(model, :balmer)
+        (:ironuv    in keys(model))     &&  thaw(model, :ironuv)
+        (:ironoptbr in keys(model))     &&  thaw(model, :ironoptbr)
+        (:ironoptna in keys(model))     &&  thaw(model, :ironoptna)
 
         for lname in line_names[id]
-            thaw(model[id], lname)
+            thaw(model, lname)
         end
         for j in 1:source.options[:n_unk]
             cname = Symbol(:unk, j)
-            if model[id][cname].norm.val > 0
-                thaw(model[id], cname)
+            if model[cname].norm.val > 0
+                thaw(model, cname)
             else
-                freeze(model[id], cname)
+                freeze(model, cname)
             end
         end
     end
-    bestfit = fit!(model, source.data, minimizer=mzer)
+    bestfit = fit!(multi, source.data, minimizer=mzer)
 
     # Disable "unknown" lines whose normalization uncertainty is larger
     # than 3 times the normalization
     needs_fitting = false
     for id in 1:Nspec
+        model = multi[id]
         for ii in 1:source.options[:n_unk]
             cname = Symbol(:unk, ii)
-            isfixed(model[id], cname)  &&  continue
+            isfixed(model, cname)  &&  continue
             if bestfit[id][cname].norm.val == 0.
-                freeze(model[id], cname)
+                freeze(model, cname)
                 needs_fitting = true
                 println(logio(source), "Disabling $cname (norm. = 0)")
             elseif bestfit[id][cname].norm.unc / bestfit[id][cname].norm.val > 3
-                model[id][cname].norm.val = 0.
-                freeze(model[id], cname)
+                model[cname].norm.val = 0.
+                freeze(model, cname)
                 needs_fitting = true
                 println(logio(source), "Disabling $cname (unc. / norm. > 3)")
             end
@@ -418,13 +381,13 @@ function multi_fit(source::QSO{TRecipe}; ref_id=1) where TRecipe <: DefaultRecip
     end
     if needs_fitting
         println(logio(source), "\nRe-run fit...")
-        bestfit = fit!(model, source.data, minimizer=mzer)
+        bestfit = fit!(multi, source.data, minimizer=mzer)
     end
 
     println(logio(source))
     show(logio(source), bestfit)
 
-    out = reduce(source, model, bestfit)
+    out = QSFit.QSFitMultiResults(source, multi, bestfit)
     elapsed = time() - elapsed
     println(logio(source), "\nElapsed time: $elapsed s")
     QSFit.close_logio(source)
