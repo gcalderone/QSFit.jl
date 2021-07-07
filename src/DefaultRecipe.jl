@@ -376,7 +376,7 @@ function guess_emission_lines_values!(source::QSO{T}, pspec::PreparedSpectrum, m
     for group in [:BroadLines, :NarrowLines, :BroadBaseLines]
         for (cname, lc) in pspec.lcs
             (lc.reducer_name == group)  ||  continue
-            QSFit.guess_norm_factor!(pspec, model, cname)
+            guess_norm_factor!(pspec, model, cname)
         end
         push!(model[:main].list, group)
         evaluate!(model)
@@ -524,9 +524,9 @@ end
 function fit(source::QSO{TRecipe}) where TRecipe <: DefaultRecipe
     elapsed = time()
     @assert length(source.specs) == 1
-    pspec = QSFit.PreparedSpectrum(source, id=1)
+    pspec = PreparedSpectrum(source, id=1)
 
-    mzer = QSFit.minimizer(source)
+    mzer = minimizer(source)
     model = Model(pspec.domain)
     model[:Continuum] = SumReducer([])
     model[:main] = SumReducer([])
@@ -539,11 +539,11 @@ function fit(source::QSO{TRecipe}) where TRecipe <: DefaultRecipe
     # TODO end
 
     println(logio(source), "\nFit continuum components...")
-    QSFit.add_qso_continuum!(source, pspec, model)
-    QSFit.add_host_galaxy!(source, pspec, model)
-    QSFit.add_balmer_cont!(source, pspec, model)
+    add_qso_continuum!(source, pspec, model)
+    add_host_galaxy!(source, pspec, model)
+    add_balmer_cont!(source, pspec, model)
     bestfit = fit!(model, pspec.data, minimizer=mzer);  show(logio(source), bestfit)
-    QSFit.renorm_cont!(source, pspec, model)
+    renorm_cont!(source, pspec, model)
     freeze(model, :qso_cont)
     haskey(model, :galaxy)  &&  freeze(model, :galaxy)
     haskey(model, :balmer)  &&  freeze(model, :balmer)
@@ -552,8 +552,8 @@ function fit(source::QSO{TRecipe}) where TRecipe <: DefaultRecipe
     println(logio(source), "\nFit iron templates...")
     model[:Iron] = SumReducer([])
     push!(model[:main].list, :Iron)
-    QSFit.add_iron_uv!( source, pspec, model)
-    QSFit.add_iron_opt!(source, pspec, model)
+    add_iron_uv!( source, pspec, model)
+    add_iron_opt!(source, pspec, model)
 
     if length(model[:Iron].list) > 0
         bestfit = fit!(model, pspec.data, minimizer=mzer); show(logio(source), bestfit)
@@ -564,9 +564,9 @@ function fit(source::QSO{TRecipe}) where TRecipe <: DefaultRecipe
     evaluate!(model)
 
     println(logio(source), "\nFit known emission lines...")
-    QSFit.add_emission_lines!(source, pspec, model)
-    QSFit.guess_emission_lines_values!(source, pspec, model)
-    QSFit.add_patch_functs!(source, pspec, model)
+    add_emission_lines!(source, pspec, model)
+    guess_emission_lines_values!(source, pspec, model)
+    add_patch_functs!(source, pspec, model)
 
     bestfit = fit!(model, pspec.data, minimizer=mzer); show(logio(source), bestfit)
     for lname in keys(pspec.lcs)
