@@ -38,6 +38,7 @@ function default_options(::Type{T}) where T <: AbstractRecipe
     return out
 end
 
+
 struct QSO{T <: AbstractRecipe}
     name::String
     z::Float64
@@ -47,16 +48,19 @@ struct QSO{T <: AbstractRecipe}
     logfile::Union{Nothing, String}
     options::OrderedDict{Symbol, Any}
     specs::Vector{Spectrum}
-    
-    function QSO{T}(name, z; ebv=0., logfile=nothing, cosmo=default_cosmology()) where T <: AbstractRecipe
-        @assert z > 0
-        @assert ebv >= 0
-        ld = uconvert(u"cm", luminosity_dist(cosmo, float(z)))
-        flux2lum = 4pi * ld^2 * (scale_flux() * unit_flux()) / (scale_lum() * unit_lum())
-        return new{T}(string(name), float(z), float(ebv), cosmo, flux2lum, logfile,
-                      default_options(T), Vector{Spectrum}())
-    end
 end
+
+function QSO{T}(name, z; ebv=0., logfile=nothing, cosmo=default_cosmology()) where T <: AbstractRecipe
+    @assert z > 0
+    @assert ebv >= 0
+    ld = uconvert(u"cm", luminosity_dist(cosmo, float(z)))
+    flux2lum = 4pi * ld^2 * (scale_flux() * unit_flux()) / (scale_lum() * unit_lum())
+    return QSO{T}(string(name), float(z), float(ebv), cosmo, flux2lum, logfile,
+                  default_options(T), Vector{Spectrum}())
+end
+
+parent_recipe(source::QSO{T}) where T <: AbstractRecipe =
+    QSO{supertype(T)}(getfield.(Ref(source), fieldnames(typeof(source)))...)
 
 add_spec!(source::QSO, spec::Spectrum) =
     push!(source.specs, spec)
