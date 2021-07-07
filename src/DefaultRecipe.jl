@@ -272,8 +272,8 @@ function guess_norm_factor!(pspec::PreparedSpectrum, model::Model, name::Symbol;
     ratio = model[name].norm.val / sum(m[i1:i2])
     model[name].norm.val += sum(resid[i1:i2]) * ratio
     if model[name].norm.val < 0
-        @warn "$name component has negative normalization, set it to 0.01"
-        model[name].norm.val = 0.01
+        @warn "$name component has negative normalization, set it to 0"
+        model[name].norm.val = 0.
     end
 end
 
