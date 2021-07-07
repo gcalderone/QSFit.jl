@@ -1,19 +1,16 @@
 
-function estimate_line_EWs(source::QSO{T}, model::Model) where T <: AbstractRecipe
+function estimate_line_EWs(source::QSO{T}, pspec::PreparedSpectrum, model::Model) where T <: AbstractRecipe
     EW = OrderedDict{Symbol, Float64}()
 
-    for (lname0, line0) in known_spectral_lines(T)
-        cont = deepcopy(model())
-        for (lname, line) in line_breakdown(T, lname0, line0)
-            haskey(model, lname) || continue
-            cont .-= model(lname)
-        end
-
-        for (lname, line) in line_breakdown(T, lname0, line0)
-            haskey(model, lname) || continue
-            EW[lname] = int_tabulated(domain(model)[:],
-                                      model(lname) ./ cont)[1]
-        end
+    cont = deepcopy(model())
+    for (lname, lc) in pspec.lcs
+        haskey(model, lname) || continue
+        cont .-= model(lname)
+    end
+    for (lname, lc) in pspec.lcs
+        haskey(model, lname) || continue
+        EW[lname] = int_tabulated(domain(model)[:],
+                                  model(lname) ./ cont)[1]
     end
     return EW
 end
@@ -21,13 +18,14 @@ end
 
 struct QSFitResults{T}
     source::QSO{T}
+    pspec::PreparedSpectrum
     model::Model
     bestfit::GFit.BestFitResult
     EW::OrderedDict{Symbol, Float64}
 end
 
-QSFitResults(source::QSO{T}, model::Model, bestfit::GFit.BestFitResult) where T <: AbstractRecipe =
-    QSFitResults{T}(source, model, bestfit, estimate_line_EWs(source, model))
+QSFitResults(source::QSO{T}, pspec::PreparedSpectrum, model::Model, bestfit::GFit.BestFitResult) where T <: AbstractRecipe =
+    QSFitResults{T}(source, pspec, model, bestfit, estimate_line_EWs(source, pspec, model))
 
 struct QSFitMultiResults{T}
     source::QSO{T}

@@ -79,14 +79,3 @@ function spectral_coverage(spec_λ::Vector{Float64}, resolution::Float64,
 
     return (λmin, λmax, good / steps)
 end
-
-
-function invert_dictionary(d::OrderedDict{K, V}) where {K, V}
-    out = OrderedDict{V, Vector{K}}()
-    kk = collect(keys(d))
-    vv = collect(values(d))
-    for v in unique(vv)
-        out[v] = kk[findall(v .== vv)]
-    end
-    return out
-end
