@@ -95,12 +95,12 @@ function line_component(source::QSO{T}, name::Symbol, line::CombinedLine) where 
         lc = line_component(source, name, tline(line.λ))
         lc = LineComponent(line, lc.line, lc.comp, lc.reducer_name) # add parent type
         if tline == BroadLine
-            out[Symbol(:br_, name)] = lc
+            out[Symbol(name, :_br)] = lc
         elseif tline == NarrowLine
             lc.comp.fwhm.high = 1e3
-            out[Symbol(:na_, name)] = lc
+            out[Symbol(name, :_na)] = lc
         elseif tline == BroadBaseLine
-            out[Symbol(:bb_, name)] = lc
+            out[Symbol(name, :_bb)] = lc
         else
             error("Unsupported line type: $tline")
         end
@@ -155,9 +155,9 @@ function PreparedSpectrum(source::QSO{T}; id=1) where T <: DefaultRecipe
             (λmin, λmax, coverage) = spectral_coverage(λ .* data.good, data.resolution, lc.comp)
             coverage = round(coverage * 1e3) / 1e3  # keep just 3 significant digits...
             threshold = get(source.options[:min_spectral_coverage], lname, source.options[:min_spectral_coverage][:default])
-            print(logio(source), "Line $lname2 coverage: $coverage (threshold: $threshold)")
+            print(logio(source), @sprintf("Line %-15s coverage: %4.2f (threshold: %4.2f)", lname2, coverage, threshold))
             if coverage < threshold
-                print(logio(source), "  neglecting range: $λmin < λ <  $λmax")
+                print(logio(source), @sprintf("  neglecting range: %10.5g < λ < %10.5g", λmin, λmax))
                 ii = findall(λmin .<= λ .< λmax)
                 data.good[ii] .= false
             else
