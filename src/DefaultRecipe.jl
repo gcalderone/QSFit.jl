@@ -261,16 +261,20 @@ function renorm_cont!(source::QSO{T}, pspec::PreparedSpectrum, model::Model) whe
 end
 
 
-function guess_norm_factor(pspec::PreparedSpectrum, model::Model, name::Symbol; quantile=0.95)
+function guess_norm_factor!(pspec::PreparedSpectrum, model::Model, name::Symbol; quantile=0.95)
+    @assert model[name].norm.val != 0
     m = model(name)
     c = cumsum(m)
     c ./= maximum(c)
     i1 = findfirst(c .> ((1 - quantile)/2))
     i2 = findlast( c .< ((1 + quantile)/2))
     resid = pspec.data.val - model()
-    out = sum(resid[i1:i2]) / sum(m[i1:i2])
-    (out < 0)  &&  (out = 0.5)
-    return out
+    ratio = model[name].norm.val / sum(m[i1:i2])
+    model[name].norm.val += sum(resid[i1:i2]) * ratio
+    if model[name].norm.val < 0
+        @warn "$name component has negative normalization, set it to 0.01"
+        model[name].norm.val = 0.01
+    end
 end
 
 
@@ -287,7 +291,7 @@ function add_iron_uv!(source::QSO{T}, pspec::PreparedSpectrum, model::Model) whe
             model[:ironuv].norm.val = 1.
             push!(model[:Iron].list, :ironuv)
             evaluate!(model)
-            model[:ironuv].norm.val *= guess_norm_factor(pspec, model, :ironuv)
+            guess_norm_factor!(pspec, model, :ironuv)
             evaluate!(model)
         else
             println(logio(source), "Ignoring ironuv component (threshold: $threshold)")
@@ -315,7 +319,7 @@ function add_iron_opt!(source::QSO{T}, pspec::PreparedSpectrum, model::Model) wh
             push!(model[:Iron].list, :ironoptbr)
             push!(model[:Iron].list, :ironoptna)
             evaluate!(model)
-            model[:ironoptbr].norm.val *= guess_norm_factor(pspec, model, :ironoptbr)
+            guess_norm_factor!(pspec, model, :ironoptbr)
             evaluate!(model)
         else
             println(logio(source), "Ignoring ironopt component (threshold: $threshold)")
@@ -372,7 +376,7 @@ function guess_emission_lines_values!(source::QSO{T}, pspec::PreparedSpectrum, m
     for group in [:BroadLines, :NarrowLines, :BroadBaseLines]
         for (cname, lc) in pspec.lcs
             (lc.reducer_name == group)  ||  continue
-            model[cname].norm.val *= QSFit.guess_norm_factor(pspec, model, cname)
+            QSFit.guess_norm_factor!(pspec, model, cname)
         end
         push!(model[:main].list, group)
         evaluate!(model)
@@ -550,7 +554,6 @@ function fit(source::QSO{TRecipe}) where TRecipe <: DefaultRecipe
     push!(model[:main].list, :Iron)
     QSFit.add_iron_uv!( source, pspec, model)
     QSFit.add_iron_opt!(source, pspec, model)
-    evaluate!(model)
 
     if length(model[:Iron].list) > 0
         bestfit = fit!(model, pspec.data, minimizer=mzer); show(logio(source), bestfit)
