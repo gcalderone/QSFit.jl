@@ -6,7 +6,7 @@ function default_options(::Type{T}) where T <: DefaultRecipe
     out[:min_spectral_coverage] = Dict(:default => 0.6,
                                        :ironuv  => 0.3,
                                        :ironopt => 0.3)
-    out[:skip_lines] = [:OIII_5007_bw] #, bb_Ha
+    out[:skip_lines] = [:OIII_5007_bw] #, Ha_bb
     out[:host_template] = "Ell5"
     out[:use_host_template] = true
     out[:use_balmer] = true
@@ -165,6 +165,7 @@ function PreparedSpectrum(source::QSO{T}; id=1) where T <: DefaultRecipe
         isa(tmp, LineComponent)  &&  (tmp = OrderedDict(lname => tmp))
         @assert isa(tmp, OrderedDict{Symbol, LineComponent})
         for (lname2, lc) in tmp
+            (lname2 in source.options[:skip_lines])  &&  continue
             @assert !haskey(lcs, lname2)
             (λmin, λmax, coverage) = spectral_coverage(λ .* data.good, data.resolution, lc.comp)
             coverage = round(coverage * 1e3) / 1e3  # keep just 3 significant digits...
@@ -411,36 +412,36 @@ function add_patch_functs!(source::QSO{T}, pspec::PreparedSpectrum, model::Model
         model[:SII_6716].voff = model[:SII_6731].voff
     end
 
-    @patch! model[:na_Hb].voff = model[:na_Ha].voff
+    @patch! model[:Hb_na].voff = model[:Ha_na].voff
 
     # The following are required to avoid degeneracy with iron
     # template
     @patch! begin
-        model[:Hg].voff = model[:br_Hb].voff
-        model[:Hg].fwhm = model[:br_Hb].fwhm
+        model[:Hg].voff = model[:Hb_br].voff
+        model[:Hg].fwhm = model[:Hb_br].fwhm
     end
     @patch! begin
-        model[:br_Hg].voff = model[:br_Hb].voff
-        model[:br_Hg].fwhm = model[:br_Hb].fwhm
+        model[:Hg_br].voff = model[:Hb_br].voff
+        model[:Hg_br].fwhm = model[:Hb_br].fwhm
     end
     @patch! begin
-        model[:na_Hg].voff = model[:na_Hb].voff
-        model[:na_Hg].fwhm = model[:na_Hb].fwhm
+        model[:Hg_na].voff = model[:Hb_na].voff
+        model[:Hg_na].fwhm = model[:Hb_na].fwhm
     end
 
     # Ensure luminosity at peak of the broad base component is
     # smaller than the associated broad component:
-    if  haskey(model, :br_Hb)  &&
-        haskey(model, :bb_Hb)
-        model[:bb_Hb].norm.high = 1
-        model[:bb_Hb].norm.val  = 0.5
-        @patch! model[:bb_Hb].norm *= model[:br_Hb].norm / model[:br_Hb].fwhm * model[:bb_Hb].fwhm
+    if  haskey(model, :Hb_br)  &&
+        haskey(model, :Hb_bb)
+        model[:Hb_bb].norm.high = 1
+        model[:Hb_bb].norm.val  = 0.5
+        @patch! model[:Hb_bb].norm *= model[:Hb_br].norm / model[:Hb_br].fwhm * model[:Hb_bb].fwhm
     end
-    if  haskey(model, :br_Ha)  &&
-        haskey(model, :bb_Ha)
-        model[:bb_Ha].norm.high = 1
-        model[:bb_Ha].norm.val  = 0.5
-        @patch! model[:bb_Ha].norm *= model[:br_Ha].norm / model[:br_Ha].fwhm * model[:bb_Ha].fwhm
+    if  haskey(model, :Ha_br)  &&
+        haskey(model, :Ha_bb)
+        model[:Ha_bb].norm.high = 1
+        model[:Ha_bb].norm.val  = 0.5
+        @patch! model[:Ha_bb].norm *= model[:Ha_br].norm / model[:Ha_br].fwhm * model[:Ha_bb].fwhm
     end
 end
 

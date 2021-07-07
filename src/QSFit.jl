@@ -1,6 +1,6 @@
 module QSFit
 
-export QSO, Spectrum, add_spec!, fit, multi_fit, spectral_coverage, logio, close_logio
+export QSO, Spectrum, add_spec!, fit, multi_fit, spectral_coverage, logio, close_logio, parent_recipe
 
 import GFit: Domain, CompEval,
     Parameter, AbstractComponent, prepare!, evaluate!, fit!
