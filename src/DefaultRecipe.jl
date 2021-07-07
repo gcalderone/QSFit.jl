@@ -67,6 +67,11 @@ function line_component(source::QSO{T}, name::Symbol, line::BroadLine) where T <
     comp.fwhm.high = 1.5e4
     comp.voff.low  = -3e3
     comp.voff.high =  3e3
+
+    if name == :MgII_2798
+        comp.voff.low  = -1e3
+        comp.voff.high =  1e3
+    end
     return LineComponent(nothing, line, comp, :BroadLines)
 end
 
@@ -77,6 +82,14 @@ function line_component(source::QSO{T}, name::Symbol, line::NarrowLine) where T 
     comp.fwhm.high = 2e3
     comp.voff.low  = -1e3
     comp.voff.high =  1e3
+
+    if name == :OIII_5007_bw
+        comp.fwhm.val  = 500
+        comp.fwhm.high = 1e3
+        comp.voff.low  = 0
+        comp.voff.high = 2e3
+    end
+
     return LineComponent(nothing, line, comp, :NarrowLines)
 end
 
@@ -123,7 +136,7 @@ end
 
 
 function PreparedSpectrum(source::QSO{T}; id=1) where T <: DefaultRecipe
-    data = source.specs[id]
+    data = deepcopy(source.specs[id])
     println(logio(source), "Spectrum: " * data.label)
     println(logio(source), "  good fraction:: ", goodfraction(data))
     if goodfraction(data) < 0.5
@@ -147,6 +160,7 @@ function PreparedSpectrum(source::QSO{T}; id=1) where T <: DefaultRecipe
     # Collect LineComponent objects
     lcs = OrderedDict{Symbol, LineComponent}()
     for (lname, line) in known_spectral_lines(source)
+        (lname in source.options[:skip_lines])  &&  continue
         tmp = line_component(source, lname, line)
         isa(tmp, LineComponent)  &&  (tmp = OrderedDict(lname => tmp))
         @assert isa(tmp, OrderedDict{Symbol, LineComponent})
@@ -356,29 +370,19 @@ function add_emission_lines!(source::QSO{T}, pspec::PreparedSpectrum, model::Mod
     for (group, lnames) in groups
         model[group] = SumReducer(lnames)
     end
-    
-    if haskey(model, :MgII_2798)
-        model[:MgII_2798].voff.low  = -1000
-        model[:MgII_2798].voff.high =  1000
-    end
-    if haskey(model, :OIII_5007_bw)
-        model[:OIII_5007_bw].fwhm.val  = 500
-        model[:OIII_5007_bw].fwhm.low  = 1e2
-        model[:OIII_5007_bw].fwhm.high = 1e3
-        model[:OIII_5007_bw].voff.low  = 0
-        model[:OIII_5007_bw].voff.high = 2e3
-    end
     evaluate!(model)
 end
 
 
 function guess_emission_lines_values!(source::QSO{T}, pspec::PreparedSpectrum, model::Model) where T <: DefaultRecipe
     for group in [:BroadLines, :NarrowLines, :BroadBaseLines]
+        found = false
         for (cname, lc) in pspec.lcs
             (lc.reducer_name == group)  ||  continue
             guess_norm_factor!(pspec, model, cname)
+            found = true
         end
-        push!(model[:main].list, group)
+        found  &&  push!(model[:main].list, group)
         evaluate!(model)
     end
 end
