@@ -191,7 +191,8 @@ function PreparedSpectrum(source::QSO{T}; id=1) where T <: DefaultRecipe
 
     ii = findall(data.good)
     dom = Domain(data.λ[ii] ./ (1 + source.z))
-    lum = Measures(data.flux[ii] .* dered[ii] .* source.flux2lum .* (1 + source.z),
+    lum = Measures(Domain(data.λ[ii]),
+                   data.flux[ii] .* dered[ii] .* source.flux2lum .* (1 + source.z),
                    data.err[ ii] .* dered[ii] .* source.flux2lum .* (1 + source.z))
 
     return PreparedSpectrum(id, data, dom, lum, lcs)
