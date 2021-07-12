@@ -10,7 +10,7 @@ using Pkg, Pkg.Artifacts
 using Statistics, DelimitedFiles, Dierckx, Printf, DataStructures
 using Unitful, UnitfulAstro
 using Dates
-# GFit.showsettings.showfixed = true
+using Gnuplot
 
 include("cosmology.jl")
 include("ccm_unred.jl")

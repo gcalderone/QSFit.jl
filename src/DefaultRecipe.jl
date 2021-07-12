@@ -198,10 +198,14 @@ function PreparedSpectrum(source::QSO{T}; id=1) where T <: DefaultRecipe
 end
 
 
-function minimizer(source::QSO{T}) where T <: DefaultRecipe
+function fit!(source::QSO{T}, model::Model, pspec::PreparedSpectrum) where T <: DefaultRecipe
     mzer = GFit.cmpfit()
     mzer.Δfitstat_theshold = 1.e-5
-    return mzer
+    bestfit = fit!(model, pspec.data, minimizer=mzer)
+    show(logio(source), bestfit)
+    # @gp (domain(model), pspec.data) model
+    # printstyled(color=:blink, "Press ENTER to continue..."); readline()
+    return bestfit
 end
 
 
@@ -273,6 +277,8 @@ function renorm_cont!(source::QSO{T}, pspec::PreparedSpectrum, model::Model) whe
         println(logio(source), "Skipping cont. renormalization")
     end
     evaluate!(model)
+    # @gp (domain(model), pspec.data) model
+    # printstyled(color=:blink, "Press ENTER to continue..."); readline()
 end
 
 
@@ -497,7 +503,7 @@ function add_unknown_lines!(source::QSO{T}, pspec::PreparedSpectrum, model::Mode
         model[cname].center.high = λ[iadd] + λ[iadd]/10.
 
         thaw(model, cname)
-        bestfit = fit!(model, pspec.data, minimizer=mzer); show(logio(source), bestfit)
+        bestfit = fit!(source, model, pspec)
         freeze(model, cname)
     end
     evaluate!(model)
@@ -531,7 +537,6 @@ function fit(source::QSO{TRecipe}) where TRecipe <: DefaultRecipe
     @assert length(source.specs) == 1
     pspec = PreparedSpectrum(source, id=1)
 
-    mzer = minimizer(source)
     model = Model(pspec.domain)
     model[:Continuum] = SumReducer([])
     model[:main] = SumReducer([])
@@ -547,7 +552,7 @@ function fit(source::QSO{TRecipe}) where TRecipe <: DefaultRecipe
     add_qso_continuum!(source, pspec, model)
     add_host_galaxy!(source, pspec, model)
     add_balmer_cont!(source, pspec, model)
-    bestfit = fit!(model, pspec.data, minimizer=mzer);  show(logio(source), bestfit)
+    bestfit = fit!(source, model, pspec)
     renorm_cont!(source, pspec, model)
     freeze(model, :qso_cont)
     haskey(model, :galaxy)  &&  freeze(model, :galaxy)
@@ -561,7 +566,7 @@ function fit(source::QSO{TRecipe}) where TRecipe <: DefaultRecipe
     add_iron_opt!(source, pspec, model)
 
     if length(model[:Iron].list) > 0
-        bestfit = fit!(model, pspec.data, minimizer=mzer); show(logio(source), bestfit)
+        bestfit = fit!(source, model, pspec)
         haskey(model, :ironuv   )  &&  freeze(model, :ironuv)
         haskey(model, :ironoptbr)  &&  freeze(model, :ironoptbr)
         haskey(model, :ironoptna)  &&  freeze(model, :ironoptna)
@@ -573,7 +578,7 @@ function fit(source::QSO{TRecipe}) where TRecipe <: DefaultRecipe
     guess_emission_lines_values!(source, pspec, model)
     add_patch_functs!(source, pspec, model)
 
-    bestfit = fit!(model, pspec.data, minimizer=mzer); show(logio(source), bestfit)
+    bestfit = fit!(source, model, pspec)
     for lname in keys(pspec.lcs)
         freeze(model, lname)
     end
@@ -599,11 +604,11 @@ function fit(source::QSO{TRecipe}) where TRecipe <: DefaultRecipe
             freeze(model, cname)
         end
     end
-    bestfit = fit!(model, pspec.data, minimizer=mzer)
+    bestfit = fit!(source, model, pspec)
 
     if neglect_weak_features!(source, pspec, model)
         println(logio(source), "\nRe-run fit...")
-        bestfit = fit!(model, pspec.data, minimizer=mzer)
+        bestfit = fit!(source, model, pspec)
     end
 
     println(logio(source))
