@@ -21,7 +21,7 @@ struct Spectrum
     flux::Vector{Float64}
     err::Vector{Float64}
     good::Vector{Bool}
-    resolution::Float64  # km/s
+    resolution::Float64  # σ km/s
     meta::Dict{Symbol, Any}
     function Spectrum(λ::Vector{T}, flux::Vector{T}, err::Vector{T};
                       good::Union{Nothing, Vector{Bool}}=nothing,
@@ -57,7 +57,7 @@ end
 
 Spectrum(λ::Vector{T1}, flux::Vector{T2}; kw...) where {T1 <: Quantity, T2 <: Quantity} = Spectrum(λ, flux, flux[[]]; kw...)
 function Spectrum(λ::Vector{T1}, flux::Vector{T2}, err::Vector{T2}; kw...) where {T1 <: Quantity, T2 <: Quantity}
-    Spectrum(getproperty.(uconvert.(Ref(unit_λ())              , λ   ), :val) ./ scale_λ(),
+    Spectrum(getproperty.(uconvert.(Ref(unit_λ())           , λ   ), :val) ./ scale_λ(),
              getproperty.(uconvert.(Ref(unit_flux_density()), flux), :val) ./ scale_flux(),
              getproperty.(uconvert.(Ref(unit_flux_density()), err ), :val) ./ scale_flux();
              kw...)
