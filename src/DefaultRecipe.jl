@@ -24,7 +24,7 @@ function known_spectral_lines(source::QSO{T}) where T <: DefaultRecipe
         CombinedType( new_transition(name=:Lyb         , 1026.0   ), [BroadType, NarrowType]),
         # NarrowType(   new_transition(name=:OV_1213     , 1213.8  )),  # Ferland+92, Shields+95
         CombinedType( new_transition(name=:Lya         , 1215.24  ), [BroadType, NarrowType]),
-        NarrowType(   new_transition(name=:OV_1218     , 1218.3  )),  # Ferland+92, Shields+95
+        # NarrowType(   new_transition(name=:OV_1218     , 1218.3  )),  # Ferland+92, Shields+95
         NarrowType(   new_transition(name=:NV_1241     , 1240.81 )),
         BroadType(    new_transition(name=:OI_1306     , 1305.53 )),
         BroadType(    new_transition(name=:CII_1335    , 1335.31 )),
