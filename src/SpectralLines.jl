@@ -1,5 +1,5 @@
 export transition,
-    AbstractLine, BroadLine, NarrowLine, BroadBaseLine, CombinedLine,
+    AbstractLine, GenericLine, BroadLine, NarrowLine, BroadBaseLine, CombinedLine,
     LineComponent
 
 const transitions_db = DataFrame()
@@ -30,7 +30,7 @@ function load_transitions(;force=false)
     end
     delete!(out, findall((out.tid .== "")  .|
                          (out.Label .== "")))
-  
+
     out[!, :tid] .= Symbol.(out.tid)
 
     append!(transitions_db, out)
@@ -69,14 +69,43 @@ transition(λ_vac_ang::Float64) = transition(custom_transition_default_tid(λ_va
 # Line type descriptors associated to an atomic transition
 abstract type AbstractLine end
 
+struct GenericLine     <: AbstractLine; tid::Symbol; end
 struct BroadLine       <: AbstractLine; tid::Symbol; end
 struct NarrowLine      <: AbstractLine; tid::Symbol; end
 struct BroadBaseLine   <: AbstractLine; tid::Symbol; end
 struct CombinedLine    <: AbstractLine; tid::Symbol; types::Vector{Type}; end
-struct UnkLine         <: AbstractLine; tid::Symbol; end
 
 struct LineComponent
-    orig::AbstractLine
+    line::AbstractLine
     comp::AbstractComponent
-    group::Symbol
+    combined::Bool
+end
+
+suffix(::BroadLine) = :_br
+suffix(::NarrowLine) = :_na
+suffix(::BroadBaseLine) = :_bb
+
+group(::BroadLine) = :BroadLines
+group(::NarrowLine) = :NarrowLines
+group(::BroadBaseLine) = :BroadBaseLines
+
+function collect_LineComponent(source::QSO)
+    out = OrderedDict{Symbol, LineComponent}()
+    for line in known_spectral_lines(source)
+        if isa(line, CombinedLine)
+            for t in line.types
+                nn = Symbol(line.tid, suffix(t(line.tid)))
+                (nn in source.options[:skip_lines])  &&  continue
+                @assert !haskey(out, nn)
+                lc = LineComponent(source, t(line.tid), true)
+                out[nn] = lc
+            end
+        else
+            nn = line.tid
+            (nn in source.options[:skip_lines])  &&  continue
+            @assert !haskey(out, nn)
+            out[nn] = LineComponent(source, line, false)
+        end
+    end
+    return out
 end

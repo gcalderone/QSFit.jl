@@ -63,83 +63,65 @@ function known_spectral_lines(source::QSO{T}) where T <: DefaultRecipe
 end
 
 
-line_default_component(source::QSO{T}, ltype::AbstractLine) where T <: DefaultRecipe =
-    SpecLineGauss(transition(ltype.tid).LAMBDA_VAC_ANG)
+function LineComponent(source::QSO{T}, line::GenericLine, combined::Bool) where T <: DefaultRecipe
+    comp = SpecLineGauss(transition(line.tid).LAMBDA_VAC_ANG)
+    comp.norm_integrated = source.options[:norm_integrated]
+    return LineComponent(line, comp, combined)
+end
 
-function line_to_component(source::QSO{T}, ltype::BroadLine) where T <: DefaultRecipe
-    comp = line_default_component(source, ltype)
+function LineComponent(source::QSO{T}, line::BroadLine, combined::Bool) where T <: DefaultRecipe
+    comp = LineComponent(source, GenericLine(line.tid), combined).comp
     comp.fwhm.val  = 5e3
     comp.fwhm.low  = 900
     comp.fwhm.high = 1.5e4
     comp.voff.low  = -3e3
     comp.voff.high =  3e3
 
-    if ltype.tid == :MgII_2798
+    if line.tid == :MgII_2798
         comp.voff.low  = -1e3
         comp.voff.high =  1e3
     end
-    return Dict(ltype.tid => LineComponent(ltype, comp, :BroadLines))
+    return LineComponent(line, comp, combined)
 end
 
-function line_to_component(source::QSO{T}, ltype::NarrowLine) where T <: DefaultRecipe
-    comp = line_default_component(source, ltype)
+function LineComponent(source::QSO{T}, line::NarrowLine, combined::Bool) where T <: DefaultRecipe
+    comp = LineComponent(source, GenericLine(line.tid), combined).comp
     comp.fwhm.val  = 5e2
     comp.fwhm.low  = 100
-    comp.fwhm.high = 2e3
+    comp.fwhm.high = (combined  ?  1e3  :  2e3)
     comp.voff.low  = -1e3
     comp.voff.high =  1e3
 
-    if ltype.tid == :OIII_5007_bw
+    if line.tid == :OIII_5007_bw
         comp.fwhm.val  = 500
         comp.fwhm.high = 1e3
         comp.voff.low  = 0
         comp.voff.high = 2e3
     end
-    return Dict(ltype.tid => LineComponent(ltype, comp, :NarrowLines))
+    return LineComponent(line, comp, combined)
 end
 
-function line_to_component(source::QSO{T}, ltype::BroadBaseLine) where T <: DefaultRecipe
-    comp = line_default_component(source, ltype)
+function LineComponent(source::QSO{T}, line::BroadBaseLine, combined::Bool) where T <: DefaultRecipe
+    comp = LineComponent(source, GenericLine(line.tid), combined).comp
     comp.fwhm.val  = 2e4
     comp.fwhm.low  = 1e4
     comp.fwhm.high = 3e4
     comp.voff.fixed = true
-    return Dict(ltype.tid => LineComponent(ltype, comp, :BroadBaseLines))
+    return LineComponent(line, comp, combined)
 end
 
-function line_to_component(source::QSO{T}, ltype::CombinedLine) where T <: DefaultRecipe
-    out = OrderedDict{Symbol, LineComponent}()
-    for t in ltype.types
-        lc = collect(values(line_to_component(source, t(ltype.tid))))
-        @assert length(lc) == 1
-        lc = lc[1]
-        lc = LineComponent(ltype, lc.comp, lc.group)
-        if t == BroadLine
-            out[Symbol(ltype.tid, :_br)] = lc
-        elseif t == NarrowLine
-            lc.comp.fwhm.high = 1e3
-            out[Symbol(ltype.tid, :_na)] = lc
-        elseif t == BroadBaseLine
-            out[Symbol(ltype.tid, :_bb)] = lc
-        else
-            error("Unsupported line type: $t")
-        end
-    end
-    return out
+function default_unk_line(source::QSO{T}) where T <: DefaultRecipe
+    comp = SpecLineGauss(5e3)
+    comp.norm.val = 0.
+    comp.center.fixed = false
+    comp.center.low = 0
+    comp.center.high = Inf
+    comp.fwhm.val  = 5e3
+    comp.fwhm.low  = 600
+    comp.fwhm.high = 1e4
+    comp.voff.fixed = true
+    return comp
 end
-
-# function line_to_component(source::QSO{T}, name::Symbol, line::UnkLine) where T <: DefaultRecipe
-#     comp = SpecLineGauss(line.λ)
-#     comp.norm.val = 0.
-#     comp.center.fixed = false
-#     comp.center.low = 0
-#     comp.center.high = Inf
-#     comp.fwhm.val  = 5e3
-#     comp.fwhm.low  = 600
-#     comp.fwhm.high = 1e4
-#     comp.voff.fixed = true
-#     return LineComponent(nothing, typeof(line), comp, :UnknownLines)
-# end
 
 
 function PreparedSpectrum(source::QSO{T}; id=1) where T <: DefaultRecipe
@@ -164,26 +146,19 @@ function PreparedSpectrum(source::QSO{T}; id=1) where T <: DefaultRecipe
     println(logio(source), "Good samples before line coverage filter: ", length(findall(data.good)))
 
     # Collect LineComponent objects
-    lcs = OrderedDict{Symbol, LineComponent}()
-    for line in known_spectral_lines(source)
-        (line.tid in source.options[:skip_lines])  &&  continue
-        for (lname, lc) in line_to_component(source, line)
-            (lname in source.options[:skip_lines])  &&  continue
-            @assert !haskey(lcs, lname)
-            (λmin, λmax, coverage) = spectral_coverage(λ .* data.good, data.resolution, lc.comp)
-            coverage = round(coverage * 1e3) / 1e3  # keep just 3 significant digits...
-            threshold = get(source.options[:min_spectral_coverage], lname, source.options[:min_spectral_coverage][:default])
-            print(logio(source), @sprintf("Line %-15s coverage: %4.2f (threshold: %4.2f)", lname, coverage, threshold))
-            if coverage < threshold
-                print(logio(source), @sprintf("  neglecting range: %10.5g < λ < %10.5g", λmin, λmax))
-                ii = findall(λmin .<= λ .< λmax)
-                data.good[ii] .= false
-            else
-                lcs[lname] = lc
-            end
-            println(logio(source))
-
+    lcs = collect_LineComponent(source)
+    for (lname, lc) in lcs
+        (λmin, λmax, coverage) = spectral_coverage(λ .* data.good, data.resolution, lc.comp)
+        coverage = round(coverage * 1e3) / 1e3  # keep just 3 significant digits...
+        threshold = get(source.options[:min_spectral_coverage], lname, source.options[:min_spectral_coverage][:default])
+        print(logio(source), @sprintf("Line %-15s coverage: %4.2f (threshold: %4.2f)", lname, coverage, threshold))
+        if coverage < threshold
+            print(logio(source), @sprintf("  neglecting range: %10.5g < λ < %10.5g", λmin, λmax))
+            ii = findall(λmin .<= λ .< λmax)
+            data.good[ii] .= false
+            delete!(lcs, lname)
         end
+        println(logio(source))
     end
     println(logio(source), "Good samples after line coverage filtering: ", length(findall(data.good)))
 
@@ -375,8 +350,9 @@ function add_emission_lines!(source::QSO{T}, pspec::PreparedSpectrum, model::Mod
         end
 
         model[cname] = lc.comp
-        haskey(groups, lc.group)  ||  (groups[lc.group] = Vector{Symbol}())
-        push!(groups[lc.group], cname)
+        grp = group(lc.line)
+        haskey(groups, grp)  ||  (groups[grp] = Vector{Symbol}())
+        push!(groups[grp], cname)
     end
     for (group, lnames) in groups
         model[group] = SumReducer(lnames)
@@ -386,14 +362,14 @@ end
 
 
 function guess_emission_lines_values!(source::QSO{T}, pspec::PreparedSpectrum, model::Model) where T <: DefaultRecipe
-    for group in [:BroadLines, :NarrowLines, :BroadBaseLines]
+    for grp in [:BroadLines, :NarrowLines, :BroadBaseLines]  # Note: order is important
         found = false
         for (cname, lc) in pspec.lcs
-            (lc.group == group)  ||  continue
+            (grp == group(lc.line))  ||  continue
             guess_norm_factor!(pspec, model, cname)
             found = true
         end
-        found  &&  push!(model[:main].list, group)
+        found  &&  push!(model[:main].list, grp)
         evaluate!(model)
     end
 end
@@ -457,14 +433,10 @@ end
 
 
 function add_unknown_lines!(source::QSO{T}, pspec::PreparedSpectrum, model::Model) where T <: DefaultRecipe
-    (source.options[:n_unk] > 0)  &&  (return nothing)
-    tmp = OrderedDict{Symbol, GFit.AbstractComponent}()
-    for j in 1:source.options[:n_unk]
-        tmp[Symbol(:unk, j)] = line_to_component(source, UnkLine(5e3))
-        tmp[Symbol(:unk, j)].norm_integrated = source.options[:norm_integrated]
-    end
-    for (cname, comp) in tmp
-        model[cname] = comp
+    (source.options[:n_unk] > 0)  ||  (return nothing)
+    for i in 1:source.options[:n_unk]
+        model[Symbol(:unk, i)] = default_unk_line(source)
+        model[Symbol(:unk, i)].norm_integrated = source.options[:norm_integrated]
     end
     model[:UnkLines] = SumReducer(collect(keys(tmp)))
     push!(model[:main].list, :UnkLines)
