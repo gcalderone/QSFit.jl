@@ -1,3 +1,5 @@
+export multi_fit
+
 function multi_fit(source::QSO{TRecipe}; ref_id=1) where TRecipe <: DefaultRecipe
     Nspec = length(source.domain)
 

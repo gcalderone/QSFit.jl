@@ -1,3 +1,4 @@
+export qsfitversion, spectral_coverage
 
 qsfitversion() = v"0.1.0"
 qsfit_data() = artifact"qsfit_data"

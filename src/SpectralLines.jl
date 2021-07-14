@@ -1,8 +1,11 @@
+export transition,
+    AbstractLine, BroadLine, NarrowLine, BroadBaseLine, CombinedLine,
+    LineComponent
 
 const transitions_db = DataFrame()
 
 function validate_transitions_db()
-    @assert length(unique(transitions_db.Name))  == nrow(transitions_db)
+    @assert length(unique(transitions_db.tid))   == nrow(transitions_db)
     @assert length(unique(transitions_db.Label)) == nrow(transitions_db)
 end
 
@@ -11,6 +14,7 @@ function load_transitions(;force=false)
     if nrow(transitions_db) > 0
         if force
             empty!(transitions_db)
+            select!(transitions_db, Not(1:ncol(transitions_db)))
         else
             validate_transitions_db()
             return nothing
@@ -24,58 +28,55 @@ function load_transitions(;force=false)
             out[:, i] .= strip.(out[:,i])
         end
     end
-    delete!(out, findall((out.Name .== "")  .|
+    delete!(out, findall((out.tid .== "")  .|
                          (out.Label .== "")))
   
-    out[!, :Name] .= Symbol.(out.Name)
+    out[!, :tid] .= Symbol.(out.tid)
 
     append!(transitions_db, out)
     validate_transitions_db()
 end
 
 
-function transition(name::Symbol)
+function transition(tid::Symbol)
     load_transitions()
-    i = findall(transitions_db.Name .== name)
+    i = findall(transitions_db.tid .== tid)
     @assert length(i) == 1
     return transitions_db[i[1], :]
 end
 
-function transition(λ_vacuum_ang::Float64)
-    load_transitions()
-    name = new_transition(λ_vacuum_ang)
-    i = findall(transitions_db.Name .== name)
-    @assert length(i) == 1
-    return transitions_db[i[1], :]
+
+function custom_transition_default_tid(λ::Float64)
+    tid = "T" * string(λ)
+    tid = join(split(tid, "."), "p")
+    return Symbol(tid)
 end
 
-function transition_default_name(λ::Float64)
-    name = "T" * string(λ)
-    name = join(split(name, "."), "p")
-    return Symbol(name)
-end
-
-function new_transition(λ_vacuum_ang::Float64; name::Union{Symbol, Nothing}=nothing)
+function custom_transition(λ_vac_ang::Float64; tid::Union{Symbol, Nothing}=nothing)
     load_transitions()
-    isnothing(name)  &&  (name = transition_default_name(λ_vacuum_ang))
-    i = findall(transitions_db.Name .== name)
+    isnothing(tid)  &&  (tid = custom_transition_default_tid(λ_vac_ang))
+    i = findall(transitions_db.tid .== tid)
     if length(i) == 0
-        push!(transitions_db, [name, string(name), λ_vacuum_ang, fill("", ncol(transitions_db)-3)...])
+        push!(transitions_db, [tid, string(tid), λ_vac_ang, fill("", ncol(transitions_db)-3)...])
     end
-    return name
+    return tid
 end
+
+transition(λ_vac_ang::Float64) = transition(custom_transition_default_tid(λ_vac_ang))
+
+
 
 # Line type descriptors associated to an atomic transition
-abstract type AbstractLineType end
+abstract type AbstractLine end
 
-struct BroadType       <: AbstractLineType; tid::Symbol; end
-struct NarrowType      <: AbstractLineType; tid::Symbol; end
-struct BroadBaseType   <: AbstractLineType; tid::Symbol; end
-struct CombinedType    <: AbstractLineType; tid::Symbol; types::Vector{Type}; end
-
+struct BroadLine       <: AbstractLine; tid::Symbol; end
+struct NarrowLine      <: AbstractLine; tid::Symbol; end
+struct BroadBaseLine   <: AbstractLine; tid::Symbol; end
+struct CombinedLine    <: AbstractLine; tid::Symbol; types::Vector{Type}; end
+struct UnkLine         <: AbstractLine; tid::Symbol; end
 
 struct LineComponent
-    orig::AbstractLineType
+    orig::AbstractLine
     comp::AbstractComponent
     group::Symbol
 end

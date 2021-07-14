@@ -1,3 +1,5 @@
+export DefaultRecipe, fit
+
 abstract type DefaultRecipe <: AbstractRecipe end
 
 function default_options(::Type{T}) where T <: DefaultRecipe
@@ -21,50 +23,50 @@ end
 
 function known_spectral_lines(source::QSO{T}) where T <: DefaultRecipe
     list = [
-        CombinedType( new_transition(name=:Lyb         , 1026.0   ), [BroadType, NarrowType]),
-        # NarrowType(   new_transition(name=:OV_1213     , 1213.8  )),  # Ferland+92, Shields+95
-        CombinedType( new_transition(name=:Lya         , 1215.24  ), [BroadType, NarrowType]),
-        # NarrowType(   new_transition(name=:OV_1218     , 1218.3  )),  # Ferland+92, Shields+95
-        NarrowType(   new_transition(name=:NV_1241     , 1240.81 )),
-        BroadType(    new_transition(name=:OI_1306     , 1305.53 )),
-        BroadType(    new_transition(name=:CII_1335    , 1335.31 )),
-        BroadType(    new_transition(name=:SiIV_1400   , 1399.8  )),
-        CombinedType( new_transition(name=:CIV_1549    , 1549.48  ), [BroadType, NarrowType]),
-        # BroadType(    new_transition(name=:HeII_1640   , 1640.4  )),
-        BroadType(    new_transition(name=:OIII        , 1665.85 )),
-        BroadType(    new_transition(name=:AlIII       , 1857.4  )),
-        BroadType(    new_transition(name=:CIII_1909   , 1908.734)),
-        BroadType(    new_transition(name=:CII         , 2326.0  )),
-        BroadType(    new_transition(name=:F2420       , 2420.0  )),
-        CombinedType( new_transition(name=:MgII_2798   , 2799.117 ), [BroadType, NarrowType]),
-        NarrowType(   new_transition(name=:NeVN        , 3346.79 )),
-        NarrowType(   new_transition(name=:NeVI_3426   , 3426.85 )),
-        NarrowType(   new_transition(name=:OII_3727    , 3729.875)),
-        NarrowType(   new_transition(name=:NeIII_3869  , 3869.81 )),
-        BroadType(    new_transition(name=:Hd          , 4102.89 )),
-        BroadType(    new_transition(name=:Hg          , 4341.68 )),
-        NarrowType(   new_transition(name=:OIII_4363   , 4363.00 )),  # TODO: Check wavelength is correct
-        BroadType(    new_transition(name=:HeII_4686   , 4686.   )),
-        CombinedType( new_transition(name=:Hb          , 4862.68  ), [BroadType, NarrowType]),
-        NarrowType(   new_transition(name=:OIII_4959   , 4960.295)),
-        NarrowType(   new_transition(name=:OIII_5007   , 5008.240)),
-        NarrowType(   new_transition(name=:OIII_5007_bw, 5008.240)),
-        BroadType(    new_transition(name=:HeI_5876    , 5877.30 )),
-        NarrowType(   new_transition(name=:OI_6300     , 6300.00 )),  # TODO: Check wavelength is correct
-        NarrowType(   new_transition(name=:OI_6364     , 6364.00 )),  # TODO: Check wavelength is correct
-        NarrowType(   new_transition(name=:NII_6549    , 6549.86 )),
-        CombinedType( new_transition(name=:Ha          , 6564.61  ), [BroadType, NarrowType, BroadBaseType]),
-        NarrowType(   new_transition(name=:NII_6583    , 6585.27 )),
-        NarrowType(   new_transition(name=:SII_6716    , 6718.29 )),
-        NarrowType(   new_transition(name=:SII_6731    , 6732.67 ))]
+        CombinedLine( custom_transition(tid=:Lyb         , 1026.0   ), [BroadLine, NarrowLine]),
+        # NarrowLine(   custom_transition(tid=:OV_1213     , 1213.8  )),  # Ferland+92, Shields+95
+        CombinedLine( custom_transition(tid=:Lya         , 1215.24  ), [BroadLine, NarrowLine]),
+        # NarrowLine(   custom_transition(tid=:OV_1218     , 1218.3  )),  # Ferland+92, Shields+95
+        NarrowLine(   custom_transition(tid=:NV_1241     , 1240.81 )),
+        BroadLine(    custom_transition(tid=:OI_1306     , 1305.53 )),
+        BroadLine(    custom_transition(tid=:CII_1335    , 1335.31 )),
+        BroadLine(    custom_transition(tid=:SiIV_1400   , 1399.8  )),
+        CombinedLine( custom_transition(tid=:CIV_1549    , 1549.48  ), [BroadLine, NarrowLine]),
+        BroadLine(    custom_transition(tid=:HeII_1640   , 1640.4  )),
+        BroadLine(    custom_transition(tid=:OIII        , 1665.85 )),
+        BroadLine(    custom_transition(tid=:AlIII       , 1857.4  )),
+        BroadLine(    custom_transition(tid=:CIII_1909   , 1908.734)),
+        BroadLine(    custom_transition(tid=:CII         , 2326.0  )),
+        BroadLine(    custom_transition(tid=:F2420       , 2420.0  )),
+        CombinedLine( custom_transition(tid=:MgII_2798   , 2799.117 ), [BroadLine, NarrowLine]),
+        NarrowLine(   custom_transition(tid=:NeVN        , 3346.79 )),
+        NarrowLine(   custom_transition(tid=:NeVI_3426   , 3426.85 )),
+        NarrowLine(   custom_transition(tid=:OII_3727    , 3729.875)),
+        NarrowLine(   custom_transition(tid=:NeIII_3869  , 3869.81 )),
+        BroadLine(    custom_transition(tid=:Hd          , 4102.89 )),
+        BroadLine(    custom_transition(tid=:Hg          , 4341.68 )),
+        NarrowLine(   custom_transition(tid=:OIII_4363   , 4363.00 )),  # TODO: Check wavelength is correct
+        BroadLine(    custom_transition(tid=:HeII_4686   , 4686.   )),
+        CombinedLine( custom_transition(tid=:Hb          , 4862.68  ), [BroadLine, NarrowLine]),
+        NarrowLine(   custom_transition(tid=:OIII_4959   , 4960.295)),
+        NarrowLine(   custom_transition(tid=:OIII_5007   , 5008.240)),
+        NarrowLine(   custom_transition(tid=:OIII_5007_bw, 5008.240)),
+        BroadLine(    custom_transition(tid=:HeI_5876    , 5877.30 )),
+        NarrowLine(   custom_transition(tid=:OI_6300     , 6300.00 )),  # TODO: Check wavelength is correct
+        NarrowLine(   custom_transition(tid=:OI_6364     , 6364.00 )),  # TODO: Check wavelength is correct
+        NarrowLine(   custom_transition(tid=:NII_6549    , 6549.86 )),
+        CombinedLine( custom_transition(tid=:Ha          , 6564.61  ), [BroadLine, NarrowLine, BroadBaseLine]),
+        NarrowLine(   custom_transition(tid=:NII_6583    , 6585.27 )),
+        NarrowLine(   custom_transition(tid=:SII_6716    , 6718.29 )),
+        NarrowLine(   custom_transition(tid=:SII_6731    , 6732.67 ))]
     return list
 end
 
 
-line_default_component(source::QSO{T}, ltype::AbstractLineType) where T <: DefaultRecipe =
+line_default_component(source::QSO{T}, ltype::AbstractLine) where T <: DefaultRecipe =
     SpecLineGauss(transition(ltype.tid).LAMBDA_VAC_ANG)
 
-function line_component(source::QSO{T}, ltype::BroadType) where T <: DefaultRecipe
+function line_to_component(source::QSO{T}, ltype::BroadLine) where T <: DefaultRecipe
     comp = line_default_component(source, ltype)
     comp.fwhm.val  = 5e3
     comp.fwhm.low  = 900
@@ -79,7 +81,7 @@ function line_component(source::QSO{T}, ltype::BroadType) where T <: DefaultReci
     return Dict(ltype.tid => LineComponent(ltype, comp, :BroadLines))
 end
 
-function line_component(source::QSO{T}, ltype::NarrowType) where T <: DefaultRecipe
+function line_to_component(source::QSO{T}, ltype::NarrowLine) where T <: DefaultRecipe
     comp = line_default_component(source, ltype)
     comp.fwhm.val  = 5e2
     comp.fwhm.low  = 100
@@ -96,7 +98,7 @@ function line_component(source::QSO{T}, ltype::NarrowType) where T <: DefaultRec
     return Dict(ltype.tid => LineComponent(ltype, comp, :NarrowLines))
 end
 
-function line_component(source::QSO{T}, ltype::BroadBaseType) where T <: DefaultRecipe
+function line_to_component(source::QSO{T}, ltype::BroadBaseLine) where T <: DefaultRecipe
     comp = line_default_component(source, ltype)
     comp.fwhm.val  = 2e4
     comp.fwhm.low  = 1e4
@@ -105,19 +107,19 @@ function line_component(source::QSO{T}, ltype::BroadBaseType) where T <: Default
     return Dict(ltype.tid => LineComponent(ltype, comp, :BroadBaseLines))
 end
 
-function line_component(source::QSO{T}, ltype::CombinedType) where T <: DefaultRecipe
+function line_to_component(source::QSO{T}, ltype::CombinedLine) where T <: DefaultRecipe
     out = OrderedDict{Symbol, LineComponent}()
     for t in ltype.types
-        lc = collect(values(line_component(source, t(ltype.tid))))
+        lc = collect(values(line_to_component(source, t(ltype.tid))))
         @assert length(lc) == 1
         lc = lc[1]
         lc = LineComponent(ltype, lc.comp, lc.group)
-        if t == BroadType
+        if t == BroadLine
             out[Symbol(ltype.tid, :_br)] = lc
-        elseif t == NarrowType
+        elseif t == NarrowLine
             lc.comp.fwhm.high = 1e3
             out[Symbol(ltype.tid, :_na)] = lc
-        elseif t == BroadBaseType
+        elseif t == BroadBaseLine
             out[Symbol(ltype.tid, :_bb)] = lc
         else
             error("Unsupported line type: $t")
@@ -126,7 +128,7 @@ function line_component(source::QSO{T}, ltype::CombinedType) where T <: DefaultR
     return out
 end
 
-# function line_component(source::QSO{T}, name::Symbol, line::UnkLine) where T <: DefaultRecipe
+# function line_to_component(source::QSO{T}, name::Symbol, line::UnkLine) where T <: DefaultRecipe
 #     comp = SpecLineGauss(line.λ)
 #     comp.norm.val = 0.
 #     comp.center.fixed = false
@@ -165,7 +167,7 @@ function PreparedSpectrum(source::QSO{T}; id=1) where T <: DefaultRecipe
     lcs = OrderedDict{Symbol, LineComponent}()
     for line in known_spectral_lines(source)
         (line.tid in source.options[:skip_lines])  &&  continue
-        for (lname, lc) in line_component(source, line)
+        for (lname, lc) in line_to_component(source, line)
             (lname in source.options[:skip_lines])  &&  continue
             @assert !haskey(lcs, lname)
             (λmin, λmax, coverage) = spectral_coverage(λ .* data.good, data.resolution, lc.comp)
@@ -458,7 +460,7 @@ function add_unknown_lines!(source::QSO{T}, pspec::PreparedSpectrum, model::Mode
     (source.options[:n_unk] > 0)  &&  (return nothing)
     tmp = OrderedDict{Symbol, GFit.AbstractComponent}()
     for j in 1:source.options[:n_unk]
-        tmp[Symbol(:unk, j)] = line_component(source, QSFit.UnkLine(5e3))
+        tmp[Symbol(:unk, j)] = line_to_component(source, UnkLine(5e3))
         tmp[Symbol(:unk, j)].norm_integrated = source.options[:norm_integrated]
     end
     for (cname, comp) in tmp
@@ -616,9 +618,9 @@ function fit(source::QSO{TRecipe}) where TRecipe <: DefaultRecipe
     println(logio(source))
     show(logio(source), bestfit)
 
-    out = QSFit.QSFitResults(source, pspec, model, bestfit)
+    out = QSFitResults(source, pspec, model, bestfit)
     elapsed = time() - elapsed
     println(logio(source), "\nElapsed time: $elapsed s")
-    QSFit.close_logio(source)
+    close_logio(source)
     return out
 end

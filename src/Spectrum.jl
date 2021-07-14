@@ -1,5 +1,7 @@
 using FITSIO, DSP
 
+export Spectrum, goodfraction
+
 unit_λ() = u"angstrom"
 unit_flux() = u"erg" / u"s" / u"cm"^2
 unit_lum() =  u"erg" / u"s"

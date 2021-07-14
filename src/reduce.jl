@@ -1,3 +1,4 @@
+export QSFitResults, QSFitMultiResults
 
 function estimate_line_EWs(source::QSO{T}, pspec::PreparedSpectrum, model::Model) where T <: AbstractRecipe
     EW = OrderedDict{Symbol, Float64}()
