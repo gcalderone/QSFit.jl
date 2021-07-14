@@ -61,7 +61,7 @@ function known_spectral_lines(source::QSO{T}) where T <: DefaultRecipe
 end
 
 
-line_default_component(source::QSO{T}, ltype::AbstractLineType) where T <: DefaultRecipe = 
+line_default_component(source::QSO{T}, ltype::AbstractLineType) where T <: DefaultRecipe =
     SpecLineGauss(transition(ltype.tid).LAMBDA_VAC_ANG)
 
 function line_component(source::QSO{T}, ltype::BroadType) where T <: DefaultRecipe
@@ -108,16 +108,17 @@ end
 function line_component(source::QSO{T}, ltype::CombinedType) where T <: DefaultRecipe
     out = OrderedDict{Symbol, LineComponent}()
     for t in ltype.types
-        lc = collect(values(line_component(source, t(lype.tid))))
+        lc = collect(values(line_component(source, t(ltype.tid))))
         @assert length(lc) == 1
-        lc = LineComponent(ltype, lc.comp, lc.reducer_name)
+        lc = lc[1]
+        lc = LineComponent(ltype, lc.comp, lc.group)
         if t == BroadType
-            out[Symbol(name, :_br)] = lc
+            out[Symbol(ltype.tid, :_br)] = lc
         elseif t == NarrowType
             lc.comp.fwhm.high = 1e3
-            out[Symbol(name, :_na)] = lc
+            out[Symbol(ltype.tid, :_na)] = lc
         elseif t == BroadBaseType
-            out[Symbol(name, :_bb)] = lc
+            out[Symbol(ltype.tid, :_bb)] = lc
         else
             error("Unsupported line type: $t")
         end
@@ -162,23 +163,21 @@ function PreparedSpectrum(source::QSO{T}; id=1) where T <: DefaultRecipe
 
     # Collect LineComponent objects
     lcs = OrderedDict{Symbol, LineComponent}()
-    for (lname, line) in known_spectral_lines(source)
-        (lname in source.options[:skip_lines])  &&  continue
-        tmp = line_component(source, line)
-        @assert isa(tmp, OrderedDict{Symbol, LineComponent})
-        for (lname2, lc) in tmp
-            (lname2 in source.options[:skip_lines])  &&  continue
-            @assert !haskey(lcs, lname2)
+    for line in known_spectral_lines(source)
+        (line.tid in source.options[:skip_lines])  &&  continue
+        for (lname, lc) in line_component(source, line)
+            (lname in source.options[:skip_lines])  &&  continue
+            @assert !haskey(lcs, lname)
             (λmin, λmax, coverage) = spectral_coverage(λ .* data.good, data.resolution, lc.comp)
             coverage = round(coverage * 1e3) / 1e3  # keep just 3 significant digits...
             threshold = get(source.options[:min_spectral_coverage], lname, source.options[:min_spectral_coverage][:default])
-            print(logio(source), @sprintf("Line %-15s coverage: %4.2f (threshold: %4.2f)", lname2, coverage, threshold))
+            print(logio(source), @sprintf("Line %-15s coverage: %4.2f (threshold: %4.2f)", lname, coverage, threshold))
             if coverage < threshold
                 print(logio(source), @sprintf("  neglecting range: %10.5g < λ < %10.5g", λmin, λmax))
                 ii = findall(λmin .<= λ .< λmax)
                 data.good[ii] .= false
             else
-                lcs[lname2] = lc
+                lcs[lname] = lc
             end
             println(logio(source))
 
@@ -374,8 +373,8 @@ function add_emission_lines!(source::QSO{T}, pspec::PreparedSpectrum, model::Mod
         end
 
         model[cname] = lc.comp
-        haskey(groups, lc.reducer_name)  ||  (groups[lc.reducer_name] = Vector{Symbol}())
-        push!(groups[lc.reducer_name], cname)            
+        haskey(groups, lc.group)  ||  (groups[lc.group] = Vector{Symbol}())
+        push!(groups[lc.group], cname)
     end
     for (group, lnames) in groups
         model[group] = SumReducer(lnames)
@@ -388,7 +387,7 @@ function guess_emission_lines_values!(source::QSO{T}, pspec::PreparedSpectrum, m
     for group in [:BroadLines, :NarrowLines, :BroadBaseLines]
         found = false
         for (cname, lc) in pspec.lcs
-            (lc.reducer_name == group)  ||  continue
+            (lc.group == group)  ||  continue
             guess_norm_factor!(pspec, model, cname)
             found = true
         end

@@ -77,5 +77,5 @@ struct CombinedType    <: AbstractLineType; tid::Symbol; types::Vector{Type}; en
 struct LineComponent
     orig::AbstractLineType
     comp::AbstractComponent
-    groups::Symbol
+    group::Symbol
 end
