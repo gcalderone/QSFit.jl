@@ -11,6 +11,7 @@ using Statistics, DelimitedFiles, Dierckx, Printf, DataStructures
 using Unitful, UnitfulAstro
 using Dates
 using Gnuplot
+using TextParse, DataFrames
 
 include("cosmology.jl")
 include("ccm_unred.jl")
@@ -93,22 +94,7 @@ function close_logio(source::QSO)
     end
 end
 
-
-abstract type AbstractSpectralLine end
-
-struct BroadLine           <: AbstractSpectralLine; λ::Float64; end
-struct NarrowLine          <: AbstractSpectralLine; λ::Float64; end
-struct BroadBaseLine       <: AbstractSpectralLine; λ::Float64; end
-struct CombinedLine        <: AbstractSpectralLine; λ::Float64; types::Vector{Type}; end
-struct UnkLine             <: AbstractSpectralLine; λ::Float64; end
-
-struct LineComponent
-    parent::Union{Nothing, AbstractSpectralLine}
-    line::AbstractSpectralLine
-    comp::AbstractComponent
-    reducer_name::Symbol
-end
-
+include("SpectralLines.jl")
 
 struct PreparedSpectrum
     id::Int

@@ -45,6 +45,12 @@ git-tree-sha1 = "dcc25ff085cf548bc8befad5ce048391a7c07d40"
 uuid = "d360d2e6-b24c-11e9-a2a3-2a2ae2dbcce4"
 version = "0.10.11"
 
+[[CodecZlib]]
+deps = ["TranscodingStreams", "Zlib_jll"]
+git-tree-sha1 = "ded953804d019afa9a3f98981d99b33e3db7b6da"
+uuid = "944b1d66-785c-5afd-91f1-9de20f533193"
+version = "0.7.0"
+
 [[ColorSchemes]]
 deps = ["ColorTypes", "Colors", "FixedPointNumbers", "Random", "StaticArrays"]
 git-tree-sha1 = "c8fd01e4b736013bc61b704871d20503b33ea402"
@@ -106,6 +112,12 @@ version = "0.7.2"
 git-tree-sha1 = "ee400abb2298bd13bfc3df1c412ed228061a2385"
 uuid = "9a962f9c-6df0-11e9-0e5d-c546b8b5ee8a"
 version = "1.7.0"
+
+[[DataFrames]]
+deps = ["Compat", "DataAPI", "Future", "InvertedIndices", "IteratorInterfaceExtensions", "LinearAlgebra", "Markdown", "Missings", "PooledArrays", "PrettyTables", "Printf", "REPL", "Reexport", "SortingAlgorithms", "Statistics", "TableTraits", "Tables", "Unicode"]
+git-tree-sha1 = "1dadfca11c0e08e03ab15b63aaeda55266754bad"
+uuid = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
+version = "1.2.0"
 
 [[DataStructures]]
 deps = ["Compat", "InteractiveUtils", "OrderedCollections"]
@@ -171,6 +183,12 @@ deps = ["LibGit2"]
 git-tree-sha1 = "a32185f5428d3986f47c2ab78b1f216d5e6cc96f"
 uuid = "ffbed154-4ef7-542d-bbb7-c09d3a79fcae"
 version = "0.8.5"
+
+[[DoubleFloats]]
+deps = ["GenericLinearAlgebra", "LinearAlgebra", "Polynomials", "Printf", "Quadmath", "Random", "Requires", "SpecialFunctions"]
+git-tree-sha1 = "1c962cf7e75c09a5f1fbf504df7d6a06447a1129"
+uuid = "497a8b3b-efae-58df-a0af-a86822472b78"
+version = "1.1.23"
 
 [[Downloads]]
 deps = ["ArgTools", "LibCURL", "NetworkOptions"]
@@ -255,6 +273,12 @@ repo-url = "https://github.com/lnicastro/GFitViewer.jl"
 uuid = "5d93b50e-5cc7-4feb-a740-ec85257caa01"
 version = "0.1.0"
 
+[[GenericLinearAlgebra]]
+deps = ["LinearAlgebra", "Printf", "Random"]
+git-tree-sha1 = "ff291c1827030ffaacaf53e3c83ed92d4d5e6fb6"
+uuid = "14197337-ba66-59df-a3e3-ca00e7dcff7a"
+version = "0.2.5"
+
 [[Gnuplot]]
 deps = ["ColorSchemes", "ColorTypes", "Colors", "DataStructures", "REPL", "ReplMaker", "StatsBase", "StructC14N", "Test"]
 git-tree-sha1 = "637ee67f78c4adb222ee11c590bd1d0a1a50ba88"
@@ -281,6 +305,12 @@ deps = ["Dates", "Printf", "RecipesBase", "Serialization", "TimeZones"]
 git-tree-sha1 = "323a38ed1952d30586d0fe03412cde9399d3618b"
 uuid = "d8418881-c3e1-53bb-8760-2df7ec849ed5"
 version = "1.5.0"
+
+[[InvertedIndices]]
+deps = ["Test"]
+git-tree-sha1 = "15732c475062348b0165684ffe28e85ea8396afc"
+uuid = "41ab1584-1d38-5bbf-9106-f11c6c58b48f"
+version = "1.0.0"
 
 [[IterTools]]
 git-tree-sha1 = "05110a2ab1fc5f932622ffea2a003221f4782c18"
@@ -410,6 +440,11 @@ version = "0.3.5"
 [[NetworkOptions]]
 uuid = "ca575930-c2e3-43a9-ace4-1e988b2c1908"
 
+[[Nullables]]
+git-tree-sha1 = "8f87854cc8f3685a60689d8edecaa29d2251979b"
+uuid = "4d1e1d77-625e-5b40-9113-a560ec7a8ecd"
+version = "1.0.0"
+
 [[OpenSpecFun_jll]]
 deps = ["Artifacts", "CompilerSupportLibraries_jll", "JLLWrappers", "Libdl", "Pkg"]
 git-tree-sha1 = "13652491f6856acfd2db29360e1bbcd4565d04f1"
@@ -449,6 +484,12 @@ git-tree-sha1 = "3685cb1e2ccbbb9973684774f956f5c6e4673bc9"
 uuid = "f27b6e38-b328-58d1-80ce-0feddd5e7a45"
 version = "2.0.12"
 
+[[PooledArrays]]
+deps = ["DataAPI", "Future"]
+git-tree-sha1 = "cde4ce9d6f33219465b55162811d8de8139c0414"
+uuid = "2dfb63ee-cc39-5dd5-95bd-886bf059d720"
+version = "1.2.1"
+
 [[Preferences]]
 deps = ["TOML"]
 git-tree-sha1 = "00cfd92944ca9c760982747e9a1d0d5d86ab1e5a"
@@ -476,6 +517,12 @@ deps = ["DataStructures", "LinearAlgebra"]
 git-tree-sha1 = "12fbe86da16df6679be7521dfb39fbc861e1dc7b"
 uuid = "1fd47b50-473d-5c70-9696-f719f8f3bcdc"
 version = "2.4.1"
+
+[[Quadmath]]
+deps = ["Printf", "Random", "Requires"]
+git-tree-sha1 = "5a8f74af8eae654086a1d058b4ec94ff192e3de0"
+uuid = "be4d8f0f-7fa4-5f49-b795-2f01399ab2dd"
+version = "0.5.5"
 
 [[REPL]]
 deps = ["InteractiveUtils", "Markdown", "Sockets", "Unicode"]
@@ -615,6 +662,12 @@ uuid = "a4e569a6-e804-4fa4-b0f3-eef7a1d5b13e"
 deps = ["InteractiveUtils", "Logging", "Random", "Serialization"]
 uuid = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
+[[TextParse]]
+deps = ["CodecZlib", "DataStructures", "Dates", "DoubleFloats", "Mmap", "Nullables", "WeakRefStrings"]
+git-tree-sha1 = "af728c38c839aee693637e15e244074a02f16c68"
+uuid = "e0df1984-e451-5cb5-8b61-797a481e67e3"
+version = "1.0.1"
+
 [[TimeZones]]
 deps = ["Dates", "Future", "LazyArtifacts", "Mocking", "Pkg", "Printf", "RecipesBase", "Serialization", "Unicode"]
 git-tree-sha1 = "81753f400872e5074768c9a77d4c44e70d409ef0"
@@ -651,6 +704,12 @@ deps = ["Unitful", "UnitfulAngles"]
 git-tree-sha1 = "b154be4ca9610e9c9dbb9dba98b2bd750539630b"
 uuid = "6112ee07-acf9-5e0f-b108-d242c714bf9f"
 version = "1.0.1"
+
+[[WeakRefStrings]]
+deps = ["DataAPI", "Random", "Test"]
+git-tree-sha1 = "28807f85197eaad3cbd2330386fac1dcb9e7e11d"
+uuid = "ea10d353-3f73-51f8-a26c-33c1cb351aa5"
+version = "0.6.2"
 
 [[Zlib_jll]]
 deps = ["Libdl"]
