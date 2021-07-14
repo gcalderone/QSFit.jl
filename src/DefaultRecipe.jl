@@ -22,15 +22,15 @@ end
 function known_spectral_lines(source::QSO{T}) where T <: DefaultRecipe
     list = [
         CombinedType( new_transition(name=:Lyb         , 1026.0   ), [BroadType, NarrowType]),
-        NarrowType(   new_transition(name=:OV          , 1213.8  )),  # Ferland+92, Shields+95
+        # NarrowType(   new_transition(name=:OV_1213     , 1213.8  )),  # Ferland+92, Shields+95
         CombinedType( new_transition(name=:Lya         , 1215.24  ), [BroadType, NarrowType]),
-        NarrowType(   new_transition(name=:OV          , 1218.3  )),  # Ferland+92, Shields+95
+        NarrowType(   new_transition(name=:OV_1218     , 1218.3  )),  # Ferland+92, Shields+95
         NarrowType(   new_transition(name=:NV_1241     , 1240.81 )),
         BroadType(    new_transition(name=:OI_1306     , 1305.53 )),
         BroadType(    new_transition(name=:CII_1335    , 1335.31 )),
         BroadType(    new_transition(name=:SiIV_1400   , 1399.8  )),
         CombinedType( new_transition(name=:CIV_1549    , 1549.48  ), [BroadType, NarrowType]),
-        BroadType(    new_transition(name=:HeII        , 1640.4  )),
+        # BroadType(    new_transition(name=:HeII_1640   , 1640.4  )),
         BroadType(    new_transition(name=:OIII        , 1665.85 )),
         BroadType(    new_transition(name=:AlIII       , 1857.4  )),
         BroadType(    new_transition(name=:CIII_1909   , 1908.734)),
@@ -44,7 +44,7 @@ function known_spectral_lines(source::QSO{T}) where T <: DefaultRecipe
         BroadType(    new_transition(name=:Hd          , 4102.89 )),
         BroadType(    new_transition(name=:Hg          , 4341.68 )),
         NarrowType(   new_transition(name=:OIII_4363   , 4363.00 )),  # TODO: Check wavelength is correct
-        BroadType(    new_transition(name=:HeII        , 4686.   )),
+        BroadType(    new_transition(name=:HeII_4686   , 4686.   )),
         CombinedType( new_transition(name=:Hb          , 4862.68  ), [BroadType, NarrowType]),
         NarrowType(   new_transition(name=:OIII_4959   , 4960.295)),
         NarrowType(   new_transition(name=:OIII_5007   , 5008.240)),
