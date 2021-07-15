@@ -65,7 +65,7 @@ parent_recipe(source::QSO{T}) where T <: AbstractRecipe =
 
 add_spec!(source::QSO, spec::Spectrum) =
     push!(source.specs, spec)
-    
+
 const logio_streams = Dict{String, IOStream}()
 
 function logio(source::QSO)

@@ -52,6 +52,7 @@ function custom_transition_default_tid(λ::Float64)
     return Symbol(tid)
 end
 
+
 function custom_transition(λ_vac_ang::Float64; tid::Union{Symbol, Nothing}=nothing)
     load_transitions()
     isnothing(tid)  &&  (tid = custom_transition_default_tid(λ_vac_ang))
@@ -66,14 +67,38 @@ transition(λ_vac_ang::Float64) = transition(custom_transition_default_tid(λ_va
 
 
 
-# Line type descriptors associated to an atomic transition
+# Line type descriptors associated to a specific transition
 abstract type AbstractLine end
 
-struct GenericLine     <: AbstractLine; tid::Symbol; end
-struct BroadLine       <: AbstractLine; tid::Symbol; end
-struct NarrowLine      <: AbstractLine; tid::Symbol; end
-struct BroadBaseLine   <: AbstractLine; tid::Symbol; end
-struct CombinedLine    <: AbstractLine; tid::Symbol; types::Vector{Type}; end
+macro define_line(name, suffix, group)
+    return esc(:(
+        struct $name <: AbstractLine; tid::Symbol; end;
+        suffix(::$(name), multicomp::Bool) = multicomp  ?  $(QuoteNode(suffix))  :  Symbol("");
+        group( ::$(name)) = $(QuoteNode(group));
+    ))
+end
+
+@define_line GenericLine   _gen GenericLines
+@define_line BroadLine     _br  BroadLines
+@define_line NarrowLine    _na  NarrowLines
+@define_line BroadBaseLine _bb  BroadBaseLine
+
+struct AsymmTailLine <: AbstractLine
+    tid::Symbol
+    side::Symbol
+
+    function AsymmTailLine(tid::Symbol, side::Symbol)
+        @assert side in (:red, :blue)
+        new(tid, side)
+    end
+end
+suffix(line::AsymmTailLine, multicomp::Bool) = line.side == :blue ?  :_bw  :  :_rw
+group(::AsymmTailLine) = :AsymmTailLines
+
+struct MultiCompLine <: AbstractLine
+    tid::Symbol
+    types::Vector{Type}
+end
 
 struct LineComponent
     line::AbstractLine
@@ -81,27 +106,19 @@ struct LineComponent
     combined::Bool
 end
 
-suffix(::BroadLine) = :_br
-suffix(::NarrowLine) = :_na
-suffix(::BroadBaseLine) = :_bb
-
-group(::BroadLine) = :BroadLines
-group(::NarrowLine) = :NarrowLines
-group(::BroadBaseLine) = :BroadBaseLines
-
 function collect_LineComponent(source::QSO)
     out = OrderedDict{Symbol, LineComponent}()
     for line in known_spectral_lines(source)
-        if isa(line, CombinedLine)
+        if isa(line, MultiCompLine)
             for t in line.types
-                nn = Symbol(line.tid, suffix(t(line.tid)))
+                nn = Symbol(line.tid, suffix(t(line.tid), true))
                 (nn in source.options[:skip_lines])  &&  continue
                 @assert !haskey(out, nn)
                 lc = LineComponent(source, t(line.tid), true)
                 out[nn] = lc
             end
         else
-            nn = line.tid
+            nn = Symbol(line.tid, suffix(line, false))
             (nn in source.options[:skip_lines])  &&  continue
             @assert !haskey(out, nn)
             out[nn] = LineComponent(source, line, false)
@@ -109,3 +126,8 @@ function collect_LineComponent(source::QSO)
     end
     return out
 end
+
+
+LineComponent(source::QSO, line::AbstractLine, multicomp::Bool) =
+    error("No constructor method has been defined for LineComponent($(typeof(source)), $(typeof(line)), ::Bool)")
+    

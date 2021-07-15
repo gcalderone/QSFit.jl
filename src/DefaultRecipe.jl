@@ -8,7 +8,7 @@ function default_options(::Type{T}) where T <: DefaultRecipe
     out[:min_spectral_coverage] = Dict(:default => 0.6,
                                        :ironuv  => 0.3,
                                        :ironopt => 0.3)
-    out[:skip_lines] = [:OIII_5007_bw] #, Ha_bb
+    out[:skip_lines] = Symbol[]
     out[:host_template] = "Ell5"
     out[:use_host_template] = true
     out[:use_balmer] = true
@@ -23,22 +23,22 @@ end
 
 function known_spectral_lines(source::QSO{T}) where T <: DefaultRecipe
     list = [
-        CombinedLine( custom_transition(tid=:Lyb         , 1026.0   ), [BroadLine, NarrowLine]),
-        # NarrowLine(   custom_transition(tid=:OV_1213     , 1213.8  )),  # Ferland+92, Shields+95
-        CombinedLine( custom_transition(tid=:Lya         , 1215.24  ), [BroadLine, NarrowLine]),
-        # NarrowLine(   custom_transition(tid=:OV_1218     , 1218.3  )),  # Ferland+92, Shields+95
+        MultiCompLine(custom_transition(tid=:Lyb         , 1026.0   ), [BroadLine, NarrowLine]),
+        # NarrowLine( custom_transition(tid=:OV_1213     , 1213.8  )),  # Ferland+92, Shields+95
+        MultiCompLine(custom_transition(tid=:Lya         , 1215.24  ), [BroadLine, NarrowLine]),
+        # NarrowLine( custom_transition(tid=:OV_1218     , 1218.3  )),  # Ferland+92, Shields+95
         NarrowLine(   custom_transition(tid=:NV_1241     , 1240.81 )),
         BroadLine(    custom_transition(tid=:OI_1306     , 1305.53 )),
         BroadLine(    custom_transition(tid=:CII_1335    , 1335.31 )),
         BroadLine(    custom_transition(tid=:SiIV_1400   , 1399.8  )),
-        CombinedLine( custom_transition(tid=:CIV_1549    , 1549.48  ), [BroadLine, NarrowLine]),
+        MultiCompLine(custom_transition(tid=:CIV_1549    , 1549.48  ), [BroadLine, NarrowLine]),
         BroadLine(    custom_transition(tid=:HeII_1640   , 1640.4  )),
         BroadLine(    custom_transition(tid=:OIII        , 1665.85 )),
         BroadLine(    custom_transition(tid=:AlIII       , 1857.4  )),
         BroadLine(    custom_transition(tid=:CIII_1909   , 1908.734)),
         BroadLine(    custom_transition(tid=:CII         , 2326.0  )),
         BroadLine(    custom_transition(tid=:F2420       , 2420.0  )),
-        CombinedLine( custom_transition(tid=:MgII_2798   , 2799.117 ), [BroadLine, NarrowLine]),
+        MultiCompLine(custom_transition(tid=:MgII_2798   , 2799.117 ), [BroadLine, NarrowLine]),
         NarrowLine(   custom_transition(tid=:NeVN        , 3346.79 )),
         NarrowLine(   custom_transition(tid=:NeVI_3426   , 3426.85 )),
         NarrowLine(   custom_transition(tid=:OII_3727    , 3729.875)),
@@ -47,15 +47,15 @@ function known_spectral_lines(source::QSO{T}) where T <: DefaultRecipe
         BroadLine(    custom_transition(tid=:Hg          , 4341.68 )),
         NarrowLine(   custom_transition(tid=:OIII_4363   , 4363.00 )),  # TODO: Check wavelength is correct
         BroadLine(    custom_transition(tid=:HeII_4686   , 4686.   )),
-        CombinedLine( custom_transition(tid=:Hb          , 4862.68  ), [BroadLine, NarrowLine]),
+        MultiCompLine(custom_transition(tid=:Hb          , 4862.68  ), [BroadLine, NarrowLine]),
         NarrowLine(   custom_transition(tid=:OIII_4959   , 4960.295)),
         NarrowLine(   custom_transition(tid=:OIII_5007   , 5008.240)),
-        NarrowLine(   custom_transition(tid=:OIII_5007_bw, 5008.240)),
+        AsymmTailLine(custom_transition(tid=:OIII_5007   , 5008.240), :blue),
         BroadLine(    custom_transition(tid=:HeI_5876    , 5877.30 )),
         NarrowLine(   custom_transition(tid=:OI_6300     , 6300.00 )),  # TODO: Check wavelength is correct
         NarrowLine(   custom_transition(tid=:OI_6364     , 6364.00 )),  # TODO: Check wavelength is correct
         NarrowLine(   custom_transition(tid=:NII_6549    , 6549.86 )),
-        CombinedLine( custom_transition(tid=:Ha          , 6564.61  ), [BroadLine, NarrowLine, BroadBaseLine]),
+        MultiCompLine(custom_transition(tid=:Ha          , 6564.61  ), [BroadLine, NarrowLine, BroadBaseLine]),
         NarrowLine(   custom_transition(tid=:NII_6583    , 6585.27 )),
         NarrowLine(   custom_transition(tid=:SII_6716    , 6718.29 )),
         NarrowLine(   custom_transition(tid=:SII_6731    , 6732.67 ))]
@@ -63,14 +63,14 @@ function known_spectral_lines(source::QSO{T}) where T <: DefaultRecipe
 end
 
 
-function LineComponent(source::QSO{T}, line::GenericLine, combined::Bool) where T <: DefaultRecipe
+function LineComponent(source::QSO{T}, line::GenericLine, multicomp::Bool) where T <: DefaultRecipe
     comp = SpecLineGauss(transition(line.tid).LAMBDA_VAC_ANG)
     comp.norm_integrated = source.options[:norm_integrated]
-    return LineComponent(line, comp, combined)
+    return LineComponent(line, comp, multicomp)
 end
 
-function LineComponent(source::QSO{T}, line::BroadLine, combined::Bool) where T <: DefaultRecipe
-    comp = LineComponent(source, GenericLine(line.tid), combined).comp
+function LineComponent(source::QSO{T}, line::BroadLine, multicomp::Bool) where T <: DefaultRecipe
+    comp = LineComponent(source, GenericLine(line.tid), multicomp).comp
     comp.fwhm.val  = 5e3
     comp.fwhm.low  = 900
     comp.fwhm.high = 1.5e4
@@ -81,46 +81,35 @@ function LineComponent(source::QSO{T}, line::BroadLine, combined::Bool) where T 
         comp.voff.low  = -1e3
         comp.voff.high =  1e3
     end
-    return LineComponent(line, comp, combined)
+    return LineComponent(line, comp, multicomp)
 end
 
-function LineComponent(source::QSO{T}, line::NarrowLine, combined::Bool) where T <: DefaultRecipe
-    comp = LineComponent(source, GenericLine(line.tid), combined).comp
+function LineComponent(source::QSO{T}, line::NarrowLine, multicomp::Bool) where T <: DefaultRecipe
+    comp = LineComponent(source, GenericLine(line.tid), multicomp).comp
     comp.fwhm.val  = 5e2
     comp.fwhm.low  = 100
-    comp.fwhm.high = (combined  ?  1e3  :  2e3)
+    comp.fwhm.high = (multicomp  ?  1e3  :  2e3)
     comp.voff.low  = -1e3
     comp.voff.high =  1e3
-
-    if line.tid == :OIII_5007_bw
-        comp.fwhm.val  = 500
-        comp.fwhm.high = 1e3
-        comp.voff.low  = 0
-        comp.voff.high = 2e3
-    end
-    return LineComponent(line, comp, combined)
+    return LineComponent(line, comp, multicomp)
 end
 
-function LineComponent(source::QSO{T}, line::BroadBaseLine, combined::Bool) where T <: DefaultRecipe
-    comp = LineComponent(source, GenericLine(line.tid), combined).comp
+function LineComponent(source::QSO{T}, line::BroadBaseLine, multicomp::Bool) where T <: DefaultRecipe
+    comp = LineComponent(source, GenericLine(line.tid), multicomp).comp
     comp.fwhm.val  = 2e4
     comp.fwhm.low  = 1e4
     comp.fwhm.high = 3e4
     comp.voff.fixed = true
-    return LineComponent(line, comp, combined)
+    return LineComponent(line, comp, multicomp)
 end
 
-function default_unk_line(source::QSO{T}) where T <: DefaultRecipe
-    comp = SpecLineGauss(5e3)
-    comp.norm.val = 0.
-    comp.center.fixed = false
-    comp.center.low = 0
-    comp.center.high = Inf
-    comp.fwhm.val  = 5e3
-    comp.fwhm.low  = 600
-    comp.fwhm.high = 1e4
-    comp.voff.fixed = true
-    return comp
+function LineComponent(source::QSO{T}, line::AsymmTailLine, multicomp::Bool) where T <: DefaultRecipe
+    comp = LineComponent(source, GenericLine(line.tid), multicomp).comp
+    comp.fwhm.val  = 500
+    comp.fwhm.high = 1e3
+    comp.voff.low  = line.side == :blue ?    0  :  2e3
+    comp.voff.high = line.side == :blue ?  2e3  :    0
+    return LineComponent(line, comp, multicomp)
 end
 
 
@@ -362,16 +351,23 @@ end
 
 
 function guess_emission_lines_values!(source::QSO{T}, pspec::PreparedSpectrum, model::Model) where T <: DefaultRecipe
-    for grp in [:BroadLines, :NarrowLines, :BroadBaseLines]  # Note: order is important
+    groups_to_go = unique([QSFit.group(v.line) for (k,v) in pspec.lcs])
+    for grp in [:BroadLines, :NarrowLines, :BroadBaseLines, :AsymmTailLines]  # Note: order is important
         found = false
         for (cname, lc) in pspec.lcs
             (grp == group(lc.line))  ||  continue
             guess_norm_factor!(pspec, model, cname)
             found = true
         end
-        found  &&  push!(model[:main].list, grp)
+        if found
+            push!(model[:main].list, grp)
+            deleteat!(groups_to_go, findfirst(groups_to_go .== grp))
+        end
         evaluate!(model)
     end
+
+    # Ensure all groups have been considered
+    @assert length(groups_to_go) == 0 "The following line groups have not been considered: $groups_to_go"
 end
 
 
@@ -429,6 +425,20 @@ function add_patch_functs!(source::QSO{T}, pspec::PreparedSpectrum, model::Model
         model[:Ha_bb].norm.val  = 0.5
         @patch! model[:Ha_bb].norm *= model[:Ha_br].norm / model[:Ha_br].fwhm * model[:Ha_bb].fwhm
     end
+end
+
+
+function default_unk_line(source::QSO{T}) where T <: DefaultRecipe
+    comp = SpecLineGauss(5e3)
+    comp.norm.val = 0.
+    comp.center.fixed = false
+    comp.center.low = 0
+    comp.center.high = Inf
+    comp.fwhm.val  = 5e3
+    comp.fwhm.low  = 600
+    comp.fwhm.high = 1e4
+    comp.voff.fixed = true
+    return comp
 end
 
 
