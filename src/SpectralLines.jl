@@ -6,7 +6,6 @@ const transitions_db = DataFrame()
 
 function validate_transitions_db()
     @assert length(unique(transitions_db.tid))   == nrow(transitions_db)
-    @assert length(unique(transitions_db.Label)) == nrow(transitions_db)
 end
 
 function load_transitions(;force=false)
