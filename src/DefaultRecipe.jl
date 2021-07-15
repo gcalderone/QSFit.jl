@@ -23,42 +23,42 @@ end
 
 function known_spectral_lines(source::QSO{T}) where T <: DefaultRecipe
     list = [
-        MultiCompLine(custom_transition(tid=:Lyb         , 1026.0   ), [BroadLine, NarrowLine]),
+        MultiCompLine(                      :Lyb                     , [BroadLine, NarrowLine]),
         # NarrowLine( custom_transition(tid=:OV_1213     , 1213.8  )),  # Ferland+92, Shields+95
-        MultiCompLine(custom_transition(tid=:Lya         , 1215.24  ), [BroadLine, NarrowLine]),
+        MultiCompLine(                      :Lya                     , [BroadLine, NarrowLine]),
         # NarrowLine( custom_transition(tid=:OV_1218     , 1218.3  )),  # Ferland+92, Shields+95
-        NarrowLine(   custom_transition(tid=:NV_1241     , 1240.81 )),
+        NarrowLine(                         :NV_1241                ),
         BroadLine(    custom_transition(tid=:OI_1306     , 1305.53 )),
         BroadLine(    custom_transition(tid=:CII_1335    , 1335.31 )),
-        BroadLine(    custom_transition(tid=:SiIV_1400   , 1399.8  )),
-        MultiCompLine(custom_transition(tid=:CIV_1549    , 1549.48  ), [BroadLine, NarrowLine]),
-        BroadLine(    custom_transition(tid=:HeII_1640   , 1640.4  )),
+        BroadLine(                          :SiIV_1400              ),
+        MultiCompLine(                      :CIV_1549                , [BroadLine, NarrowLine]),
+        BroadLine(                          :HeII_1640              ),
         BroadLine(    custom_transition(tid=:OIII        , 1665.85 )),
         BroadLine(    custom_transition(tid=:AlIII       , 1857.4  )),
-        BroadLine(    custom_transition(tid=:CIII_1909   , 1908.734)),
+        BroadLine(                          :CIII_1909              ),
         BroadLine(    custom_transition(tid=:CII         , 2326.0  )),
         BroadLine(    custom_transition(tid=:F2420       , 2420.0  )),
-        MultiCompLine(custom_transition(tid=:MgII_2798   , 2799.117 ), [BroadLine, NarrowLine]),
+        MultiCompLine(                      :MgII_2798               , [BroadLine, NarrowLine]),
         NarrowLine(   custom_transition(tid=:NeVN        , 3346.79 )),
         NarrowLine(   custom_transition(tid=:NeVI_3426   , 3426.85 )),
         NarrowLine(   custom_transition(tid=:OII_3727    , 3729.875)),
         NarrowLine(   custom_transition(tid=:NeIII_3869  , 3869.81 )),
-        BroadLine(    custom_transition(tid=:Hd          , 4102.89 )),
-        BroadLine(    custom_transition(tid=:Hg          , 4341.68 )),
-        NarrowLine(   custom_transition(tid=:OIII_4363   , 4363.00 )),  # TODO: Check wavelength is correct
-        BroadLine(    custom_transition(tid=:HeII_4686   , 4686.   )),
-        MultiCompLine(custom_transition(tid=:Hb          , 4862.68  ), [BroadLine, NarrowLine]),
-        NarrowLine(   custom_transition(tid=:OIII_4959   , 4960.295)),
-        NarrowLine(   custom_transition(tid=:OIII_5007   , 5008.240)),
-        AsymmTailLine(custom_transition(tid=:OIII_5007   , 5008.240), :blue),
-        BroadLine(    custom_transition(tid=:HeI_5876    , 5877.30 )),
-        NarrowLine(   custom_transition(tid=:OI_6300     , 6300.00 )),  # TODO: Check wavelength is correct
-        NarrowLine(   custom_transition(tid=:OI_6364     , 6364.00 )),  # TODO: Check wavelength is correct
-        NarrowLine(   custom_transition(tid=:NII_6549    , 6549.86 )),
-        MultiCompLine(custom_transition(tid=:Ha          , 6564.61  ), [BroadLine, NarrowLine, BroadBaseLine]),
-        NarrowLine(   custom_transition(tid=:NII_6583    , 6585.27 )),
-        NarrowLine(   custom_transition(tid=:SII_6716    , 6718.29 )),
-        NarrowLine(   custom_transition(tid=:SII_6731    , 6732.67 ))]
+        BroadLine(                          :Hd                     ),
+        BroadLine(                          :Hg                     ),
+        NarrowLine(                         :OIII_4363              ),
+        BroadLine(                          :HeII_4686              ),
+        MultiCompLine(                      :Hb                      , [BroadLine, NarrowLine]),
+        NarrowLine(                         :OIII_4959              ),
+        NarrowLine(                         :OIII_5007              ),
+        AsymmTailLine(                      :OIII_5007               , :blue),
+        BroadLine(                          :HeI_5876               ),
+        NarrowLine(                         :OI_6300                ),
+        NarrowLine(                         :OI_6364                ),
+        NarrowLine(                         :NII_6549               ),
+        MultiCompLine(                      :Ha                      , [BroadLine, NarrowLine, BroadBaseLine]),
+        NarrowLine(                         :NII_6583               ),
+        NarrowLine(                         :SII_6716               ),
+        NarrowLine(                         :SII_6731               )]
     return list
 end
 
@@ -158,7 +158,7 @@ function PreparedSpectrum(source::QSO{T}; id=1) where T <: DefaultRecipe
 
     ii = findall(data.good)
     dom = Domain(data.λ[ii] ./ (1 + source.z))
-    lum = Measures(Domain(data.λ[ii]),
+    lum = Measures(dom,
                    data.flux[ii] .* dered[ii] .* source.flux2lum .* (1 + source.z),
                    data.err[ ii] .* dered[ii] .* source.flux2lum .* (1 + source.z))
 
@@ -259,10 +259,10 @@ function guess_norm_factor!(pspec::PreparedSpectrum, model::Model, name::Symbol;
     i2 = findlast( c .< ((1 + quantile)/2))
     resid = pspec.data.val - model()
     ratio = model[name].norm.val / sum(m[i1:i2])
-    model[name].norm.val += sum(resid[i1:i2]) * ratio
-    if model[name].norm.val < 0
-        @warn "$name component has negative normalization, set it to 0"
-        model[name].norm.val = 0.
+    off = sum(resid[i1:i2]) * ratio
+    model[name].norm.val += off
+    if model[name].norm.val < 0  # ensure line has positive normalization
+        model[name].norm.val = abs(off)
     end
 end
 

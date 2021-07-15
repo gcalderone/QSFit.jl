@@ -40,10 +40,9 @@ function estimate_fwhm(λ, f)
 end
 
 
-
-
+# Wavelength span is assumed to be equal to the initial FWHM + σ_resolution
 spectral_coverage(spec_λ, resolution, line::Union{SpecLineGauss, SpecLineAsymmGauss, SpecLineLorentz}; kw...) =
-    spectral_coverage(spec_λ, resolution, line.center.val, line.center.val * line.fwhm.val / 3.e5; kw...)
+    spectral_coverage(spec_λ, resolution, line.center.val, line.center.val * (line.fwhm.val + resolution) / 3.e5; kw...)
 
 
 function spectral_coverage(spec_λ, resolution, comp::ironuv; kw...)
