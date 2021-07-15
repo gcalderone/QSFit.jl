@@ -434,11 +434,12 @@ end
 
 function add_unknown_lines!(source::QSO{T}, pspec::PreparedSpectrum, model::Model) where T <: DefaultRecipe
     (source.options[:n_unk] > 0)  ||  (return nothing)
+    λ = domain(model)[:]
     for i in 1:source.options[:n_unk]
         model[Symbol(:unk, i)] = default_unk_line(source)
         model[Symbol(:unk, i)].norm_integrated = source.options[:norm_integrated]
     end
-    model[:UnkLines] = SumReducer(collect(keys(tmp)))
+    model[:UnkLines] = SumReducer([Symbol(:unk, i) for i in 1:source.options[:n_unk]])
     push!(model[:main].list, :UnkLines)
     evaluate!(model)
     for j in 1:source.options[:n_unk]
@@ -486,7 +487,7 @@ function add_unknown_lines!(source::QSO{T}, pspec::PreparedSpectrum, model::Mode
 end
 
 
-function neglect_weak_features!(source::QSO{T}, pspec::PreparedSpectrum, model::Model) where T <: DefaultRecipe
+function neglect_weak_features!(source::QSO{T}, pspec::PreparedSpectrum, model::Model, bestfit::GFit.BestFitResult) where T <: DefaultRecipe
     # Disable "unknown" lines whose normalization uncertainty is larger
     # than X times the normalization
     needs_fitting = false
@@ -582,7 +583,7 @@ function fit(source::QSO{TRecipe}) where TRecipe <: DefaultRecipe
     end
     bestfit = fit!(source, model, pspec)
 
-    if neglect_weak_features!(source, pspec, model)
+    if neglect_weak_features!(source, pspec, model, bestfit)
         println(logio(source), "\nRe-run fit...")
         bestfit = fit!(source, model, pspec)
     end
