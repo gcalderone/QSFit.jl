@@ -41,6 +41,9 @@ end
 function transition(tid::Symbol)
     load_transitions()
     i = findall(transitions_db.tid .== tid)
+    if length(i) == 0
+        error("No known transition with ID: $tid")
+    end
     @assert length(i) == 1
     return transitions_db[i[1], :]
 end
@@ -81,7 +84,7 @@ end
 @define_line GenericLine   _gen GenericLines
 @define_line BroadLine     _br  BroadLines
 @define_line NarrowLine    _na  NarrowLines
-@define_line BroadBaseLine _bb  BroadBaseLine
+@define_line BroadBaseLine _bb  BroadBaseLines
 
 struct AsymmTailLine <: AbstractLine
     tid::Symbol
