@@ -33,8 +33,8 @@ struct Spectrum
             good = fill(true, length(λ))
         end
         if length(err) == 0
-            @warn "Uncertainties were not provided: assuming 10% of median(flux)"
-            err = fill(0.1 .* median(flux), length(flux))
+            @warn "Uncertainties were not provided: assuming 0.05 * (median(flux) + abs(flux))"
+            err = 0.05 .* (median(flux) .+ abs.(flux))
         end
         @assert length(λ) == length(flux) == length(err) == length(good)
         @assert minimum(err) > 0 "Uncertainties must be positive!"
