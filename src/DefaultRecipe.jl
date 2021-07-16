@@ -221,7 +221,7 @@ function add_balmer_cont!(source::QSO{T}, pspec::PreparedSpectrum, model::Model)
         c.ratio.fixed = false
         c.ratio.low  = 0.1
         c.ratio.high = 1
-        @patch! model[:balmer].norm *= model[:qso_cont].norm
+        @try_patch! model[:balmer].norm *= model[:qso_cont].norm
         evaluate!(model)
     end
 end
@@ -373,40 +373,40 @@ end
 
 function add_patch_functs!(source::QSO{T}, pspec::PreparedSpectrum, model::Model) where T <: DefaultRecipe
     # Patch parameters
-    @patch! begin
-         # model[:OIII_4959].norm = model[:OIII_5007].norm / 3
-         model[:OIII_4959].voff = model[:OIII_5007].voff
-     end
-    @patch! begin
+    @try_patch! begin
+        # model[:OIII_4959].norm = model[:OIII_5007].norm / 3
+        model[:OIII_4959].voff = model[:OIII_5007].voff
+    end
+    @try_patch! begin
         model[:OIII_5007_bw].voff += model[:OIII_5007].voff
         model[:OIII_5007_bw].fwhm += model[:OIII_5007].fwhm
     end
-    @patch! begin
+    @try_patch! begin
         # model[:OI_6300].norm = model[:OI_6364].norm / 3
         model[:OI_6300].voff = model[:OI_6364].voff
     end
-    @patch! begin
+    @try_patch! begin
         # model[:NII_6549].norm = model[:NII_6583].norm / 3
         model[:NII_6549].voff = model[:NII_6583].voff
     end
-    @patch! begin
+    @try_patch! begin
         # model[:SII_6716].norm = model[:SII_6731].norm / 1.5
         model[:SII_6716].voff = model[:SII_6731].voff
     end
 
-    @patch! model[:Hb_na].voff = model[:Ha_na].voff
+    @try_patch! model[:Hb_na].voff = model[:Ha_na].voff
 
     # The following are required to avoid degeneracy with iron
     # template
-    @patch! begin
+    @try_patch! begin
         model[:Hg].voff = model[:Hb_br].voff
         model[:Hg].fwhm = model[:Hb_br].fwhm
     end
-    @patch! begin
+    @try_patch! begin
         model[:Hg_br].voff = model[:Hb_br].voff
         model[:Hg_br].fwhm = model[:Hb_br].fwhm
     end
-    @patch! begin
+    @try_patch! begin
         model[:Hg_na].voff = model[:Hb_na].voff
         model[:Hg_na].fwhm = model[:Hb_na].fwhm
     end
@@ -417,13 +417,13 @@ function add_patch_functs!(source::QSO{T}, pspec::PreparedSpectrum, model::Model
         haskey(model, :Hb_bb)
         model[:Hb_bb].norm.high = 1
         model[:Hb_bb].norm.val  = 0.5
-        @patch! model[:Hb_bb].norm *= model[:Hb_br].norm / model[:Hb_br].fwhm * model[:Hb_bb].fwhm
+        @try_patch! model[:Hb_bb].norm *= model[:Hb_br].norm / model[:Hb_br].fwhm * model[:Hb_bb].fwhm
     end
     if  haskey(model, :Ha_br)  &&
         haskey(model, :Ha_bb)
         model[:Ha_bb].norm.high = 1
         model[:Ha_bb].norm.val  = 0.5
-        @patch! model[:Ha_bb].norm *= model[:Ha_br].norm / model[:Ha_br].fwhm * model[:Ha_bb].fwhm
+        @try_patch! model[:Ha_bb].norm *= model[:Ha_br].norm / model[:Ha_br].fwhm * model[:Ha_bb].fwhm
     end
 end
 

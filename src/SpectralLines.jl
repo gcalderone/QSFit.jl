@@ -1,6 +1,5 @@
-export transition,
-    AbstractLine, GenericLine, BroadLine, NarrowLine, BroadBaseLine, CombinedLine,
-    LineComponent
+export transition, custom_transition,
+    AbstractLine, GenericLine, BroadLine, NarrowLine, BroadBaseLine, MultiCompLine, LineComponent
 
 const transitions_db = DataFrame()
 
