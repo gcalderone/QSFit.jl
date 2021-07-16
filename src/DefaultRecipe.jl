@@ -350,7 +350,7 @@ function add_emission_lines!(source::QSO{T}, pspec::PreparedSpectrum, model::Mod
 end
 
 
-function guess_emission_lines_values!(source::QSO{T}, pspec::PreparedSpectrum, model::Model) where T <: DefaultRecipe
+function guess_emission_lines!(source::QSO{T}, pspec::PreparedSpectrum, model::Model) where T <: DefaultRecipe
     groups_to_go = unique([QSFit.group(v.line) for (k,v) in pspec.lcs])
     for grp in [:BroadLines, :NarrowLines, :BroadBaseLines, :AsymmTailLines]  # Note: order is important
         found = false
@@ -562,7 +562,7 @@ function fit(source::QSO{TRecipe}) where TRecipe <: DefaultRecipe
 
     println(logio(source), "\nFit known emission lines...")
     add_emission_lines!(source, pspec, model)
-    guess_emission_lines_values!(source, pspec, model)
+    guess_emission_lines!(source, pspec, model)
     add_patch_functs!(source, pspec, model)
 
     bestfit = fit!(source, model, pspec)

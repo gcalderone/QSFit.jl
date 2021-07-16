@@ -110,5 +110,6 @@ include("DefaultRecipe.jl")
 include("reduce.jl")
 include("viewer.jl")
 include("gnuplot.jl")
+include("interactive_guess.jl")
 
 end  # module
