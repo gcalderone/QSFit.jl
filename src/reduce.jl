@@ -21,19 +21,19 @@ struct QSFitResults{T}
     source::QSO{T}
     pspec::PreparedSpectrum
     model::Model
-    bestfit::GFit.BestFitResult
+    fitres::GFit.FitResult
     EW::OrderedDict{Symbol, Float64}
 end
 
-QSFitResults(source::QSO{T}, pspec::PreparedSpectrum, model::Model, bestfit::GFit.BestFitResult) where T <: AbstractRecipe =
-    QSFitResults{T}(source, pspec, model, bestfit, estimate_line_EWs(source, pspec, model))
+QSFitResults(source::QSO{T}, pspec::PreparedSpectrum, model::Model, fitres::GFit.FitResult) where T <: AbstractRecipe =
+    QSFitResults{T}(source, pspec, model, fitres, estimate_line_EWs(source, pspec, model))
 
 struct QSFitMultiResults{T}
     source::QSO{T}
     multi::MultiModel
-    bestfit::GFit.BestFitMultiResult
+    fitres::GFit.FitResult
     EW::Vector{OrderedDict{Symbol, Float64}}
 end
 
-QSFitMultiResults(source::QSO{T}, multi::MultiModel, bestfit::GFit.BestFitMultiResult) where T <: AbstractRecipe =
-    QSFitMultiResults{T}(source, multi, bestfit, [estimate_line_EWs(source, multi[id]) for id in 1:length(multi)])
+QSFitMultiResults(source::QSO{T}, multi::MultiModel, fitres::GFit.FitResult) where T <: AbstractRecipe =
+    QSFitMultiResults{T}(source, multi, fitres, [estimate_line_EWs(source, multi[id]) for id in 1:length(multi)])

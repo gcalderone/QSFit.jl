@@ -1,4 +1,4 @@
-export DefaultRecipe, fit
+export DefaultRecipe, qsfit
 
 abstract type DefaultRecipe <: AbstractRecipe end
 
@@ -169,11 +169,24 @@ end
 function fit!(source::QSO{T}, model::Model, pspec::PreparedSpectrum) where T <: DefaultRecipe
     mzer = GFit.cmpfit()
     mzer.Δfitstat_theshold = 1.e-5
-    bestfit = fit!(model, pspec.data, minimizer=mzer)
-    show(logio(source), bestfit)
+    fitres = fit!(model, pspec.data, minimizer=mzer)
+    show(logio(source), model)
+    show(logio(source), fitres)
     # @gp (domain(model), pspec.data) model
     # printstyled(color=:blink, "Press ENTER to continue..."); readline()
-    return bestfit
+    return fitres
+end
+
+
+function fit!(source::QSO{T}, multi::MultiModel, pspecs::Vector{PreparedSpectrum}) where T <: DefaultRecipe
+    mzer = GFit.cmpfit()
+    mzer.Δfitstat_theshold = 1.e-5
+    fitres = fit!(multi, getfield.(pspecs, :data), minimizer=mzer)
+    show(logio(source), model)
+    show(logio(source), fitres)
+    # @gp (domain(model), pspec.data) model
+    # printstyled(color=:blink, "Press ENTER to continue..."); readline()
+    return fitres
 end
 
 
@@ -490,25 +503,25 @@ function add_unknown_lines!(source::QSO{T}, pspec::PreparedSpectrum, model::Mode
         model[cname].center.high = λ[iadd] + λ[iadd]/10.
 
         thaw(model, cname)
-        bestfit = fit!(source, model, pspec)
+        fitres = fit!(source, model, pspec)
         freeze(model, cname)
     end
     evaluate!(model)
 end
 
 
-function neglect_weak_features!(source::QSO{T}, pspec::PreparedSpectrum, model::Model, bestfit::GFit.BestFitResult) where T <: DefaultRecipe
+function neglect_weak_features!(source::QSO{T}, pspec::PreparedSpectrum, model::Model, fitres::GFit.FitResult) where T <: DefaultRecipe
     # Disable "unknown" lines whose normalization uncertainty is larger
     # than X times the normalization
     needs_fitting = false
     for ii in 1:source.options[:n_unk]
         cname = Symbol(:unk, ii)
         isfixed(model, cname)  &&  continue
-        if bestfit[cname].norm.val == 0.
+        if model[cname].norm.val == 0.
             freeze(model, cname)
             needs_fitting = true
             println(logio(source), "Disabling $cname (norm. = 0)")
-        elseif bestfit[cname].norm.unc / bestfit[cname].norm.val > 3
+        elseif model[cname].norm.unc / model[cname].norm.val > 3
             model[cname].norm.val = 0.
             freeze(model, cname)
             needs_fitting = true
@@ -519,7 +532,7 @@ function neglect_weak_features!(source::QSO{T}, pspec::PreparedSpectrum, model::
 end
 
 
-function fit(source::QSO{TRecipe}) where TRecipe <: DefaultRecipe
+function qsfit(source::QSO{TRecipe}) where TRecipe <: DefaultRecipe
     elapsed = time()
     @assert length(source.specs) == 1
     pspec = PreparedSpectrum(source, id=1)
@@ -539,7 +552,7 @@ function fit(source::QSO{TRecipe}) where TRecipe <: DefaultRecipe
     add_qso_continuum!(source, pspec, model)
     add_host_galaxy!(source, pspec, model)
     add_balmer_cont!(source, pspec, model)
-    bestfit = fit!(source, model, pspec)
+    fitres = fit!(source, model, pspec)
     renorm_cont!(source, pspec, model)
     freeze(model, :qso_cont)
     haskey(model, :galaxy)  &&  freeze(model, :galaxy)
@@ -553,7 +566,7 @@ function fit(source::QSO{TRecipe}) where TRecipe <: DefaultRecipe
     add_iron_opt!(source, pspec, model)
 
     if length(model[:Iron].list) > 0
-        bestfit = fit!(source, model, pspec)
+        fitres = fit!(source, model, pspec)
         haskey(model, :ironuv   )  &&  freeze(model, :ironuv)
         haskey(model, :ironoptbr)  &&  freeze(model, :ironoptbr)
         haskey(model, :ironoptna)  &&  freeze(model, :ironoptna)
@@ -565,7 +578,7 @@ function fit(source::QSO{TRecipe}) where TRecipe <: DefaultRecipe
     guess_emission_lines!(source, pspec, model)
     add_patch_functs!(source, pspec, model)
 
-    bestfit = fit!(source, model, pspec)
+    fitres = fit!(source, model, pspec)
     for lname in keys(pspec.lcs)
         freeze(model, lname)
     end
@@ -591,17 +604,150 @@ function fit(source::QSO{TRecipe}) where TRecipe <: DefaultRecipe
             freeze(model, cname)
         end
     end
-    bestfit = fit!(source, model, pspec)
+    fitres = fit!(source, model, pspec)
 
-    if neglect_weak_features!(source, pspec, model, bestfit)
+    if neglect_weak_features!(source, pspec, model, fitres)
         println(logio(source), "\nRe-run fit...")
-        bestfit = fit!(source, model, pspec)
+        fitres = fit!(source, model, pspec)
     end
 
     println(logio(source))
-    show(logio(source), bestfit)
+    show(logio(source), fitres)
 
-    out = QSFitResults(source, pspec, model, bestfit)
+    out = QSFitResults(source, pspec, model, fitres)
+    elapsed = time() - elapsed
+    println(logio(source), "\nElapsed time: $elapsed s")
+    close_logio(source)
+    return out
+end
+
+
+function qsfit_multi(source::QSO{TRecipe}; ref_id=1) where TRecipe <: DefaultRecipe
+    elapsed = time()
+    @assert length(source.specs) > 1
+    @assert 1 <= ref_id <= length(source.specs)
+    pspecs = [PreparedSpectrum(source, id=id) for id in 1:length(source.specs)]
+
+    multi = MultiModel()
+    for id in 1:length(pspecs)
+        pspec = pspecs[id]
+        model = Model(pspec.domain)
+        model[:Continuum] = SumReducer([])
+        model[:main] = SumReducer([])
+        push!(model[:main].list, :Continuum)
+        select_reducer!(model, :main)
+        delete!(model.revals, :default_sum)
+
+        # TODO if source.options[:instr_broadening]
+        # TODO     GFit.set_instr_response!(model[1], (l, f) -> instrumental_broadening(l, f, source.spectra[id].resolution))
+        # TODO end
+
+        println(logio(source), "\nFit continuum components...")
+        add_qso_continuum!(source, pspec, model)
+        add_host_galaxy!(source, pspec, model)
+        add_balmer_cont!(source, pspec, model)
+
+        push!(multi, model)
+        if id != ref_id
+            @patch! multi[id][:galaxy].norm = multi[ref_id][:galaxy].norm
+        end
+    end
+    fitres = fit!(source, multi, pspecs)
+
+    for id in 1:length(pspecs)
+        model = multi[id]
+        pspec = pspecs[id]
+        renorm_cont!(source, pspec, model)
+        freeze(model, :qso_cont)
+        haskey(model, :galaxy)  &&  freeze(model, :galaxy)
+        haskey(model, :balmer)  &&  freeze(model, :balmer)
+        evaluate!(model)
+    end
+
+    println(logio(source), "\nFit iron templates...")
+    for id in 1:length(pspecs)
+        model = multi[id]
+        pspec = pspecs[id]
+        model[:Iron] = SumReducer([])
+        push!(model[:main].list, :Iron)
+        add_iron_uv!( source, pspec, model)
+        add_iron_opt!(source, pspec, model)
+
+        if length(model[:Iron].list) > 0
+            fitres = fit!(source, model, pspec)
+            haskey(model, :ironuv   )  &&  freeze(model, :ironuv)
+            haskey(model, :ironoptbr)  &&  freeze(model, :ironoptbr)
+            haskey(model, :ironoptna)  &&  freeze(model, :ironoptna)
+        end
+        evaluate!(model)
+    end
+
+    println(logio(source), "\nFit known emission lines...")
+    for id in 1:length(pspecs)
+        model = multi[id]
+        pspec = pspecs[id]
+        add_emission_lines!(source, pspec, model)
+        guess_emission_lines!(source, pspec, model)
+        add_patch_functs!(source, pspec, model)
+
+        if id != ref_id
+            @patch! multi[id][:OIII_5007].norm = multi[ref_id][:OIII_5007].norm
+        end
+    end
+    fitres = fit!(source, multi, pspecs)
+    for id in 1:length(pspecs)
+        model = multi[id]
+        pspec = pspecs[id]
+        for lname in keys(pspec.lcs)
+            freeze(model, lname)
+        end
+    end
+
+    println(logio(source), "\nFit unknown emission lines...")
+    for id in 1:length(pspecs)
+        model = multi[id]
+        pspec = pspecs[id]
+        add_unknown_lines!(source, pspec, model)
+    end
+
+    println(logio(source), "\nLast run with all parameters free...")
+    for id in 1:length(pspecs)
+        model = multi[id]
+        pspec = pspecs[id]
+        thaw(model, :qso_cont)
+        haskey(model, :galaxy   )  &&  thaw(model, :galaxy)
+        haskey(model, :balmer   )  &&  thaw(model, :balmer)
+        haskey(model, :ironuv   )  &&  thaw(model, :ironuv)
+        haskey(model, :ironoptbr)  &&  thaw(model, :ironoptbr)
+        haskey(model, :ironoptna)  &&  thaw(model, :ironoptna)
+        for lname in keys(pspec.lcs)
+            thaw(model, lname)
+        end
+        for j in 1:source.options[:n_unk]
+            cname = Symbol(:unk, j)
+            if model[cname].norm.val > 0
+                thaw(model, cname)
+            else
+                freeze(model, cname)
+            end
+        end
+    end
+    fitres = fit!(source, multi, pspecs)
+
+    rerun = false
+    for id in 1:length(pspecs)
+        model = multi[id]
+        pspec = pspecs[id]
+        rerun = rerun || neglect_weak_features!(source, pspec, model, fitres)
+    end
+    if rerun
+        println(logio(source), "\nRe-run fit...")
+        fitres = fit!(source, multi, pspecs)
+    end
+    println(logio(source))
+    show(logio(source), fitres)
+
+    out = QSFitMultiResults(source, pspec, model, fitres)
     elapsed = time() - elapsed
     println(logio(source), "\nElapsed time: $elapsed s")
     close_logio(source)

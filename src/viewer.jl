@@ -2,8 +2,8 @@ using GFitViewer
 import GFitViewer: ViewerData, viewer
 
 function ViewerData(res::QSFitResults{T}; kw...) where T
-    vd = ViewerData(res.model, res.pspec.data, res.bestfit; kw...)
-    vd.dict[:meta][:banner] = "QSFit (v0.1)<br />Date: " * string(trunc(res.bestfit.timestamp, Second))
+    vd = ViewerData(res.model, res.pspec.data, res.fitres; kw...)
+    vd.dict[:meta][:banner] = "QSFit (v0.1)<br />Date: " * string(trunc(res.fitres.timestamp, Second))
 
     id = 1
     m = vd.dict[:models][id][:meta]
@@ -60,8 +60,8 @@ viewer(res::QSFitResults{T}; filename=nothing, offline=false, kw...) where T =
 
 
 function ViewerData(res::QSFitMultiResults{T}; kw...) where T
-    vd = ViewerData(res.multi, res.source.data, res.bestfit; kw...)
-    vd.dict[:meta][:banner] = "QSFit (v0.1)<br />Date: " * string(trunc(res.bestfit.timestamp, Second))
+    vd = ViewerData(res.multi, res.source.data, res.fitres; kw...)
+    vd.dict[:meta][:banner] = "QSFit (v0.1)<br />Date: " * string(trunc(res.fitres.timestamp, Second))
 
     for id in 1:length(res.multi)
         m = vd.dict[:models][id][:meta]
