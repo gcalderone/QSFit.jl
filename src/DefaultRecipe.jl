@@ -182,7 +182,7 @@ function fit!(source::QSO{T}, multi::MultiModel, pspecs::Vector{PreparedSpectrum
     mzer = GFit.cmpfit()
     mzer.Δfitstat_theshold = 1.e-5
     fitres = fit!(multi, getfield.(pspecs, :data), minimizer=mzer)
-    show(logio(source), model)
+    show(logio(source), multi)
     show(logio(source), fitres)
     # @gp (domain(model), pspec.data) model
     # printstyled(color=:blink, "Press ENTER to continue..."); readline()
@@ -629,6 +629,7 @@ function qsfit_multi(source::QSO{TRecipe}; ref_id=1) where TRecipe <: DefaultRec
     pspecs = [PreparedSpectrum(source, id=id) for id in 1:length(source.specs)]
 
     multi = MultiModel()
+    println(logio(source), "\nFit continuum components...")
     for id in 1:length(pspecs)
         pspec = pspecs[id]
         model = Model(pspec.domain)
@@ -642,7 +643,6 @@ function qsfit_multi(source::QSO{TRecipe}; ref_id=1) where TRecipe <: DefaultRec
         # TODO     GFit.set_instr_response!(model[1], (l, f) -> instrumental_broadening(l, f, source.spectra[id].resolution))
         # TODO end
 
-        println(logio(source), "\nFit continuum components...")
         add_qso_continuum!(source, pspec, model)
         add_host_galaxy!(source, pspec, model)
         add_balmer_cont!(source, pspec, model)
