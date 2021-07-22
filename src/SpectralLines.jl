@@ -1,5 +1,5 @@
 export transition, custom_transition,
-    AbstractLine, GenericLine, BroadLine, NarrowLine, BroadBaseLine, MultiCompLine, LineComponent
+    AbstractLine, GenericLine, BroadLine, NarrowLine, BroadBaseLine, AsymmTailLine, MultiCompLine, LineComponent
 
 const transitions_db = DataFrame()
 
@@ -104,7 +104,7 @@ end
 struct LineComponent
     line::AbstractLine
     comp::AbstractComponent
-    combined::Bool
+    multicomp::Bool
 end
 
 function collect_LineComponent(source::QSO)
