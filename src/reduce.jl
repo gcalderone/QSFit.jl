@@ -30,10 +30,11 @@ QSFitResults(source::QSO{T}, pspec::PreparedSpectrum, model::Model, fitres::GFit
 
 struct QSFitMultiResults{T}
     source::QSO{T}
+    pspecs::Vector{PreparedSpectrum}
     multi::MultiModel
     fitres::GFit.FitResult
     EW::Vector{OrderedDict{Symbol, Float64}}
 end
 
-QSFitMultiResults(source::QSO{T}, multi::MultiModel, fitres::GFit.FitResult) where T <: AbstractRecipe =
-    QSFitMultiResults{T}(source, multi, fitres, [estimate_line_EWs(source, multi[id]) for id in 1:length(multi)])
+QSFitMultiResults(source::QSO{T}, pspecs::Vector{PreparedSpectrum}, multi::MultiModel, fitres::GFit.FitResult) where T <: AbstractRecipe =
+    QSFitMultiResults{T}(source, pspecs, multi, fitres, [estimate_line_EWs(source, pspecs[id], multi[id]) for id in 1:length(multi)])

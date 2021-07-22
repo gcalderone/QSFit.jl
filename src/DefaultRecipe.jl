@@ -1,4 +1,4 @@
-export DefaultRecipe, qsfit
+export DefaultRecipe, qsfit, qsfit_multi
 
 abstract type DefaultRecipe <: AbstractRecipe end
 
@@ -663,6 +663,7 @@ function qsfit_multi(source::QSO{TRecipe}; ref_id=1) where TRecipe <: DefaultRec
         haskey(model, :balmer)  &&  freeze(model, :balmer)
         evaluate!(model)
     end
+    evaluate!(multi)
 
     println(logio(source), "\nFit iron templates...")
     for id in 1:length(pspecs)
@@ -681,6 +682,7 @@ function qsfit_multi(source::QSO{TRecipe}; ref_id=1) where TRecipe <: DefaultRec
         end
         evaluate!(model)
     end
+    evaluate!(multi)
 
     println(logio(source), "\nFit known emission lines...")
     for id in 1:length(pspecs)
@@ -702,6 +704,7 @@ function qsfit_multi(source::QSO{TRecipe}; ref_id=1) where TRecipe <: DefaultRec
             freeze(model, lname)
         end
     end
+    evaluate!(multi)
 
     println(logio(source), "\nFit unknown emission lines...")
     for id in 1:length(pspecs)
@@ -709,6 +712,7 @@ function qsfit_multi(source::QSO{TRecipe}; ref_id=1) where TRecipe <: DefaultRec
         pspec = pspecs[id]
         add_unknown_lines!(source, pspec, model)
     end
+    evaluate!(multi)
 
     println(logio(source), "\nLast run with all parameters free...")
     for id in 1:length(pspecs)
@@ -747,7 +751,7 @@ function qsfit_multi(source::QSO{TRecipe}; ref_id=1) where TRecipe <: DefaultRec
     println(logio(source))
     show(logio(source), fitres)
 
-    out = QSFitMultiResults(source, pspec, model, fitres)
+    out = QSFitMultiResults(source, pspecs, multi, fitres)
     elapsed = time() - elapsed
     println(logio(source), "\nElapsed time: $elapsed s")
     close_logio(source)

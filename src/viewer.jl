@@ -60,7 +60,7 @@ viewer(res::QSFitResults{T}; filename=nothing, offline=false, kw...) where T =
 
 
 function ViewerData(res::QSFitMultiResults{T}; kw...) where T
-    vd = ViewerData(res.multi, res.source.data, res.fitres; kw...)
+    vd = ViewerData(res.multi, [res.pspecs[id].data for id in 1:length(res.pspecs)], res.fitres; kw...)
     vd.dict[:meta][:banner] = "QSFit (v0.1)<br />Date: " * string(trunc(res.fitres.timestamp, Second))
 
     for id in 1:length(res.multi)
@@ -82,7 +82,7 @@ function ViewerData(res::QSFitMultiResults{T}; kw...) where T
             delete!(ENV, "UNITFUL_FANCY_EXPONENTS")
         end
         m[:log10scale_y] = QSFit.log10_scale_lum()
-        vd.dict[:data][id][:meta][:label] = res.source.spectra[id].label
+        vd.dict[:data][id][:meta][:label] = res.source.specs[id].label
 
         m = vd.dict[:extra][id]
         m[:EW] = GFitViewer.MDict()
