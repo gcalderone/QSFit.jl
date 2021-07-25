@@ -172,7 +172,7 @@ function fit!(source::QSO{T}, model::Model, pspec::PreparedSpectrum) where T <: 
     fitres = fit!(model, pspec.data, minimizer=mzer)
     show(logio(source), model)
     show(logio(source), fitres)
-    # @gp (domain(model), pspec.data) model
+    # @gp :QSFit pspec.data model
     # printstyled(color=:blink, "Press ENTER to continue..."); readline()
     return fitres
 end
@@ -184,7 +184,9 @@ function fit!(source::QSO{T}, multi::MultiModel, pspecs::Vector{PreparedSpectrum
     fitres = fit!(multi, getfield.(pspecs, :data), minimizer=mzer)
     show(logio(source), multi)
     show(logio(source), fitres)
-    # @gp (domain(model), pspec.data) model
+    # for id in 1:length(multi)
+    #     @gp Symbol("QSFit$(id)") pspecs[id].data multi[id]
+    # end
     # printstyled(color=:blink, "Press ENTER to continue..."); readline()
     return fitres
 end
@@ -248,8 +250,9 @@ function renorm_cont!(source::QSO{T}, pspec::PreparedSpectrum, model::Model) whe
         println(logio(source), "Cont. norm. (before): ", c.norm.val)
         while true
             residuals = (model() - pspec.data.val) ./ pspec.data.unc
-            (count(residuals .< 0) / length(residuals) > 0.9)  &&  break
-            (c.norm.val < initialnorm / 5)  &&  break # give up
+            ratio = count(residuals .< 0) / length(residuals)
+            (ratio > 0.9)  &&  break
+            (c.norm.val < (initialnorm / 5))  &&  break # give up
             c.norm.val *= 0.99
             evaluate!(model)
         end
@@ -293,7 +296,7 @@ function add_iron_uv!(source::QSO{T}, pspec::PreparedSpectrum, model::Model) whe
             model[:ironuv].norm.val = 1.
             push!(model[:Iron].list, :ironuv)
             evaluate!(model)
-            guess_norm_factor!(pspec, model, :ironuv)
+            QSFit.guess_norm_factor!(pspec, model, :ironuv)
             evaluate!(model)
         else
             println(logio(source), "Ignoring ironuv component (threshold: $threshold)")
@@ -321,7 +324,7 @@ function add_iron_opt!(source::QSO{T}, pspec::PreparedSpectrum, model::Model) wh
             push!(model[:Iron].list, :ironoptbr)
             push!(model[:Iron].list, :ironoptna)
             evaluate!(model)
-            guess_norm_factor!(pspec, model, :ironoptbr)
+            QSFit.guess_norm_factor!(pspec, model, :ironoptbr)
             evaluate!(model)
         else
             println(logio(source), "Ignoring ironopt component (threshold: $threshold)")
@@ -369,7 +372,7 @@ function guess_emission_lines!(source::QSO{T}, pspec::PreparedSpectrum, model::M
         found = false
         for (cname, lc) in pspec.lcs
             (grp == group(lc.line))  ||  continue
-            guess_norm_factor!(pspec, model, cname)
+            QSFit.guess_norm_factor!(pspec, model, cname)
             found = true
         end
         if found
@@ -549,11 +552,11 @@ function qsfit(source::QSO{TRecipe}) where TRecipe <: DefaultRecipe
     # TODO end
 
     println(logio(source), "\nFit continuum components...")
-    add_qso_continuum!(source, pspec, model)
-    add_host_galaxy!(source, pspec, model)
-    add_balmer_cont!(source, pspec, model)
+    QSFit.add_qso_continuum!(source, pspec, model)
+    QSFit.add_host_galaxy!(source, pspec, model)
+    QSFit.add_balmer_cont!(source, pspec, model)
     fitres = fit!(source, model, pspec)
-    renorm_cont!(source, pspec, model)
+    QSFit.renorm_cont!(source, pspec, model)
     freeze(model, :qso_cont)
     haskey(model, :galaxy)  &&  freeze(model, :galaxy)
     haskey(model, :balmer)  &&  freeze(model, :balmer)
@@ -562,8 +565,8 @@ function qsfit(source::QSO{TRecipe}) where TRecipe <: DefaultRecipe
     println(logio(source), "\nFit iron templates...")
     model[:Iron] = SumReducer([])
     push!(model[:main].list, :Iron)
-    add_iron_uv!( source, pspec, model)
-    add_iron_opt!(source, pspec, model)
+    QSFit.add_iron_uv!( source, pspec, model)
+    QSFit.add_iron_opt!(source, pspec, model)
 
     if length(model[:Iron].list) > 0
         fitres = fit!(source, model, pspec)
@@ -574,9 +577,9 @@ function qsfit(source::QSO{TRecipe}) where TRecipe <: DefaultRecipe
     evaluate!(model)
 
     println(logio(source), "\nFit known emission lines...")
-    add_emission_lines!(source, pspec, model)
-    guess_emission_lines!(source, pspec, model)
-    add_patch_functs!(source, pspec, model)
+    QSFit.add_emission_lines!(source, pspec, model)
+    QSFit.guess_emission_lines!(source, pspec, model)
+    QSFit.add_patch_functs!(source, pspec, model)
 
     fitres = fit!(source, model, pspec)
     for lname in keys(pspec.lcs)
@@ -584,7 +587,7 @@ function qsfit(source::QSO{TRecipe}) where TRecipe <: DefaultRecipe
     end
 
     println(logio(source), "\nFit unknown emission lines...")
-    add_unknown_lines!(source, pspec, model)
+    QSFit.add_unknown_lines!(source, pspec, model)
 
     println(logio(source), "\nLast run with all parameters free...")
     thaw(model, :qso_cont)
@@ -643,9 +646,9 @@ function qsfit_multi(source::QSO{TRecipe}; ref_id=1) where TRecipe <: DefaultRec
         # TODO     GFit.set_instr_response!(model[1], (l, f) -> instrumental_broadening(l, f, source.spectra[id].resolution))
         # TODO end
 
-        add_qso_continuum!(source, pspec, model)
-        add_host_galaxy!(source, pspec, model)
-        add_balmer_cont!(source, pspec, model)
+        QSFit.add_qso_continuum!(source, pspec, model)
+        QSFit.add_host_galaxy!(source, pspec, model)
+        QSFit.add_balmer_cont!(source, pspec, model)
 
         push!(multi, model)
         if id != ref_id
@@ -657,7 +660,7 @@ function qsfit_multi(source::QSO{TRecipe}; ref_id=1) where TRecipe <: DefaultRec
     for id in 1:length(pspecs)
         model = multi[id]
         pspec = pspecs[id]
-        renorm_cont!(source, pspec, model)
+        QSFit.renorm_cont!(source, pspec, model)
         freeze(model, :qso_cont)
         haskey(model, :galaxy)  &&  freeze(model, :galaxy)
         haskey(model, :balmer)  &&  freeze(model, :balmer)
@@ -671,8 +674,8 @@ function qsfit_multi(source::QSO{TRecipe}; ref_id=1) where TRecipe <: DefaultRec
         pspec = pspecs[id]
         model[:Iron] = SumReducer([])
         push!(model[:main].list, :Iron)
-        add_iron_uv!( source, pspec, model)
-        add_iron_opt!(source, pspec, model)
+        QSFit.add_iron_uv!( source, pspec, model)
+        QSFit.add_iron_opt!(source, pspec, model)
 
         if length(model[:Iron].list) > 0
             fitres = fit!(source, model, pspec)
@@ -688,9 +691,9 @@ function qsfit_multi(source::QSO{TRecipe}; ref_id=1) where TRecipe <: DefaultRec
     for id in 1:length(pspecs)
         model = multi[id]
         pspec = pspecs[id]
-        add_emission_lines!(source, pspec, model)
-        guess_emission_lines!(source, pspec, model)
-        add_patch_functs!(source, pspec, model)
+        QSFit.add_emission_lines!(source, pspec, model)
+        QSFit.guess_emission_lines!(source, pspec, model)
+        QSFit.add_patch_functs!(source, pspec, model)
 
         if id != ref_id
             @patch! multi[id][:OIII_5007].norm = multi[ref_id][:OIII_5007].norm
@@ -710,7 +713,7 @@ function qsfit_multi(source::QSO{TRecipe}; ref_id=1) where TRecipe <: DefaultRec
     for id in 1:length(pspecs)
         model = multi[id]
         pspec = pspecs[id]
-        add_unknown_lines!(source, pspec, model)
+        QSFit.add_unknown_lines!(source, pspec, model)
     end
     evaluate!(multi)
 
