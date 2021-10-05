@@ -14,6 +14,7 @@ function default_options(::Type{T}) where T <: DefaultRecipe
     out[:use_balmer] = true
     out[:use_ironuv] = true
     out[:use_ironopt] = true
+    out[:use_lorentzian_profiles] = false
     out[:n_unk] = 10
     out[:unk_avoid] = [4863 .+ [-1,1] .* 50, 6565 .+ [-1,1] .* 150]
     out[:instr_broadening] = false
@@ -28,21 +29,21 @@ function known_spectral_lines(source::QSO{T}) where T <: DefaultRecipe
         MultiCompLine(                      :Lya                     , [BroadLine, NarrowLine]),
         # NarrowLine( custom_transition(tid=:OV_1218     , 1218.3  )),  # Ferland+92, Shields+95
         NarrowLine(                         :NV_1241                ),
-        BroadLine(    custom_transition(tid=:OI_1306     , 1305.53 )),
-        BroadLine(    custom_transition(tid=:CII_1335    , 1335.31 )),
+        BroadLine(                          :OI_1306                ),
+        BroadLine(                          :CII_1335               ),
         BroadLine(                          :SiIV_1400              ),
         MultiCompLine(                      :CIV_1549                , [BroadLine, NarrowLine]),
         BroadLine(                          :HeII_1640              ),
-        BroadLine(    custom_transition(tid=:OIII        , 1665.85 )),
-        BroadLine(    custom_transition(tid=:AlIII       , 1857.4  )),
+        BroadLine(                          :OIII_1664              ),
+        BroadLine(                          :AlIII_1858             ),
         BroadLine(                          :CIII_1909              ),
-        BroadLine(    custom_transition(tid=:CII         , 2326.0  )),
+        BroadLine(                          :CII_2326               ),
         BroadLine(    custom_transition(tid=:F2420       , 2420.0  )),
         MultiCompLine(                      :MgII_2798               , [BroadLine, NarrowLine]),
-        NarrowLine(   custom_transition(tid=:NeVN        , 3346.79 )),
-        NarrowLine(   custom_transition(tid=:NeVI_3426   , 3426.85 )),
-        NarrowLine(   custom_transition(tid=:OII_3727    , 3729.875)),
-        NarrowLine(   custom_transition(tid=:NeIII_3869  , 3869.81 )),
+        NarrowLine(                         :NeV_3345               ),
+        NarrowLine(                         :NeV_3426               ),
+        NarrowLine(                         :OII_3727               ),
+        NarrowLine(                         :NeIII_3869             ),
         BroadLine(                          :Hd                     ),
         BroadLine(                          :Hg                     ),
         NarrowLine(                         :OIII_4363              ),
@@ -64,7 +65,19 @@ end
 
 
 function LineComponent(source::QSO{T}, line::GenericLine, multicomp::Bool) where T <: DefaultRecipe
-    comp = SpecLineGauss(transition(line.tid).LAMBDA_VAC_ANG)
+    tt = transition(line.tid)
+    λ = tt.LAMBDA_VAC_ANG
+    if length(λ) > 1
+        println(logio(source), "Considering average wavelength for the $(line.tid) multiplet: " * string(mean(λ)) * "Å")
+        λ = mean(λ)  # average lambda o multiplets
+    else
+        λ = λ[1]
+    end
+    if source.options[:use_lorentzian_profiles]
+        comp = SpecLineLorentz(λ)
+    else
+        comp = SpecLineGauss(λ)  
+    end
     comp.norm_integrated = source.options[:norm_integrated]
     return LineComponent(line, comp, multicomp)
 end
@@ -136,7 +149,14 @@ function PreparedSpectrum(source::QSO{T}; id=1) where T <: DefaultRecipe
 
     # Collect LineComponent objects
     lcs = collect_LineComponent(source)
-    for (lname, lc) in lcs
+
+    # Sort lnames according to the expected line FWHM.  This is
+    # necessary to avoid cases where a single line has sufficient
+    # coverage, but the check for a subsequent broad lines has not
+    # (dropping the "good" flag also for the narrow one).
+    lnames = collect(keys(lcs))[reverse(sortperm(getfield.(getfield.(getfield.(values(lcs), :comp), :fwhm), :val)))]
+    for lname in lnames
+        lc = lcs[lname]
         (λmin, λmax, coverage) = spectral_coverage(λ .* data.good, data.resolution, lc.comp)
         coverage = round(coverage * 1e3) / 1e3  # keep just 3 significant digits...
         threshold = get(source.options[:min_spectral_coverage], lname, source.options[:min_spectral_coverage][:default])

@@ -3,21 +3,9 @@ export transition, custom_transition,
 
 const transitions_db = DataFrame()
 
-function validate_transitions_db()
-    @assert length(unique(transitions_db.tid))   == nrow(transitions_db)
-end
-
-function load_transitions(;force=false)
+function load_transitions()
     global transitions_db
-    if nrow(transitions_db) > 0
-        if force
-            empty!(transitions_db)
-            select!(transitions_db, Not(1:ncol(transitions_db)))
-        else
-            validate_transitions_db()
-            return nothing
-        end
-    end
+    (nrow(transitions_db) > 0)  &&  (return nothing)
 
     d, c = csvread(joinpath(@__DIR__, "atomic_line_list.vac"), '|', commentchar='#', header_exists=true)
     out = DataFrame(collect(d), Symbol.(strip.(c)))
@@ -32,7 +20,7 @@ function load_transitions(;force=false)
     out[!, :tid] .= Symbol.(out.tid)
 
     append!(transitions_db, out)
-    validate_transitions_db()
+    return nothing
 end
 
 
@@ -42,8 +30,7 @@ function transition(tid::Symbol)
     if length(i) == 0
         error("No known transition with ID: $tid")
     end
-    @assert length(i) == 1
-    return transitions_db[i[1], :]
+    return transitions_db[i, :]
 end
 
 
