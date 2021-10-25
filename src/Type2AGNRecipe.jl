@@ -16,9 +16,8 @@ function known_spectral_lines(source::QSO{T}) where T <: T2Recipe
         NarrowLine(                      :CIII_1909                 ),
         NarrowLine(                      :MgII_2798                 ),
         NarrowLine(                      :NeV_3426                  ),
-        NarrowLine(                      :OII_3727a                 ),
-        NarrowLine(                      :OII_3727b                 ),
-        NarrowLine(                      :NeIII_3870                ),
+        NarrowLine(                      :OII_3727                  ),
+        NarrowLine(                      :NeIII_3869                ),
         NarrowLine(                      :Hg                        ),
         NarrowLine(                      :Hb                        ),
         NarrowLine(                      :OIII_4959                 ),
@@ -62,4 +61,28 @@ function default_unk_line(source::QSO{T}) where T <: T2Recipe
     comp.fwhm.high = 2e3
     comp.voff.fixed = true
     return comp
+end
+
+function add_patch_functs!(source::QSO{T}, pspec::PreparedSpectrum, model::Model) where T <: T2Recipe
+    # Patch parameters
+    @try_patch! begin
+        # model[:OIII_4959].norm = model[:OIII_5007].norm / 3
+        model[:OIII_4959].voff = model[:OIII_5007].voff
+    end
+    @try_patch! begin
+        model[:OIII_5007_bw].voff += model[:OIII_5007].voff
+        model[:OIII_5007_bw].fwhm += model[:OIII_5007].fwhm
+    end
+    @try_patch! begin
+        # model[:OI_6300].norm = model[:OI_6364].norm / 3
+        model[:OI_6300].voff = model[:OI_6364].voff
+    end
+    @try_patch! begin
+        # model[:NII_6549].norm = model[:NII_6583].norm / 3
+        model[:NII_6549].voff = model[:NII_6583].voff
+    end
+    @try_patch! begin
+        # model[:SII_6716].norm = model[:SII_6731].norm / 1.5
+        model[:SII_6716].voff = model[:SII_6731].voff
+    end
 end
