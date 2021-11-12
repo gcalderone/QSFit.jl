@@ -4,7 +4,7 @@ import Gnuplot.recipe
 export residuals
 
 function Gnuplot.recipe(res::QSFitResults)
-    out = [Gnuplot.recipe(res.model)..., Gnuplot.recipe(res.pspec.data)]
+    out = [Gnuplot.recipe(res.pspec.data), Gnuplot.recipe(res.model)...]
     return reverse(out)
 end
 
