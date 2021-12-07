@@ -2,42 +2,22 @@
 
 Quasar Spectral FITting package - http://qsfit.inaf.it/
 
-** WORK IN PROGRESS **
+** Warning **: the software is still under development...
 
 
+## Install
 ```julia
-center = 1000.
-fwhm = 5e3
+using Pkg
+Pkg.add(url="https://github.com/gcalderone/QSFit.jl", rev="master")
+Pkg.add(url="https://github.com/lnicastro/GFitViewer.jl", rev="master")
+```
 
-x = Domain(range(center - 3 * fwhm/3e5*center,
-                 center + 3 * fwhm/3e5*center,
-                 length=1000))
+## Example
+```julia
+using QSFit, GFitViewer
 
-@gp "set grid"
-
-comp = QSFit.SpecLineGauss(center);
-comp.fwhm.val = fwhm;
-ceval = GFit.CompEval(comp, x);
-GFit.evaluate_cached(ceval);
-@gp :- x[:] ceval.buffer "w l tit 'Gaussian' lw 2"
-@info "FWHM=" QSFit.estimate_fwhm(x[:], ceval.buffer) / center * 3e5
-@info "Area=" QSFit.int_tabulated(x[:], ceval.buffer)
-
-comp = QSFit.SpecLineAsymmGauss(center);
-comp.fwhm.val = fwhm;
-comp.asymm.val = -1;
-ceval = GFit.CompEval(comp, x);
-GFit.evaluate_cached(ceval);
-@gp :- x[:] ceval.buffer "w l tit 'Asymm. Gaussian' lw 2"
-@info "FWHM=" QSFit.estimate_fwhm(x[:], ceval.buffer) / center * 3e5
-@info "Area=" QSFit.int_tabulated(x[:], ceval.buffer)
-
-comp = QSFit.SpecLineLorentz(center);
-comp.fwhm.val = fwhm;
-ceval = GFit.CompEval(comp, x);
-GFit.evaluate_cached(ceval);
-@gp :- x[:] ceval.buffer "w l tit 'Lorentzian' lw 2"
-@info "FWHM=" QSFit.estimate_fwhm(x[:], ceval.buffer) / center * 3e5
-@info "Area=" QSFit.int_tabulated(x[:], ceval.buffer)
-
+source = QSO{DefaultRecipe}("My SDSS source", 0.3806, ebv=0.)
+add_spec!(source, Spectrum(Val(:SDSS_DR10), "spec-0752-52251-0323.fits"))
+res = qsfit(source);
+viewer(res, filename="test_qsfit.html")
 ```
