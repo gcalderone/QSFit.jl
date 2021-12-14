@@ -290,14 +290,15 @@ function guess_norm_factor!(pspec::PreparedSpectrum, model::Model, name::Symbol;
     @assert model[name].norm.val != 0
     m = model(name)
     c = cumsum(m)
+    @assert maximum(c) != 0. "Model for $name evaluates to zero over the whole domain"
     c ./= maximum(c)
     i1 = findfirst(c .> ((1 - quantile)/2))
     i2 = findlast( c .< ((1 + quantile)/2))
     resid = pspec.data.val - model()
-    println(c)
     ratio = model[name].norm.val / sum(m[i1:i2])
     off = sum(resid[i1:i2]) * ratio
     model[name].norm.val += off
+    @assert !isnan(off) "Norm. offset is NaN for $name"
     if model[name].norm.val < 0  # ensure line has positive normalization
         model[name].norm.val = abs(off)
     end
