@@ -44,15 +44,15 @@ struct Spectrum
         λ = λ[ii]
 
         # Estimate sampling resolution in km/s
-        est_res = median((λ[2:end] .- λ[1:end-1]) ./ ((λ[2:end] .+ λ[1:end-1]) ./ 2)) * 3e5
+        sampling_res = median((λ[2:end] .- λ[1:end-1]) ./ ((λ[2:end] .+ λ[1:end-1]) ./ 2)) * 3e5
         if isnan(resolution)
             @warn "Resolution is not provided, assuming it is equal to twice the sampling resolution..."
-            resolution = 2 * est_res
+            resolution = 2 * sampling_res
         end
-        @assert est_res < resolution "Estimated resolution ($est_res) < provided resolution ($resolution)"
+        @assert sampling_res < resolution "Estimated resolution ($sampling_res) < provided resolution ($resolution)"
 
         return new(label, λ, flux[ii], err[ii], good, resolution,
-                   Dict{Symbol, Any}())
+                   Dict{Symbol, Any}(:sampling_resolution => sampling_res))
     end
 end
 
@@ -66,7 +66,7 @@ function Spectrum(λ::Vector{T1}, flux::Vector{T2}, err::Vector{T2}; kw...) wher
 end
 
 
-function Spectrum(::Val{:SDSS_DR10}, file::AbstractString; ndrop=100)
+function Spectrum(::Val{:SDSS_DR10}, file::AbstractString; ndrop=100, resolution=150.)  # TODO: Check resolution is correct
     f = FITS(file)
     λ = 10 .^read(f[2], "loglam")
     flux = float.(read(f[2], "flux"))
@@ -88,7 +88,7 @@ function Spectrum(::Val{:SDSS_DR10}, file::AbstractString; ndrop=100)
         good[end-ndrop+1:end] .= false
     end
 
-    out = Spectrum(λ, flux, sqrt.(1 ./ ivar), good=good, label=file, resolution=150.)  # TODO: Check resolution is correct
+    out = Spectrum(λ, flux, sqrt.(1 ./ ivar), good=good, label=file, resolution=resolution)
     return out
 end
 
