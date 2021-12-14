@@ -282,7 +282,7 @@ version = "0.1.0"
 
 [[deps.GFitViewer]]
 deps = ["DataStructures", "DefaultApplication", "GFit", "Gnuplot", "JLD2", "JSON", "Pkg", "Statistics"]
-git-tree-sha1 = "2cbd9882209d4febebbe40b7e7c405ad82e71a58"
+git-tree-sha1 = "38d48461f9eb8942a976dc53e69e9fb431cd4206"
 repo-rev = "master"
 repo-url = "https://github.com/lnicastro/GFitViewer.jl"
 uuid = "5d93b50e-5cc7-4feb-a740-ec85257caa01"

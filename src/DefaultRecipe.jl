@@ -133,7 +133,7 @@ function PreparedSpectrum(source::QSO{T}; id=1) where T <: DefaultRecipe
     if goodfraction(data) < 0.5
         error("Good fraction < 0.5")
     end
-    println(logio(source), "  resolution: ", @sprintf("%.4g", data.resolution), " km / s")
+    println(logio(source), "  resolution: ", @sprintf("%.4g", data.resolution), " km / s (1σ)")
 
     λ = data.λ ./ (1 + source.z)
     data.good[findall(λ .< source.options[:wavelength_range][1])] .= false
@@ -294,6 +294,7 @@ function guess_norm_factor!(pspec::PreparedSpectrum, model::Model, name::Symbol;
     i1 = findfirst(c .> ((1 - quantile)/2))
     i2 = findlast( c .< ((1 + quantile)/2))
     resid = pspec.data.val - model()
+    println(c)
     ratio = model[name].norm.val / sum(m[i1:i2])
     off = sum(resid[i1:i2]) * ratio
     model[name].norm.val += off
@@ -370,7 +371,7 @@ function add_emission_lines!(source::QSO{T}, pspec::PreparedSpectrum, model::Mod
             if isa(lc.comp, QSFit.SpecLineGauss)
                 lc.comp.spec_res_kms = pspec.orig.resolution
             else
-                println(logio(source), "Line $cname is not a Gaussian profile: Can't take spectral resolution into account")
+                println(logio(source), "WARNING: Line $cname is not a Gaussian profile: can't take spectral resolution into account")
             end
         end
 
