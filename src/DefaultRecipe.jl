@@ -295,6 +295,9 @@ function guess_norm_factor!(pspec::PreparedSpectrum, model::Model, name::Symbol;
     c ./= maximum(c)
     i1 = findfirst(c .> ((1 - quantile)/2))
     i2 = findlast( c .< ((1 + quantile)/2))
+    if i1 >= i2
+        return #Can't calculate normalization for component
+    end
     resid = pspec.data.val - model()
     ratio = model[name].norm.val / sum(m[i1:i2])
     off = sum(resid[i1:i2]) * ratio
