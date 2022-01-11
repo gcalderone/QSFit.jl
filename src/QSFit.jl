@@ -10,6 +10,7 @@ using Pkg, Pkg.Artifacts
 using Statistics, DelimitedFiles, Dierckx, Printf, DataStructures
 using Unitful, UnitfulAstro
 using Dates
+using SpecialFunctions
 using Gnuplot
 using TextParse, DataFrames
 
@@ -24,6 +25,7 @@ include("components/balmercont.jl")
 include("components/SpecLineGauss.jl")
 include("components/SpecLineAsymmGauss.jl")
 include("components/SpecLineLorentz.jl")
+include("components/SpecLineVoigt.jl")
 include("utils.jl")
 include("convolutions.jl")
 include("Spectrum.jl")

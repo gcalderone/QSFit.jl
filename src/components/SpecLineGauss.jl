@@ -42,7 +42,8 @@ function evaluate!(buffer, comp::SpecLineGauss, x::Domain{1},
          ret = norm * exp(-((x - x0) / sigma)^2 / 2)
          comp.norm_integrated  &&  (ret /= (sqrt(2pi) * sigma))
          return ret
-         end, buffer, x.coords[:,1])
+         end,
+         buffer, x.coords[:,1])
 end
 
 
@@ -51,6 +52,6 @@ end
     comp = QSFit.SpecLineGauss(1000.)
     comp.fwhm.val = 3e4
     ceval = GFit.CompEval(comp, x)
-    GFit.evaluate_cached(ceval)
+    evaluate!(ceval)
     @gp x[:] ceval.buffer ./ maximum(ceval.buffer) "w l"
 =#
