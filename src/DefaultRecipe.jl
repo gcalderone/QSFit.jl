@@ -77,7 +77,7 @@ function LineComponent(source::QSO{T}, line::GenericLine, multicomp::Bool) where
     if source.options[:use_lorentzian_profiles]
         comp = SpecLineLorentz(λ)
     else
-        comp = SpecLineGauss(λ)  
+        comp = SpecLineGauss(λ)
     end
     comp.norm_integrated = source.options[:norm_integrated]
     return LineComponent(line, comp, multicomp)

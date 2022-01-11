@@ -20,8 +20,8 @@ x = -100:0.01:100
 mutable struct SpecLineVoigt <: AbstractComponent
     norm::Parameter
     center::Parameter
-    fwhm_g::Parameter
-    fwhm_l::Parameter
+    fwhm::Parameter
+    gamma::Parameter
     voff::Parameter
     norm_integrated::Bool
 
@@ -36,8 +36,8 @@ mutable struct SpecLineVoigt <: AbstractComponent
         @assert center > 0
         out.norm.low = 0
         out.center.low = 0
-        out.fwhm_g.low = 0
-        out.fwhm_l.low = 0
+        out.fwhm.low = 0
+        out.gamma.low = 0
         out.voff.low = 0
         out.center.fixed = true
         return out
@@ -49,13 +49,13 @@ function prepare!(comp::SpecLineVoigt, domain::Domain{1})
 end
 
 function evaluate!(buffer, comp::SpecLineVoigt, x::Domain{1},
-                   norm, center, fwhm_g, fwhm_l, voff)
+                   norm, center, fwhm, gamma, voff)
 
     x0 = center - (voff / 3.e5) * center
-    sigma = fwhm_g / 3.e5 * center / 2.355
-    gamma = fwhm_l / 3.e5 * center / 2.
-    buffer .= norm .* voigt.(x .- x0, sigma, gamma)
-    comp.norm_integrated  ||  (buffer .*= (sigma * sqrt(2pi)))
+    σ = fwhm  / 3.e5 * center / 2.355
+    γ = gamma / 3.e5 * center / 2.
+    buffer .= norm .* voigt.(x .- x0, σ, γ)
+    comp.norm_integrated  ||  (buffer .*= (σ * sqrt(2pi)))
 end
 
 #=
