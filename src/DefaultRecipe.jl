@@ -14,7 +14,7 @@ function default_options(::Type{T}) where T <: DefaultRecipe
     out[:use_balmer] = true
     out[:use_ironuv] = true
     out[:use_ironopt] = true
-    out[:use_lorentzian_profiles] = false
+    out[:line_profiles] = :gauss
     out[:n_unk] = 10
     out[:unk_avoid] = [4863 .+ [-1,1] .* 50, 6565 .+ [-1,1] .* 150]
     out[:iron_broadening] = true
@@ -74,10 +74,15 @@ function LineComponent(source::QSO{T}, line::GenericLine, multicomp::Bool) where
     else
         λ = λ[1]
     end
-    if source.options[:use_lorentzian_profiles]
-        comp = SpecLineLorentz(λ)
-    else
+    @assert source.options[:line_profiles] in [:gauss, :lorentz, :voigt]
+    if source.options[:line_profiles] == :gauss
         comp = SpecLineGauss(λ)
+    elseif source.options[:line_profiles] == :lorentz
+        comp = SpecLineLorentz(λ)
+    elseif source.options[:line_profiles] == :voigt
+        comp = SpecLineVoigt(λ)
+    else
+        error("options[:line_profiles] must be one of: :gauss, :lorentz, :voigt.")
     end
     comp.norm_integrated = source.options[:norm_integrated]
     return LineComponent(line, comp, multicomp)
