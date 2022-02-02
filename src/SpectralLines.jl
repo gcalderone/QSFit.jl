@@ -94,7 +94,7 @@ struct MultiCompLine <: AbstractLine
     cname::Symbol
     tid::Symbol
     types::Vector{Type}
-    MultiCompLine(tid::Symbol, types::Vector{Type}; cname=tid) = new(Symbol(cname), tid, types)
+    MultiCompLine(tid::Symbol, types::Vector{DataType}; cname=tid) = new(Symbol(cname), tid, types)
 end
 
 struct LineComponent
