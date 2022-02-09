@@ -6,14 +6,14 @@ mutable struct SpecLineLorentz <: AbstractComponent
     center::Parameter
     fwhm::Parameter
     voff::Parameter
-    norm_integrated::Bool
+    spec_res_kms::Float64
 
     function SpecLineLorentz(center::Number)
         out = new(Parameter(1),
                   Parameter(center),
                   Parameter(3000),
                   Parameter(0),
-                  true)
+                  0.)
         @assert center > 0
         out.norm.low = 0
         out.center.low = 0
@@ -31,22 +31,16 @@ end
 function evaluate!(buffer, comp::SpecLineLorentz, x::Domain{1},
                    norm, center, fwhm, voff)
     x0 = center - (voff / 3.e5) * center
-    hwhm = fwhm / 3.e5 * center / 2  # Note: this is in the same units as `center`
-    map!(x -> begin
-         (abs.(x) .> 20)  &&  (return 0.)
-         ret = norm ./ (1 .+ x.^2.)
-         comp.norm_integrated  &&  (ret /= (pi * hwhm))
-         return ret
-         end,
-         buffer, (x .- x0) ./ hwhm)
+    σ_res = comp.spec_res_kms / 3.e5 * center
+    γ = fwhm / 2              / 3.e5 * center
+    X = x .- x0
+
+    function profile(x)
+        if σ_res > 0.
+            return norm * voigt.(x, σ_res, γ)
+        else
+            return norm / (1 + (x/γ)^2) / pi / γ
+        end
+    end
+    map!(profile, buffer, X)
 end
-
-
-#=
-    x = Domain(500:1:1500.)
-    comp = QSFit.SpecLineLorentz(1000.)
-    comp.fwhm.val = 3e4
-    ceval = GFit.CompEval(comp, x)
-    evaluate!(ceval)
-    @gp x[:] ceval.buffer ./ maximum(ceval.buffer) "w l"
-=#

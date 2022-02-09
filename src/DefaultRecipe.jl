@@ -19,7 +19,6 @@ function default_options(::Type{T}) where T <: DefaultRecipe
     out[:unk_avoid] = [4863 .+ [-1,1] .* 50, 6565 .+ [-1,1] .* 150]
     out[:iron_broadening] = true
     out[:line_broadening] = true
-    out[:norm_integrated] = true
     return out
 end
 
@@ -52,7 +51,7 @@ function known_spectral_lines(source::QSO{T}) where T <: DefaultRecipe
         MultiCompLine(                      :Hb                      , [BroadLine, NarrowLine]),
         NarrowLine(                         :OIII_4959              ),
         NarrowLine(                         :OIII_5007              ),
-        AsymmTailLine(                      :OIII_5007               , :blue),
+        # TODO NarrowLine(                         :OIII_5007_bw           ),
         BroadLine(                          :HeI_5876               ),
         NarrowLine(                         :OI_6300                ),
         NarrowLine(                         :OI_6364                ),
@@ -84,7 +83,6 @@ function LineComponent(source::QSO{T}, line::GenericLine, multicomp::Bool) where
     else
         error("options[:line_profiles] must be one of: :gauss, :lorentz, :voigt.")
     end
-    comp.norm_integrated = source.options[:norm_integrated]
     return LineComponent(line, comp, multicomp)
 end
 
@@ -110,6 +108,14 @@ function LineComponent(source::QSO{T}, line::NarrowLine, multicomp::Bool) where 
     comp.fwhm.high = (multicomp  ?  1e3  :  2e3)
     comp.voff.low  = -1e3
     comp.voff.high =  1e3
+
+    # TODO
+    # if line.cname == "OIII_5007_bw"
+    #     comp.fwhm.val  = 500
+    #     comp.fwhm.high = 1e3
+    #     comp.voff.low  = 0
+    #     comp.voff.high = 2e3
+    # end
     return LineComponent(line, comp, multicomp)
 end
 
@@ -121,16 +127,6 @@ function LineComponent(source::QSO{T}, line::BroadBaseLine, multicomp::Bool) whe
     comp.voff.fixed = true
     return LineComponent(line, comp, multicomp)
 end
-
-function LineComponent(source::QSO{T}, line::AsymmTailLine, multicomp::Bool) where T <: DefaultRecipe
-    comp = LineComponent(source, GenericLine(line.tid), multicomp).comp
-    comp.fwhm.val  = 500
-    comp.fwhm.high = 1e3
-    comp.voff.low  = line.side == :blue ?    0  :  2e3
-    comp.voff.high = line.side == :blue ?  2e3  :    0
-    return LineComponent(line, comp, multicomp)
-end
-
 
 function PreparedSpectrum(source::QSO{T}; id=1) where T <: DefaultRecipe
     data = deepcopy(source.specs[id])
@@ -373,7 +369,6 @@ end
 function add_emission_lines!(source::QSO{T}, pspec::PreparedSpectrum, model::Model) where T <: DefaultRecipe
     groups = OrderedDict{Symbol, Vector{Symbol}}()
     for (cname, lc) in pspec.lcs
-        lc.comp.norm_integrated = source.options[:norm_integrated]
 
         # If the line profile is a Gaussian one we can easily take
         # spectral resolution into account.  This is significantly
@@ -430,10 +425,12 @@ function add_patch_functs!(source::QSO{T}, pspec::PreparedSpectrum, model::Model
         # model[:OIII_4959].norm = model[:OIII_5007].norm / 3
         model[:OIII_4959].voff = model[:OIII_5007].voff
     end
+    #= TODO
     @try_patch! begin
         model[:OIII_5007_bw].voff += model[:OIII_5007].voff
         model[:OIII_5007_bw].fwhm += model[:OIII_5007].fwhm
     end
+    =#
     @try_patch! begin
         # model[:OI_6300].norm = model[:OI_6364].norm / 3
         model[:OI_6300].voff = model[:OI_6364].voff
@@ -500,7 +497,6 @@ function add_unknown_lines!(source::QSO{T}, pspec::PreparedSpectrum, model::Mode
     λ = domain(model)[:]
     for i in 1:source.options[:n_unk]
         model[Symbol(:unk, i)] = default_unk_line(source)
-        model[Symbol(:unk, i)].norm_integrated = source.options[:norm_integrated]
     end
     model[:UnkLines] = SumReducer([Symbol(:unk, i) for i in 1:source.options[:n_unk]])
     push!(model[:main].list, :UnkLines)

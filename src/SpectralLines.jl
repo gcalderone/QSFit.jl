@@ -1,5 +1,5 @@
 export transition, custom_transition,
-    AbstractLine, GenericLine, BroadLine, NarrowLine, BroadBaseLine, AsymmTailLine, MultiCompLine, LineComponent
+    AbstractLine, GenericLine, BroadLine, NarrowLine, BroadBaseLine, MultiCompLine, LineComponent
 
 const transitions_db = DataFrame()
 
@@ -76,19 +76,6 @@ end
 @define_line BroadLine     _br  BroadLines
 @define_line NarrowLine    _na  NarrowLines
 @define_line BroadBaseLine _bb  BroadBaseLines
-
-struct AsymmTailLine <: AbstractLine
-    cname::Symbol
-    tid::Symbol
-    side::Symbol
-
-    function AsymmTailLine(tid::Symbol, side::Symbol; cname=tid)
-        @assert side in (:red, :blue)
-        new(Symbol(cname), tid, side)
-    end
-end
-suffix(line::AsymmTailLine, multicomp::Bool) = line.side == :blue ?  :_bw  :  :_rw
-group(::AsymmTailLine) = :AsymmTailLines
 
 struct MultiCompLine <: AbstractLine
     cname::Symbol
