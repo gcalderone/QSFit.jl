@@ -51,7 +51,7 @@ function known_spectral_lines(source::QSO{T}) where T <: DefaultRecipe
         MultiCompLine(                      :Hb                      , [BroadLine, NarrowLine]),
         NarrowLine(                         :OIII_4959              ),
         NarrowLine(                         :OIII_5007              ),
-        # TODO NarrowLine(                         :OIII_5007_bw           ),
+        NarrowLine(   cname=:OIII_5007_bw,  :OIII_5007              ),
         BroadLine(                          :HeI_5876               ),
         NarrowLine(                         :OI_6300                ),
         NarrowLine(                         :OI_6364                ),
@@ -109,13 +109,12 @@ function LineComponent(source::QSO{T}, line::NarrowLine, multicomp::Bool) where 
     comp.voff.low  = -1e3
     comp.voff.high =  1e3
 
-    # TODO
-    # if line.cname == "OIII_5007_bw"
-    #     comp.fwhm.val  = 500
-    #     comp.fwhm.high = 1e3
-    #     comp.voff.low  = 0
-    #     comp.voff.high = 2e3
-    # end
+    if line.cname == :OIII_5007_bw
+        comp.fwhm.val  = 500
+        comp.fwhm.high = 1e3
+        comp.voff.low  = 0
+        comp.voff.high = 2e3
+    end
     return LineComponent(line, comp, multicomp)
 end
 
@@ -421,12 +420,10 @@ function add_patch_functs!(source::QSO{T}, pspec::PreparedSpectrum, model::Model
         # model[:OIII_4959].norm = model[:OIII_5007].norm / 3
         model[:OIII_4959].voff = model[:OIII_5007].voff
     end
-    #= TODO
     @try_patch! begin
         model[:OIII_5007_bw].voff += model[:OIII_5007].voff
         model[:OIII_5007_bw].fwhm += model[:OIII_5007].fwhm
     end
-    =#
     @try_patch! begin
         # model[:OI_6300].norm = model[:OI_6364].norm / 3
         model[:OI_6300].voff = model[:OI_6364].voff
