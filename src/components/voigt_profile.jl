@@ -59,7 +59,7 @@ fwhm = 2e3
 function plot_line(x, type, title; style="", log_a=nothing, spec_res=0.)
     comp = type(1e3)
     comp.fwhm.val = 2e3
-    comp.spec_res_kms = spec_res
+    comp.resolution = spec_res
     isnothing(log_a)  ||  (comp.log_a.val = log_a)
     ceval = GFit.CompEval(comp, x)
     evaluate!(ceval);
@@ -76,9 +76,9 @@ plot_line(x, QSFit.SpecLineVoigt  , "Voigt (log_a=0)" , log_a=0 , style="lw 2")
 plot_line(x, QSFit.SpecLineVoigt  , "Voigt (log_a=1)" , log_a=1 , style="dt 2 lw 2")
 
 
-plot_line(x, spec_res=500., QSFit.SpecLineGauss  , "Gaussian")
-plot_line(x, spec_res=500., QSFit.SpecLineLorentz, "Lorentzian")
-plot_line(x, spec_res=500., QSFit.SpecLineVoigt  , "Voigt (log_a=1)" , log_a=1 , style="dt 2 lw 2")
-plot_line(x, spec_res=500., QSFit.SpecLineVoigt  , "Voigt (log_a=0)" , log_a=0 , style="lw 2")
-plot_line(x, spec_res=500., QSFit.SpecLineVoigt  , "Voigt (log_a=-1)", log_a=-1, style="dt 2 lw 2")
+plot_line(x, spec_res=1e3, QSFit.SpecLineGauss  , "Gaussian")
+plot_line(x, spec_res=1e3, QSFit.SpecLineLorentz, "Lorentzian")
+plot_line(x, spec_res=1e3, QSFit.SpecLineVoigt  , "Voigt (log_a=1)" , log_a=1 , style="dt 2 lw 2")
+plot_line(x, spec_res=1e3, QSFit.SpecLineVoigt  , "Voigt (log_a=0)" , log_a=0 , style="lw 2")
+plot_line(x, spec_res=1e3, QSFit.SpecLineVoigt  , "Voigt (log_a=-1)", log_a=-1, style="dt 2 lw 2")
 =#

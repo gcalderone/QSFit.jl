@@ -135,7 +135,7 @@ function PreparedSpectrum(source::QSO{T}; id=1) where T <: DefaultRecipe
     if goodfraction(data) < 0.5
         error("Good fraction < 0.5")
     end
-    println(logio(source), "  resolution: ", @sprintf("%.4g", data.resolution), " km / s (1σ)")
+    println(logio(source), "  resolution: ", @sprintf("%.4g", data.resolution), " km / s (FWHM)")
 
     λ = data.λ ./ (1 + source.z)
     data.good[findall(λ .< source.options[:wavelength_range][1])] .= false
@@ -315,7 +315,7 @@ function add_iron_uv!(source::QSO{T}, pspec::PreparedSpectrum, model::Model) whe
     if source.options[:use_ironuv]
         fwhm = 3000.
         if source.options[:iron_broadening]
-            fwhm = sqrt(fwhm^2 + (pspec.orig.resolution * 2.355)^2)
+            fwhm = sqrt(fwhm^2 + pspec.orig.resolution^2)
         end
         comp = QSFit.ironuv(fwhm)
         (_1, _2, coverage) = spectral_coverage(λ, pspec.orig.resolution, comp)
@@ -339,7 +339,7 @@ function add_iron_opt!(source::QSO{T}, pspec::PreparedSpectrum, model::Model) wh
     if source.options[:use_ironopt]
         fwhm = 3000.
         if source.options[:iron_broadening]
-            fwhm = sqrt(fwhm^2 + (pspec.orig.resolution * 2.355)^2)
+            fwhm = sqrt(fwhm^2 + pspec.orig.resolution^2)
         end
         comp = QSFit.ironopt_broad(fwhm)
         (_1, _2, coverage) = spectral_coverage(λ, pspec.orig.resolution, comp)
@@ -347,7 +347,7 @@ function add_iron_opt!(source::QSO{T}, pspec::PreparedSpectrum, model::Model) wh
         if coverage >= threshold
             fwhm = 500.
             if source.options[:iron_broadening]
-                fwhm = sqrt(fwhm^2 + (pspec.orig.resolution * 2.355)^2)
+                fwhm = sqrt(fwhm^2 + pspec.orig.resolution^2)
             end
             model[:ironoptbr] = comp
             model[:ironoptna] = QSFit.ironopt_narrow(fwhm)
@@ -370,20 +370,16 @@ function add_emission_lines!(source::QSO{T}, pspec::PreparedSpectrum, model::Mod
     groups = OrderedDict{Symbol, Vector{Symbol}}()
     for (cname, lc) in pspec.lcs
 
-        # If the line profile is a Gaussian one we can easily take
-        # spectral resolution into account.  This is significantly
-        # faster than convolving the whole model with an instrument
-        # response but has some limitations:
-        # - works only with Gaussian profiles;
+        # All QSFit line progiles take spectral resolution into
+        # account.  This is significantly faster than convolving the
+        # whole model with an instrument response but has some
+        # limitations:
+        # - works only with built-in profiles (Gaussian, Lorentzian, Voigt);
         # - all components must be additive (i.e. no absorptions);
         # - further narrow components (besides known emission lines)
         #   will not be corrected for instrumental resolution.
         if source.options[:line_broadening]
-            if isa(lc.comp, QSFit.SpecLineGauss)
-                lc.comp.spec_res_kms = pspec.orig.resolution
-            else
-                println(logio(source), "WARNING: Line broadening works only on SpecLineGauss components, while $cname is a $(typeof(lc.comp))")
-            end
+            lc.comp.resolution = pspec.orig.resolution
         end
 
         model[cname] = lc.comp

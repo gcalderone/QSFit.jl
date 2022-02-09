@@ -6,7 +6,7 @@ mutable struct SpecLineLorentz <: AbstractComponent
     center::Parameter
     fwhm::Parameter
     voff::Parameter
-    spec_res_kms::Float64
+    resolution::Float64
 
     function SpecLineLorentz(center::Number)
         out = new(Parameter(1),
@@ -31,8 +31,8 @@ end
 function evaluate!(buffer, comp::SpecLineLorentz, x::Domain{1},
                    norm, center, fwhm, voff)
     x0 = center - (voff / 3.e5) * center
-    σ_res = comp.spec_res_kms / 3.e5 * center
-    γ = fwhm / 2              / 3.e5 * center
+    σ_res = comp.resolution / 2.355 / 3.e5 * center
+    γ     = fwhm            / 2     / 3.e5 * center
     X = x .- x0
 
     function profile(x)

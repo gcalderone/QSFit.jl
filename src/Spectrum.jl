@@ -23,7 +23,7 @@ struct Spectrum
     flux::Vector{Float64}
     err::Vector{Float64}
     good::Vector{Bool}
-    resolution::Float64  # σ km/s
+    resolution::Float64  # FWHM km/s
     meta::Dict{Symbol, Any}
     function Spectrum(λ::Vector{T}, flux::Vector{T}, err::Vector{T};
                       good::Union{Nothing, Vector{Bool}}=nothing,
@@ -66,7 +66,11 @@ function Spectrum(λ::Vector{T1}, flux::Vector{T2}, err::Vector{T2}; kw...) wher
 end
 
 
-function Spectrum(::Val{:SDSS_DR10}, file::AbstractString; ndrop=100, resolution=150.)  # TODO: Check resolution is correct
+# Resolution is ~150 km/s FWHM
+# (https://www.sdss.org/dr12/spectro/spectro_basics/.) Analysis of an
+# HII region (e.g. spec-1176-52791-0591) yield 180 km/s FWHM for the
+# [OIII]5007)
+function Spectrum(::Val{:SDSS_DR10}, file::AbstractString; ndrop=100, resolution=150.)
     f = FITS(file)
     λ = 10 .^read(f[2], "loglam")
     flux = float.(read(f[2], "flux"))

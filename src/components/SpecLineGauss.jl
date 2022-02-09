@@ -6,7 +6,7 @@ mutable struct SpecLineGauss <: AbstractComponent
     center::Parameter
     fwhm::Parameter
     voff::Parameter
-    spec_res_kms::Float64
+    resolution::Float64
 
     function SpecLineGauss(center::Number)
         out = new(Parameter(1),
@@ -31,8 +31,8 @@ end
 function evaluate!(buffer, comp::SpecLineGauss, x::Domain{1},
                    norm, center, fwhm, voff)
     x0 = center - (voff / 3.e5) * center
-    σ_res = comp.spec_res_kms / 3.e5 * center
-    σ     = fwhm / 2.355      / 3.e5 * center
+    σ_res = comp.resolution / 2.355 / 3.e5 * center
+    σ     = fwhm            / 2.355 / 3.e5 * center
     σ = sqrt(σ^2 + σ_res^2)
     X = (x .- x0) ./ σ
 
