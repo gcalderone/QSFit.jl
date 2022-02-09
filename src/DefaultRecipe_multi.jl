@@ -15,10 +15,6 @@ function qsfit_multi(source::QSO{TRecipe}; ref_id=1) where TRecipe <: DefaultRec
         select_reducer!(model, :main)
         delete!(model.revals, :default_sum)
 
-        # TODO if source.options[:instr_broadening]
-        # TODO     GFit.set_instr_response!(model[1], (l, f) -> instrumental_broadening(l, f, source.spectra[id].resolution))
-        # TODO end
-
         QSFit.add_qso_continuum!(source, pspec, model)
         QSFit.add_host_galaxy!(source, pspec, model)
         QSFit.add_balmer_cont!(source, pspec, model)

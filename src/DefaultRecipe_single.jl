@@ -10,10 +10,6 @@ function qsfit(source::QSO{TRecipe}) where TRecipe <: DefaultRecipe
     select_reducer!(model, :main)
     delete!(model.revals, :default_sum)
 
-    # TODO if source.options[:instr_broadening]
-    # TODO     GFit.set_instr_response!(model[1], (l, f) -> instrumental_broadening(l, f, source.spectra[id].resolution))
-    # TODO end
-
     println(logio(source), "\nFit continuum components...")
     QSFit.add_qso_continuum!(source, pspec, model)
     QSFit.add_host_galaxy!(source, pspec, model)

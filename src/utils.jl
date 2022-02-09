@@ -40,10 +40,10 @@ function estimate_fwhm(λ, f)
 end
 
 
-# Wavelength span is assumed to be equal to the initial FWHM + σ_resolution
-# TODO: in the Voigt case here we only consider the Guassian part but the total FWHM may be larger.
+# Wavelength span is assumed to be equal to the initial FWHM plus the
+# spectral resolution (in quadrature)
 spectral_coverage(spec_λ, resolution, line::Union{SpecLineGauss, SpecLineLorentz, SpecLineVoigt}; kw...) =
-    spectral_coverage(spec_λ, resolution, line.center.val, line.center.val * (line.fwhm.val + resolution) / 3.e5; kw...)
+    spectral_coverage(spec_λ, resolution, line.center.val, line.center.val * sqrt(line.fwhm.val^2 + resolution^2) / 3.e5; kw...)
 
 function spectral_coverage(spec_λ, resolution, comp::ironuv; kw...)
     rr = extrema(ironuv_read()[1])
