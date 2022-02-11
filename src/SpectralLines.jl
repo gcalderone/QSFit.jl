@@ -97,14 +97,14 @@ function collect_LineComponent(source::QSO)
             for t in line.types
                 nn = Symbol(line.cname, suffix(t(line.tid), true))
                 (nn in source.options[:skip_lines])  &&  continue
-                @assert !haskey(out, nn)
+                @assert !haskey(out, nn) "Duplicated line name in known_spectral_lines(): $nn"
                 lc = LineComponent(source, t(line.tid), true)
                 out[nn] = lc
             end
         else
             nn = Symbol(line.cname, suffix(line, false))
             (nn in source.options[:skip_lines])  &&  continue
-            @assert !haskey(out, nn)
+            @assert !haskey(out, nn) "Duplicated line name in known_spectral_lines(): $nn"
             out[nn] = LineComponent(source, line, false)
         end
     end
