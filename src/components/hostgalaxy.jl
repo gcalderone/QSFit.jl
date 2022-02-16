@@ -5,12 +5,12 @@ function list_hostgalaxy_templates()
     for file in readdir(joinpath(qsfit_data(), "swire"))
         m = match(r"(.*)_template_norm.sed", file)
         isnothing(m)  &&  continue
-        println("Dict(:library=\"swire\", :template=\"$(m.captures[1])\")")
+        println("Dict(:library=>\"swire\", :template=>\"$(m.captures[1])\")")
     end
     for file in readdir(joinpath(qsfit_data(), "ILBERT2009"))
-        m = match(r"(.*).sed", file)
+        m = match(r"(.*).sed$", file)
         isnothing(m)  &&  continue
-        println("Dict(:library=\"ILBERT2009\", :template=\"$(m.captures[1])\")")
+        println("Dict(:library=>\"ILBERT2009\", :template=>\"$(m.captures[1])\")")
     end
 end
 
