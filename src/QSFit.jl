@@ -5,7 +5,7 @@ export QSO, parent_recipe, add_spec!, logio, close_logio, PreparedSpectrum
 import GFit: Domain, CompEval,
     Parameter, AbstractComponent, prepare!, evaluate!, fit!
 
-using CMPFit, GFit
+using CMPFit, GFit, SortMerge
 using Pkg, Pkg.Artifacts
 using Statistics, DelimitedFiles, Dierckx, Printf, DataStructures
 using Unitful, UnitfulAstro

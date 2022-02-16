@@ -9,7 +9,7 @@ function default_options(::Type{T}) where T <: DefaultRecipe
                                        :ironuv  => 0.3,
                                        :ironopt => 0.3)
     out[:skip_lines] = Symbol[]
-    out[:host_template] = "Ell5"
+    out[:host_template] = Dict(:library=>"swire", :template=>"Ell5")
     out[:use_host_template] = true
     out[:use_balmer] = true
     out[:use_ironuv] = true

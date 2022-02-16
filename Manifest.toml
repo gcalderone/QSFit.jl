@@ -618,6 +618,12 @@ uuid = "1a1011a3-84de-559e-8e89-a11a2f7dc383"
 [[deps.Sockets]]
 uuid = "6462fe0b-24de-5631-8697-dd941f90decc"
 
+[[deps.SortMerge]]
+deps = ["Printf", "ProgressMeter", "SparseArrays", "StatsBase"]
+git-tree-sha1 = "60365e5708520adce30fe564f4b226eaa9faec88"
+uuid = "041a2d23-8c6e-5597-be73-bf96b5e0dfd4"
+version = "1.3.4"
+
 [[deps.SortingAlgorithms]]
 deps = ["DataStructures"]
 git-tree-sha1 = "b3363d7460f7d098ca0912c69b082f75625d7508"
