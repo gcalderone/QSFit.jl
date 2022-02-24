@@ -46,8 +46,8 @@ struct Spectrum
         # Estimate sampling resolution in km/s
         sampling_res = median((λ[2:end] .- λ[1:end-1]) ./ ((λ[2:end] .+ λ[1:end-1]) ./ 2)) * 3e5
         if isnan(resolution)
-            @warn "Resolution is not provided, assuming it is equal to twice the sampling resolution..."
             resolution = 2 * sampling_res
+            @warn "Resolution is not provided, assuming it is equal to twice the sampling resolution: $resolution km/s"
         end
         @assert sampling_res < resolution "Estimated resolution ($sampling_res) < provided resolution ($resolution)"
 
