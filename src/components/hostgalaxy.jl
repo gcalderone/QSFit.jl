@@ -2,16 +2,20 @@
 # hostgalaxy
 #
 function list_hostgalaxy_templates()
+    out = Vector{Dict}()
     for file in readdir(joinpath(qsfit_data(), "swire"))
         m = match(r"(.*)_template_norm.sed", file)
         isnothing(m)  &&  continue
-        println("Dict(:library=>\"swire\", :template=>\"$(m.captures[1])\")")
+        d = Dict(:library=>"swire", :template=>string(m.captures[1]))
+        push!(out, d)
     end
     for file in readdir(joinpath(qsfit_data(), "ILBERT2009"))
         m = match(r"(.*).sed$", file)
         isnothing(m)  &&  continue
-        println("Dict(:library=>\"ILBERT2009\", :template=>\"$(m.captures[1])\")")
+        d = Dict(:library=>"ILBERT2009", :template=>string(m.captures[1]))
+        push!(out, d)
     end
+    return out
 end
 
 
@@ -65,3 +69,21 @@ function evaluate!(buffer, comp::hostgalaxy, domain::Domain{1},
                    norm)
     buffer .= norm .* comp.base
 end
+
+
+#=
+using GFit, QSFit, Gnuplot
+
+Gnuplot.quitall()
+x = Domain(3e3:1.:2e4)
+for t in QSFit.list_hostgalaxy_templates()
+    (Symbol(t[:library]) in Gnuplot.session_names())  ||  (@gp Symbol(t[:library]) xr=[3500,6700] "set grid" :-)
+    comp = QSFit.hostgalaxy(t)
+    ceval = GFit.CompEval(comp, x)
+    evaluate!(ceval);
+    @gp Symbol(t[:library]) :- x[:] ceval.buffer "w l t '$(t[:template])'" :-
+end
+for sid in Gnuplot.session_names()
+    @gp sid :-
+end
+=#
