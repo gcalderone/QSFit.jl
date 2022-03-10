@@ -17,6 +17,7 @@ using TextParse, DataFrames
 include("cosmology.jl")
 include("ccm_unred.jl")
 include("components/powerlaw.jl")
+include("components/sbpl.jl")
 include("components/cutoff_powerlaw.jl")
 include("components/hostgalaxy.jl")
 include("components/ironopt.jl")
