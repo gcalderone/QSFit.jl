@@ -238,8 +238,8 @@ function add_host_galaxy!(source::QSO{T}, pspec::PreparedSpectrum, model::Model)
 
         # Split total flux between continuum and host galaxy
         vv = Spline1D(λ, pspec.data.val, k=1, bc="error")(5500.)
-        model[:galaxy].norm.val  = 1/2 * vv
-        model[:qso_cont].x0.val *= 1/2 * vv / Spline1D(λ, model(:qso_cont), k=1, bc="error")(5500.)
+        model[:galaxy].norm.val    = 1/2 * vv
+        model[:qso_cont].norm.val *= 1/2 * vv / Spline1D(λ, model(:qso_cont), k=1, bc="error")(5500.)
         evaluate!(model)
     end
 end
