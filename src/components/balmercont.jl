@@ -142,23 +142,3 @@ function evaluate!(buffer, comp::balmercont, domain::Domain{1},
                    norm, ratio)
     buffer .= norm .* (comp.c1 .+ ratio .* comp.c2)
 end
-
-
-
-#=
-x = Domain(1000.:4500)
-model = Model(x, :c => QSFit.balmercont(0.1, 0.5))
-@gp x[:] model() "w l"
-
-
-@gp "set grid" :-
-@gp :- xlab="Wavelength [A]" ylab="Lum. density [arb.units]" :-
-@gp :- 3645.07.*[1,1] [0, 1.1] "w l dt 4 lc rgb 'black'" :-
-model[:c].norm.val = 0.5
-model[:c].ratio.val = 1
-evaluate!(model)
-@gp :- x[:] model() "w l lw 2 lc rgb 'red'"
-model[:c].ratio.val = 0.5
-evaluate!(model)
-@gp :- x[:] model() "w l lw 2 lc rgb 'blue'"
-=#

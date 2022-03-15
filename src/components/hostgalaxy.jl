@@ -69,21 +69,3 @@ function evaluate!(buffer, comp::hostgalaxy, domain::Domain{1},
                    norm)
     buffer .= norm .* comp.base
 end
-
-
-#=
-using GFit, QSFit, Gnuplot
-
-Gnuplot.quitall()
-x = Domain(3e3:1.:2e4)
-for t in QSFit.list_hostgalaxy_templates()
-    (Symbol(t[:library]) in Gnuplot.session_names())  ||  (@gp Symbol(t[:library]) xr=[3500,6700] "set grid" :-)
-    comp = QSFit.hostgalaxy(t)
-    ceval = GFit.CompEval(comp, x)
-    evaluate!(ceval);
-    @gp Symbol(t[:library]) :- x[:] ceval.buffer "w l t '$(t[:template])'" :-
-end
-for sid in Gnuplot.session_names()
-    @gp sid :-
-end
-=#

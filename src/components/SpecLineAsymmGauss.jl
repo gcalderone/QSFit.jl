@@ -47,14 +47,3 @@ function evaluate!(buffer, comp::SpecLineAsymmGauss, x::Domain{1},
     append!(comp.index, i)
     buffer[i] .= norm * exp.(-X[i].^2 ./ 2) ./ sqrt(2pi) * sigma0
 end
-
-
-#=
-    x = Domain(500:1:1500.)
-    comp = QSFit.SpecLineAsymmGauss(1000.)
-    comp.fwhm.val = 3e4
-    comp.asymm.val = 1
-    ceval = GFit.CompEval(comp, x)
-    GFit.evaluate!(ceval);
-    @gp x[:] ceval.buffer "w l"
-=#

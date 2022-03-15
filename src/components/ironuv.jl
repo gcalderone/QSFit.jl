@@ -51,12 +51,3 @@ function evaluate!(buffer, comp::ironuv, domain::Domain{1},
                    norm)
     buffer .= norm .* comp.L
 end
-
-
-#=
-    x = Domain(1e3:1:3.5e3)
-    comp = QSFit.ironuv(3000.)
-    ceval = GFit.CompEval(comp, x)
-    GFit.evaluate_cached(ceval)
-    @gp x[:] ceval.buffer ./ maximum(ceval.buffer) "w l"
-=#

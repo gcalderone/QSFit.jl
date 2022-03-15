@@ -52,28 +52,3 @@ function evaluate!(buffer, comp::sbpl, x::Domain{1},
             ((0.5 .* (1 .+ xx[i].^(1/delta))) .^((alpha2 - alpha1) * delta))
     end
 end
-
-
-#=
-
-x = Domain(0.7:0.01:500)
-
-comp = QSFit.sbpl(20)
-comp.alpha1.val =  2
-comp.alpha2.val = -2
-comp.delta.val = 0.5
-ceval = GFit.CompEval(comp, x)
-
-ceval.comp.delta.val = 0.5
-evaluate!(ceval);
-@gp x[:] ceval.buffer "w l" xlog=true ylog=true
-
-ceval.comp.delta.val = 0.3
-evaluate!(ceval);
-@gp :- x[:] ceval.buffer "w l" xlog=true ylog=true
-
-ceval.comp.delta.val = 0.1
-evaluate!(ceval);
-@gp :- x[:] ceval.buffer "w l" xlog=true ylog=true
-
-=#
