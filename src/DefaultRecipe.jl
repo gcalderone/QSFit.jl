@@ -9,16 +9,22 @@ function default_options(::Type{T}) where T <: DefaultRecipe
                                        :ironuv  => 0.3,
                                        :ironopt => 0.3)
     out[:skip_lines] = Symbol[]
+
     out[:host_template] = Dict(:library=>"swire", :template=>"Ell5")
     out[:use_host_template] = true
+    out[:host_template_range] = [4000., 7000.]
+
     out[:use_balmer] = true
-    out[:use_ironuv] = true
-    out[:use_ironopt] = true
+    out[:use_ironuv] = true;      out[:ironuv_fwhm]    = 3000.
+    out[:use_ironopt] = true;     out[:ironoptbr_fwhm] = 3000.;  out[:ironoptna_fwhm] =  500.
+
     out[:line_profiles] = :gauss
+    out[:line_broadening] = true
+    out[:iron_broadening] = true
+
     out[:n_unk] = 10
     out[:unk_avoid] = [4863 .+ [-1,1] .* 50, 6565 .+ [-1,1] .* 150]
-    out[:iron_broadening] = true
-    out[:line_broadening] = true
+
     return out
 end
 
@@ -232,14 +238,15 @@ end
 function add_host_galaxy!(source::QSO{T}, pspec::PreparedSpectrum, model::Model) where T <: DefaultRecipe
     λ = domain(model)[:]
     if source.options[:use_host_template]  &&
-        (minimum(λ) .< 5500 .< maximum(λ))
+        (source.options[:host_template_range][1] .< maximum(λ))  &&
+        (source.options[:host_template_range][2] .> minimum(λ))
         model[:galaxy] = QSFit.hostgalaxy(source.options[:host_template])
         push!(model[:Continuum].list, :galaxy)
 
         # Split total flux between continuum and host galaxy
-        vv = Spline1D(λ, pspec.data.val, k=1, bc="error")(5500.)
+        vv = Spline1D(λ, pspec.data.val, k=1, bc="extrapolate")(5500.)
         model[:galaxy].norm.val    = 1/2 * vv
-        model[:qso_cont].norm.val *= 1/2 * vv / Spline1D(λ, model(:qso_cont), k=1, bc="error")(5500.)
+        model[:qso_cont].norm.val *= 1/2 * vv / Spline1D(λ, model(:qso_cont), k=1, bc="extrapolate")(5500.)
         evaluate!(model)
     end
 end
@@ -312,7 +319,7 @@ end
 function add_iron_uv!(source::QSO{T}, pspec::PreparedSpectrum, model::Model) where T <: DefaultRecipe
     λ = domain(model)[:]
     if source.options[:use_ironuv]
-        fwhm = 3000.
+        fwhm = source.options[:ironuv_fwhm]
         if source.options[:iron_broadening]
             fwhm = sqrt(fwhm^2 + pspec.orig.resolution^2)
         end
@@ -336,7 +343,7 @@ end
 function add_iron_opt!(source::QSO{T}, pspec::PreparedSpectrum, model::Model) where T <: DefaultRecipe
     λ = domain(model)[:]
     if source.options[:use_ironopt]
-        fwhm = 3000.
+        fwhm = source.options[:ironoptbr_fwhm]
         if source.options[:iron_broadening]
             fwhm = sqrt(fwhm^2 + pspec.orig.resolution^2)
         end
@@ -344,15 +351,15 @@ function add_iron_opt!(source::QSO{T}, pspec::PreparedSpectrum, model::Model) wh
         (_1, _2, coverage) = spectral_coverage(λ, pspec.orig.resolution, comp)
         threshold = get(source.options[:min_spectral_coverage], :ironopt, source.options[:min_spectral_coverage][:default])
         if coverage >= threshold
-            fwhm = 500.
+            model[:ironoptbr] = comp
+            model[:ironoptbr].norm.val = 1 # TODO: guess a sensible value
+            fwhm = source.options[:ironoptna_fwhm]
             if source.options[:iron_broadening]
                 fwhm = sqrt(fwhm^2 + pspec.orig.resolution^2)
             end
-            model[:ironoptbr] = comp
             model[:ironoptna] = QSFit.ironopt_narrow(fwhm)
-            model[:ironoptbr].norm.val = 1 # TODO: guess a sensible value
-            model[:ironoptna].norm.val = 0.0
-            freeze(model, :ironoptna)  # will be freed during last run
+            model[:ironoptna].norm.val = 1 # TODO: guess a sensible value
+            model[:ironoptna].norm.fixed = false
             push!(model[:Iron].list, :ironoptbr)
             push!(model[:Iron].list, :ironoptna)
             evaluate!(model)
