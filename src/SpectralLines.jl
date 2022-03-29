@@ -108,6 +108,9 @@ function collect_LineComponent(source::QSO)
             out[nn] = LineComponent(source, line, false)
         end
     end
+    ii = tuple.(getfield.(getfield.(getfield.(values(out), :comp), :center), :val), keys(out))
+    kk = collect(keys(out))[sortperm(ii)]
+    out = OrderedDict(Pair.(kk, getindex.(Ref(out), kk)))
     return out
 end
 
