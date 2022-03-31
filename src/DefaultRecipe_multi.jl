@@ -21,7 +21,7 @@ function qsfit_multi(source::QSO{TRecipe}; ref_id=1) where TRecipe <: DefaultRec
 
         push!(multi, model)
         if id != ref_id
-            @patch! multi[id][:galaxy].norm = multi[ref_id][:galaxy].norm
+            @try_patch! multi[id][:galaxy].norm = multi[ref_id][:galaxy].norm
         end
     end
     fitres = fit!(source, multi, pspecs)
