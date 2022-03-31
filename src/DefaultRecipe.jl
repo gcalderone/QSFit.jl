@@ -192,10 +192,14 @@ function PreparedSpectrum(source::QSO{T}; id=1) where T <: DefaultRecipe
     return PreparedSpectrum(id, data, dom, lum, lcs)
 end
 
+function minimizer(source::QSO{T}) where T <: DefaultRecipe
+    mzer = GFit.cmpfit()
+    mzer.Δfitstat_threshold = 1.e-5
+    return mzer
+end
 
 function fit!(source::QSO{T}, model::Model, pspec::PreparedSpectrum) where T <: DefaultRecipe
-    mzer = GFit.cmpfit()
-    mzer.Δfitstat_theshold = 1.e-5
+    mzer = minimizer(source)
     fitres = fit!(model, pspec.data, minimizer=mzer)
     show(logio(source), model)
     show(logio(source), fitres)
@@ -206,8 +210,7 @@ end
 
 
 function fit!(source::QSO{T}, multi::MultiModel, pspecs::Vector{PreparedSpectrum}) where T <: DefaultRecipe
-    mzer = GFit.cmpfit()
-    mzer.Δfitstat_theshold = 1.e-5
+    mzer = minimizer(source)
     fitres = fit!(multi, getfield.(pspecs, :data), minimizer=mzer)
     show(logio(source), multi)
     show(logio(source), fitres)
