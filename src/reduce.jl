@@ -8,6 +8,7 @@ function estimate_line_EWs(source::QSO{T}, pspec::PreparedSpectrum, model::Model
         haskey(model, lname) || continue
         cont .-= model(lname)
     end
+    @assert all(cont .> 0) "Continuum model is zero or negative"
     for (lname, lc) in pspec.lcs
         haskey(model, lname) || continue
         EW[lname] = int_tabulated(domain(model)[:],
@@ -38,3 +39,14 @@ end
 
 QSFitMultiResults(source::QSO{T}, pspecs::Vector{PreparedSpectrum}, multi::MultiModel, fitres::GFit.FitResult) where T <: AbstractRecipe =
     QSFitMultiResults{T}(source, pspecs, multi, fitres, [estimate_line_EWs(source, pspecs[id], multi[id]) for id in 1:length(multi)])
+
+
+function qsfit(res::QSFitResults{T}) where T
+    fitres = fit!(res.source, res.model, res.pspec)
+    return QSFitResults(res.source, res.pspec, res.model, fitres)
+end
+
+function qsfit(res::QSFitMultiResults{T}) where T
+    fitres = fit!(res.source, res.model, res.pspecs)
+    return QSFitMultiResults(res.source, res.pspecs, res.model, fitres)
+end

@@ -228,6 +228,7 @@ function add_qso_continuum!(source::QSO{T}, pspec::PreparedSpectrum, model::Mode
     comp = QSFit.powerlaw(3000)
     comp.x0.val = median(λ)
     comp.norm.val = Spline1D(λ, pspec.data.val, k=1, bc="error")(comp.x0.val)
+    comp.norm.low = comp.norm.val / 1000.  # ensure contiuum remains positive (needed to estimate EWs)
     comp.alpha.val  = -1.5
     comp.alpha.low  = -3
     comp.alpha.high =  1
