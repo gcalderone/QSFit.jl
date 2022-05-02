@@ -30,12 +30,19 @@ function convol(v, _k)
 end
 
 
-function estimate_fwhm(λ, f)
+function estimate_fwhm(λ, f; plot=false)
     i = argmax(f)
     maxv = f[i]
     i = findall(f .>= (maxv/2))
     (i1, i2) = extrema(i)
     fwhm = λ[i2] - λ[i1]
+    if plot
+        yr = [extrema(f)...]
+        @gp :estfwhm λ f "w l notit"
+        @gp :- :estfwhm λ[i1] .* [1,1] yr "w l notit lc rgb 'gray'"
+        @gp :- :estfwhm λ[i2] .* [1,1] yr "w l notit lc rgb 'gray'"
+        @gp :- :estfwhm Gnuplot.gpranges().x maxv/2 .* [1,1]  "w l notit lc rgb 'gray'"
+    end
     return fwhm
 end
 
