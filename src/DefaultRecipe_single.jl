@@ -1,61 +1,60 @@
-function qsfit(source::QSO{TRecipe}) where TRecipe <: DefaultRecipe
+function qsfit(source::Source, _job::Job{T}) where T <: DefaultRecipe
+    job = JobState{T}(source, _job)
     elapsed = time()
-    @assert length(source.specs) == 1
-    pspec = PreparedSpectrum(source, id=1)
+    model = job.model
 
-    model = Model(pspec.domain)
     model[:Continuum] = SumReducer([])
     model[:main] = SumReducer([])
     push!(model[:main].list, :Continuum)
     select_reducer!(model, :main)
     delete!(model.revals, :default_sum)
 
-    println(logio(source), "\nFit continuum components...")
-    QSFit.add_qso_continuum!(source, pspec, model)
-    QSFit.add_host_galaxy!(source, pspec, model)
-    QSFit.add_balmer_cont!(source, pspec, model)
-    fitres = fit!(source, model, pspec)
-    QSFit.renorm_cont!(source, pspec, model)
+    println(job.logio, "\nFit continuum components...")
+    add_qso_continuum!(job)
+    add_host_galaxy!(job)
+    add_balmer_cont!(job)
+    fitres = fit!(job)
+    renorm_cont!(job)
     freeze(model, :qso_cont)
     haskey(model, :galaxy)  &&  freeze(model, :galaxy)
     haskey(model, :balmer)  &&  freeze(model, :balmer)
     evaluate!(model)
 
-    println(logio(source), "\nFit iron templates...")
+    println(job.logio, "\nFit iron templates...")
     model[:Iron] = SumReducer([])
     push!(model[:main].list, :Iron)
-    QSFit.add_iron_uv!( source, pspec, model)
-    QSFit.add_iron_opt!(source, pspec, model)
+    add_iron_uv!( job)
+    add_iron_opt!(job)
 
     if length(model[:Iron].list) > 0
-        fitres = fit!(source, model, pspec)
+        fitres = fit!(job)
         haskey(model, :ironuv   )  &&  freeze(model, :ironuv)
         haskey(model, :ironoptbr)  &&  freeze(model, :ironoptbr)
         haskey(model, :ironoptna)  &&  freeze(model, :ironoptna)
     end
     evaluate!(model)
 
-    println(logio(source), "\nFit known emission lines...")
-    QSFit.add_emission_lines!(source, pspec, model)
-    QSFit.guess_emission_lines!(source, pspec, model)
-    QSFit.add_patch_functs!(source, pspec, model)
+    println(job.logio, "\nFit known emission lines...")
+    add_emission_lines!(job)
+    guess_emission_lines!(job)
+    add_patch_functs!(job)
 
-    fitres = fit!(source, model, pspec)
-    for lname in keys(pspec.lcs)
+    fitres = fit!(job)
+    for lname in keys(job.pspec.lcs)
         freeze(model, lname)
     end
 
-    println(logio(source), "\nFit unknown emission lines...")
-    QSFit.add_unknown_lines!(source, pspec, model)
+    println(job.logio, "\nFit unknown emission lines...")
+    add_unknown_lines!(job)
 
-    println(logio(source), "\nLast run with all parameters free...")
+    println(job.logio, "\nLast run with all parameters free...")
     thaw(model, :qso_cont)
     haskey(model, :galaxy   )  &&  thaw(model, :galaxy)
     haskey(model, :balmer   )  &&  thaw(model, :balmer)
     haskey(model, :ironuv   )  &&  thaw(model, :ironuv)
     haskey(model, :ironoptbr)  &&  thaw(model, :ironoptbr)
     haskey(model, :ironoptna)  &&  thaw(model, :ironoptna)
-    for lname in keys(pspec.lcs)
+    for lname in keys(job.pspec.lcs)
         thaw(model, lname)
     end
     for j in 1:source.options[:n_unk]
@@ -66,19 +65,19 @@ function qsfit(source::QSO{TRecipe}) where TRecipe <: DefaultRecipe
             freeze(model, cname)
         end
     end
-    fitres = fit!(source, model, pspec)
+    fitres = fit!(job)
 
-    if QSFit.neglect_weak_features!(source, pspec, model, fitres)
-        println(logio(source), "\nRe-run fit...")
-        fitres = fit!(source, model, pspec)
+    if neglect_weak_features!(job)
+        println(job.logio, "\nRe-run fit...")
+        fitres = fit!(job)
     end
 
-    println(logio(source))
-    show(logio(source), fitres)
+    println(job.logio)
+    show(job.logio, fitres)
 
-    out = QSFitResults(source, pspec, model, fitres)
+    out = QSFitResults(job, fitres)
     elapsed = time() - elapsed
-    println(logio(source), "\nElapsed time: $elapsed s")
-    close_logio(source)
+    println(job.logio, "\nElapsed time: $elapsed s")
+    close_log(job)
     return out
 end

@@ -57,63 +57,40 @@ transition(λ_vac_ang::Float64) = transition(custom_transition_default_tid(λ_va
 
 
 
-# Line type descriptors associated to a specific transition
-abstract type AbstractLine end
+# Define spectral line types and corresponding singletons
+abstract type SpecLineType end
+struct Narrow    <: SpecLineType; end; const narrow    = Narrow()
+struct Broad     <: SpecLineType; end; const broad     = Broad()
+struct VeryBroad <: SpecLineType; end; const verybroad = VeryBroad()
+struct Unknown   <: SpecLineType; end; const unknown   = Unknown()
 
-macro define_line(name, suffix, group)
-    return esc(:(
-        struct $name <: AbstractLine;
-        cname::Symbol;
-        tid::Symbol;
-        $name(tid; cname=tid) = new(Symbol(cname), tid);
-        end;
-        suffix(::$(name), multicomp::Bool) = multicomp  ?  $(QuoteNode(suffix))  :  Symbol("");
-        group( ::$(name)) = $(QuoteNode(group));
-    ))
-end
+suffix(::Narrow)    = :_na
+suffix(::Broad)     = :_br
+suffix(::VeryBroad) = :_bb
+suffix(::Unknown)   = Symbol("")
 
-@define_line GenericLine   _gen GenericLines
-@define_line BroadLine     _br  BroadLines
-@define_line NarrowLine    _na  NarrowLines
-@define_line BroadBaseLine _bb  BroadBaseLines
+group(::Narrow)     = :NarrowLines
+group(::Broad)      = :BroadLines
+group(::VeryBroad)  = :VeryBroadLines
+group(::Unknown)    = :UnknownLines
 
-struct MultiCompLine <: AbstractLine
-    cname::Symbol
+# Emission line descriptor including transition identifier and line types decomposition.
+abstract type EmLineComposition end
+
+struct StdEmLine <: EmLineComposition
     tid::Symbol
-    types::Vector{Type}
-    MultiCompLine(tid::Symbol, types::Vector{DataType}; cname=tid) = new(Symbol(cname), tid, types)
-end
-
-struct LineComponent
-    line::AbstractLine
-    comp::AbstractComponent
-    multicomp::Bool
-end
-
-function collect_LineComponent(source::QSO)
-    out = OrderedDict{Symbol, LineComponent}()
-    for line in known_spectral_lines(source)
-        if isa(line, MultiCompLine)
-            for t in line.types
-                nn = Symbol(line.cname, suffix(t(line.tid), true))
-                (nn in source.options[:skip_lines])  &&  continue
-                @assert !haskey(out, nn) "Duplicated line name in known_spectral_lines(): $nn"
-                lc = LineComponent(source, t(line.tid), true)
-                out[nn] = lc
-            end
-        else
-            nn = Symbol(line.cname, suffix(line, false))
-            (nn in source.options[:skip_lines])  &&  continue
-            @assert !haskey(out, nn) "Duplicated line name in known_spectral_lines(): $nn"
-            out[nn] = LineComponent(source, line, false)
-        end
+    types::Vector{SpecLineType}
+    function StdEmLine(tid::Symbol, T::Vararg{SpecLineType})
+        @assert length(T) >= 1
+        new(tid, [T...])
     end
-    ii = tuple.(getfield.(getfield.(getfield.(values(out), :comp), :center), :val), keys(out))
-    kk = collect(keys(out))[sortperm(ii)]
-    out = OrderedDict(Pair.(kk, getindex.(Ref(out), kk)))
-    return out
 end
 
-
-LineComponent(source::QSO, line::AbstractLine, multicomp::Bool) =
-    error("No constructor method has been defined for LineComponent($(typeof(source)), $(typeof(line)), ::Bool)")
+struct CustomEmLine <: EmLineComposition
+    λ::Float64
+    types::Vector{SpecLineType}
+    function CustomEmLine(λ::Float64, T::Vararg{SpecLineType})
+        @assert length(T) >= 1
+        new(λ, [T...])
+    end
+end

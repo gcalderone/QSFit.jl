@@ -1,14 +1,32 @@
-export DefaultRecipe, qsfit, qsfit_multi
+export DefaultRecipe # TODO, qsfit, qsfit_multi
 
 abstract type DefaultRecipe <: AbstractRecipe end
 
-function default_options(::Type{T}) where T <: DefaultRecipe
+EmLineComponent(       job::Job{T}     , args...; kws...) where T <: AbstractRecipe = EmLineComponent(       T, job, args...; kws...)
+EmLineComponents(      job::Job{T}     , args...; kws...) where T <: AbstractRecipe = EmLineComponents(      T, job, args...; kws...)
+PreparedSpectrum(      job::Job{T}     , args...; kws...) where T <: AbstractRecipe = PreparedSpectrum(      T, job, args...; kws...)
+minimizer(             job::JobState{T}, args...; kws...) where T <: AbstractRecipe = minimizer(             T, job, args...; kws...)
+fit!(                  job::JobState{T}, args...; kws...) where T <: AbstractRecipe = fit!(                  T, job, args...; kws...)
+add_qso_continuum!(    job::JobState{T}, args...; kws...) where T <: AbstractRecipe = add_qso_continuum!(    T, job, args...; kws...)
+add_host_galaxy!(      job::JobState{T}, args...; kws...) where T <: AbstractRecipe = add_host_galaxy!(      T, job, args...; kws...)
+add_balmer_cont!(      job::JobState{T}, args...; kws...) where T <: AbstractRecipe = add_balmer_cont!(      T, job, args...; kws...)
+renorm_cont!(          job::JobState{T}, args...; kws...) where T <: AbstractRecipe = renorm_cont!(          T, job, args...; kws...)
+guess_norm_factor!(    job::JobState{T}, args...; kws...) where T <: AbstractRecipe = guess_norm_factor!(    T, job, args...; kws...)
+add_iron_uv!(          job::JobState{T}, args...; kws...) where T <: AbstractRecipe = add_iron_uv!(          T, job, args...; kws...)
+add_iron_opt!(         job::JobState{T}, args...; kws...) where T <: AbstractRecipe = add_iron_opt!(         T, job, args...; kws...)
+add_emission_lines!(   job::JobState{T}, args...; kws...) where T <: AbstractRecipe = add_emission_lines!(   T, job, args...; kws...)
+guess_emission_lines!( job::JobState{T}, args...; kws...) where T <: AbstractRecipe = guess_emission_lines!( T, job, args...; kws...)
+add_patch_functs!(     job::JobState{T}, args...; kws...) where T <: AbstractRecipe = add_patch_functs!(     T, job, args...; kws...)
+add_unknown_lines!(    job::JobState{T}, args...; kws...) where T <: AbstractRecipe = add_unknown_lines!(    T, job, args...; kws...)
+neglect_weak_features!(job::JobState{T}, args...; kws...) where T <: AbstractRecipe = neglect_weak_features!(T, job, args...; kws...)
+
+
+function Options(::Type{DefaultRecipe})
     out = OrderedDict{Symbol, Any}()
     out[:wavelength_range] = [1215, 7.3e3]
     out[:min_spectral_coverage] = Dict(:default => 0.6,
                                        :ironuv  => 0.3,
                                        :ironopt => 0.3)
-    out[:skip_lines] = Symbol[]
 
     out[:host_template] = Dict(:library=>"swire", :template=>"Ell5")
     out[:use_host_template] = true
@@ -24,127 +42,162 @@ function default_options(::Type{T}) where T <: DefaultRecipe
 
     out[:n_unk] = 10
     out[:unk_avoid] = [4863 .+ [-1,1] .* 50, 6565 .+ [-1,1] .* 150]
-
+    
+    lines = OrderedDict{Symbol, EmLineComposition}()
+    out[:lines] = lines
+    
+    lines[:Lyb         ] = StdEmLine(:Lyb       ,  narrow, broad)
+    # lines[:OV_1213     ] = CustomEmLine(1213.8  ,  narrow)  # Ferland+92, Shields+95
+    lines[:Lya         ] = StdEmLine(:Lya       ,  narrow, broad)
+    # lines[:OV_1218     ] = CustomEmLine(1218.3  ,  narrow)  # Ferland+92, Shields+95
+    lines[:NV_1241     ] = StdEmLine(:NV_1241   ,  narrow )
+    lines[:OI_1306     ] = StdEmLine(:OI_1306   ,  broad  )
+    lines[:CII_1335    ] = StdEmLine(:CII_1335  ,  broad  )
+    lines[:SiIV_1400   ] = StdEmLine(:SiIV_1400 ,  broad  )
+    lines[:CIV_1549    ] = StdEmLine(:CIV_1549  ,  narrow, broad)
+    lines[:HeII_1640   ] = StdEmLine(:HeII_1640 ,  broad  )
+    lines[:OIII_1664   ] = StdEmLine(:OIII_1664 ,  broad  )
+    lines[:AlIII_1858  ] = StdEmLine(:AlIII_1858,  broad  )
+    lines[:CIII_1909   ] = StdEmLine(:CIII_1909 ,  broad  )
+    lines[:CII_2326    ] = StdEmLine(:CII_2326  ,  broad  )
+    lines[:F2420       ] = CustomEmLine(2420.0  ,  broad  )
+    lines[:MgII_2798   ] = StdEmLine(:MgII_2798 ,  narrow, broad)
+    lines[:NeV_3345    ] = StdEmLine(:NeV_3345  ,  narrow )
+    lines[:NeV_3426    ] = StdEmLine(:NeV_3426  ,  narrow )
+    lines[:OII_3727    ] = StdEmLine(:OII_3727  ,  narrow )
+    lines[:NeIII_3869  ] = StdEmLine(:NeIII_3869,  narrow )
+    lines[:Hd          ] = StdEmLine(:Hd        ,  broad  )
+    lines[:Hg          ] = StdEmLine(:Hg        ,  broad  )
+    lines[:OIII_4363   ] = StdEmLine(:OIII_4363 ,  narrow )
+    lines[:HeII_4686   ] = StdEmLine(:HeII_4686 ,  broad  )
+    lines[:Hb          ] = StdEmLine(:Hb        ,  narrow, broad)
+    lines[:OIII_4959   ] = StdEmLine(:OIII_4959 ,  narrow )
+    lines[:OIII_5007   ] = StdEmLine(:OIII_5007 ,  narrow )
+    lines[:OIII_5007_bw] = StdEmLine(:OIII_5007 ,  narrow )
+    lines[:HeI_5876    ] = StdEmLine(:HeI_5876  ,  broad  )
+    lines[:OI_6300     ] = StdEmLine(:OI_6300   ,  narrow )
+    lines[:OI_6364     ] = StdEmLine(:OI_6364   ,  narrow )
+    lines[:NII_6549    ] = StdEmLine(:NII_6549  ,  narrow )
+    lines[:Ha          ] = StdEmLine(:Ha        ,  narrow, broad, verybroad)
+    lines[:NII_6583    ] = StdEmLine(:NII_6583  ,  narrow )
+    lines[:SII_6716    ] = StdEmLine(:SII_6716  ,  narrow )
+    lines[:SII_6731    ] = StdEmLine(:SII_6731  ,  narrow )
     return out
 end
 
-function known_spectral_lines(source::QSO{T}) where T <: DefaultRecipe
-    list = [
-        MultiCompLine(                      :Lyb                     , [BroadLine, NarrowLine]),
-        # NarrowLine( custom_transition(tid=:OV_1213     , 1213.8  )),  # Ferland+92, Shields+95
-        MultiCompLine(                      :Lya                     , [BroadLine, NarrowLine]),
-        # NarrowLine( custom_transition(tid=:OV_1218     , 1218.3  )),  # Ferland+92, Shields+95
-        NarrowLine(                         :NV_1241                ),
-        BroadLine(                          :OI_1306                ),
-        BroadLine(                          :CII_1335               ),
-        BroadLine(                          :SiIV_1400              ),
-        MultiCompLine(                      :CIV_1549                , [BroadLine, NarrowLine]),
-        BroadLine(                          :HeII_1640              ),
-        BroadLine(                          :OIII_1664              ),
-        BroadLine(                          :AlIII_1858             ),
-        BroadLine(                          :CIII_1909              ),
-        BroadLine(                          :CII_2326               ),
-        BroadLine(    custom_transition(tid=:F2420       , 2420.0  )),
-        MultiCompLine(                      :MgII_2798               , [BroadLine, NarrowLine]),
-        NarrowLine(                         :NeV_3345               ),
-        NarrowLine(                         :NeV_3426               ),
-        NarrowLine(                         :OII_3727               ),
-        NarrowLine(                         :NeIII_3869             ),
-        BroadLine(                          :Hd                     ),
-        BroadLine(                          :Hg                     ),
-        NarrowLine(                         :OIII_4363              ),
-        BroadLine(                          :HeII_4686              ),
-        MultiCompLine(                      :Hb                      , [BroadLine, NarrowLine]),
-        NarrowLine(                         :OIII_4959              ),
-        NarrowLine(                         :OIII_5007              ),
-        NarrowLine(   cname=:OIII_5007_bw,  :OIII_5007              ),
-        BroadLine(                          :HeI_5876               ),
-        NarrowLine(                         :OI_6300                ),
-        NarrowLine(                         :OI_6364                ),
-        NarrowLine(                         :NII_6549               ),
-        MultiCompLine(                      :Ha                      , [BroadLine, NarrowLine, BroadBaseLine]),
-        NarrowLine(                         :NII_6583               ),
-        NarrowLine(                         :SII_6716               ),
-        NarrowLine(                         :SII_6731               )]
-    return list
-end
 
-
-function LineComponent(source::QSO{T}, line::GenericLine, multicomp::Bool) where T <: DefaultRecipe
-    tt = transition(line.tid)
-    λ = tt.LAMBDA_VAC_ANG
-    if length(λ) > 1
-        println(logio(source), "Considering average wavelength for the $(line.tid) multiplet: " * string(mean(λ)) * "Å")
-        λ = mean(λ)  # average lambda o multiplets
-    else
-        λ = λ[1]
-    end
-    @assert source.options[:line_profiles] in [:gauss, :lorentz, :voigt]
-    if source.options[:line_profiles] == :gauss
+function EmLineComponent(::Type{T}, job::Job, λ::Float64) where T <: DefaultRecipe
+    @assert job.options[:line_profiles] in [:gauss, :lorentz, :voigt]
+    if job.options[:line_profiles] == :gauss
         comp = SpecLineGauss(λ)
-    elseif source.options[:line_profiles] == :lorentz
+    elseif job.options[:line_profiles] == :lorentz
         comp = SpecLineLorentz(λ)
-    elseif source.options[:line_profiles] == :voigt
+    elseif job.options[:line_profiles] == :voigt
         comp = SpecLineVoigt(λ)
     else
         error("options[:line_profiles] must be one of: :gauss, :lorentz, :voigt.")
     end
-    return LineComponent(line, comp, multicomp)
+    return comp
 end
 
-function LineComponent(source::QSO{T}, line::BroadLine, multicomp::Bool) where T <: DefaultRecipe
-    comp = LineComponent(source, GenericLine(line.tid), multicomp).comp
+
+function EmLineComponent(::Type{T}, job::Job, λ::Float64, ::Narrow) where T <: DefaultRecipe
+    comp = EmLineComponent(job, λ)
+    comp.fwhm.val  = 5e2
+    comp.fwhm.low  = 100
+    comp.fwhm.high = 2e3
+    comp.voff.low  = -1e3
+    comp.voff.high =  1e3
+
+    # TODO if line.cname == :OIII_5007_bw
+    # TODO     comp.fwhm.val  = 500
+    # TODO     comp.fwhm.high = 1e3
+    # TODO     comp.voff.low  = 0
+    # TODO     comp.voff.high = 2e3
+    # TODO end
+    return comp
+end
+
+
+function EmLineComponent(::Type{T}, job::Job, λ::Float64, ::Broad) where T <: DefaultRecipe
+    comp = EmLineComponent(job, λ)
     comp.fwhm.val  = 5e3
     comp.fwhm.low  = 900
     comp.fwhm.high = 1.5e4
     comp.voff.low  = -3e3
     comp.voff.high =  3e3
-
-    if line.tid == :MgII_2798
-        comp.voff.low  = -1e3
-        comp.voff.high =  1e3
-    end
-    return LineComponent(line, comp, multicomp)
+    return comp
 end
 
-function LineComponent(source::QSO{T}, line::NarrowLine, multicomp::Bool) where T <: DefaultRecipe
-    comp = LineComponent(source, GenericLine(line.tid), multicomp).comp
-    comp.fwhm.val  = 5e2
-    comp.fwhm.low  = 100
-    comp.fwhm.high = (multicomp  ?  1e3  :  2e3)
-    comp.voff.low  = -1e3
-    comp.voff.high =  1e3
 
-    if line.cname == :OIII_5007_bw
-        comp.fwhm.val  = 500
-        comp.fwhm.high = 1e3
-        comp.voff.low  = 0
-        comp.voff.high = 2e3
-    end
-    return LineComponent(line, comp, multicomp)
-end
-
-function LineComponent(source::QSO{T}, line::BroadBaseLine, multicomp::Bool) where T <: DefaultRecipe
-    comp = LineComponent(source, GenericLine(line.tid), multicomp).comp
+function EmLineComponent(::Type{T}, job::Job, λ::Float64, ::VeryBroad) where T <: DefaultRecipe
+    comp = EmLineComponent(job, λ)
     comp.fwhm.val  = 2e4
     comp.fwhm.low  = 1e4
     comp.fwhm.high = 3e4
     comp.voff.fixed = true
-    return LineComponent(line, comp, multicomp)
+    return comp
 end
 
-function PreparedSpectrum(source::QSO{T}; id=1) where T <: DefaultRecipe
+
+function EmLineComponent(::Type{T}, job::Job, λ::Float64, ::Unknown) where T <: DefaultRecipe
+    comp = EmLineComponent(job, λ)
+    comp.norm.val = 0.
+    comp.center.fixed = false
+    comp.center.low = 0
+    comp.center.high = Inf
+    comp.fwhm.val  = 5e3
+    comp.fwhm.low  = 600
+    comp.fwhm.high = 1e4
+    comp.voff.fixed = true
+    return comp
+end
+
+
+function EmLineComponents(::Type{T}, job::Job, line::StdEmLine) where T <: DefaultRecipe
+    tt = transition(line.tid)
+    λ = tt.LAMBDA_VAC_ANG
+    if length(λ) > 1
+        println(job.logio, "Considering average wavelength for the $(line.tid) multiplet: " * string(mean(λ)) * "Å")
+        λ = mean(λ)  # average lambda of multiplets
+    else
+        λ = λ[1]
+    end
+
+    out = Vector{GFit.AbstractComponent}()
+    for ltype in line.types
+        comp = EmLineComponent(job, λ, ltype)
+        if (ltype == Narrow)  &&  (length(line.types) > 1)
+            comp.fwhm.high = 1e3
+        end
+        if (ltype == Broad)  &&  (line.tid == :MgII_2798)
+            comp.voff.low  = -1e3
+            comp.voff.high =  1e3
+        end
+        push!(out, comp)
+    end
+    return out
+end
+
+
+function EmLineComponents(::Type{T}, job::Job, line::CustomEmLine) where T <: DefaultRecipe
+    out = [EmLineComponent(job, line.λ, ltype) for ltype in line.types]
+    return out
+end
+
+
+function PreparedSpectrum(::Type{T}, job::Job, source::Source; id=1) where T <: DefaultRecipe
     data = deepcopy(source.specs[id])
-    println(logio(source), "Spectrum: " * data.label)
-    println(logio(source), "  good fraction:: ", goodfraction(data))
+    println(job.logio, "Spectrum: " * data.label)
+    println(job.logio, "  good fraction:: ", goodfraction(data))
     if goodfraction(data) < 0.5
         error("Good fraction < 0.5")
     end
-    println(logio(source), "  resolution: ", @sprintf("%.4g", data.resolution), " km / s (FWHM)")
+    println(job.logio, "  resolution: ", @sprintf("%.4g", data.resolution), " km / s (FWHM)")
 
     λ = data.λ ./ (1 + source.z)
-    data.good[findall(λ .< source.options[:wavelength_range][1])] .= false
-    data.good[findall(λ .> source.options[:wavelength_range][2])] .= false
+    data.good[findall(λ .< job.options[:wavelength_range][1])] .= false
+    data.good[findall(λ .> job.options[:wavelength_range][2])] .= false
 
     #= Emission line are localized features whose parameter can be
     reliably estimated only if there are sufficient samples to
@@ -152,115 +205,139 @@ function PreparedSpectrum(source::QSO{T}; id=1) where T <: DefaultRecipe
     not sufficient the component should not be added to the model,
     and corresponding spectral samples should be ignored to avoid
     worsening the fit due to missing model components. =#
-    println(logio(source), "Good samples before line coverage filter: ", length(findall(data.good)))
+    println(job.logio, "Good samples before line coverage filter: ", length(findall(data.good)))
 
-    # Collect LineComponent objects
-    lcs = collect_LineComponent(source)
+    # Collect line components
+    lcs = OrderedDict{Symbol, AbstractComponent}()
+    lgroups = OrderedDict{Symbol, Symbol}()
+    for (key, line) in job.options[:lines]
+        comps = EmLineComponents(job, line)
 
-    # Sort lnames according to the expected line FWHM.  This is
-    # necessary to avoid cases where a single line has sufficient
-    # coverage, but the check for a subsequent broad lines has not
-    # (dropping the "good" flag also for the narrow one).
-    lnames = collect(keys(lcs))[reverse(sortperm(getfield.(getfield.(getfield.(values(lcs), :comp), :fwhm), :val)))]
-    for lname in lnames
-        lc = lcs[lname]
-        (λmin, λmax, coverage) = spectral_coverage(λ .* data.good, data.resolution, lc.comp)
-        coverage = round(coverage * 1e3) / 1e3  # keep just 3 significant digits...
-        threshold = get(source.options[:min_spectral_coverage], lname, source.options[:min_spectral_coverage][:default])
-        print(logio(source), @sprintf("Line %-15s coverage: %4.2f (threshold: %4.2f)", lname, coverage, threshold))
-        if coverage < threshold
-            print(logio(source), @sprintf("  neglecting range: %10.5g < λ < %10.5g", λmin, λmax))
-            ii = findall(λmin .<= λ .< λmax)
-            data.good[ii] .= false
-            delete!(lcs, lname)
+        # Line coverage test
+        skip_line = false
+        for comp in comps
+            threshold = get(job.options[:min_spectral_coverage], key, job.options[:min_spectral_coverage][:default])
+            (λmin, λmax, coverage) = spectral_coverage(λ .* data.good, data.resolution, comp)
+            println(job.logio, @sprintf("Line %-15s coverage: %5.3f (threshold: %4.2f)", key, coverage, threshold))
+            if coverage < threshold
+                println(job.logio, @sprintf("  neglecting range: %10.5g < λ < %10.5g", λmin, λmax))
+                ii = findall(λmin .<= λ .< λmax)
+                data.good[ii] .= false
+                skip_line = true
+            end
         end
-        println(logio(source))
+        if skip_line
+            println(job.logio, @sprintf("Neglecting line %-15s", key))
+            continue
+        end
+
+        @assert length(comps) == length(line.types)
+        if length(comps) == 1
+            lcs[key] = comps[1]
+            lgroups[key] = group(line.types[1])
+        else
+            for i in 1:length(comps)
+                kk = Symbol(key, suffix(line.types[i]))
+                lcs[kk] = comps[i]
+                lgroups[kk] = group(line.types[i])
+            end
+        end
     end
-    println(logio(source), "Good samples after line coverage filtering: ", length(findall(data.good)))
+
+    # Sort lines according to center wavelength    
+    kk = collect(keys(lcs))
+    vv = collect(values(lcs))
+    ii = sortperm(getfield.(getfield.(vv, :center), :val))
+    lcs = OrderedDict(Pair.(kk[ii], vv[ii]))
 
     # De-reddening
     dered = ccm_unred([1450, 3000, 5100.], source.mw_ebv)
-    println(logio(source), "Dereddening factors @ 1450, 3000, 5100 AA: ", dered)
+    println(job.logio, "Dereddening factors @ 1450, 3000, 5100 AA: ", dered)
     dered = ccm_unred(data.λ, source.mw_ebv)
+
+    ld = uconvert(u"cm", luminosity_dist(job.cosmo, source.z))
+    flux2lum = 4pi * ld^2 * (scale_flux() * unit_flux()) / (scale_lum() * unit_lum())
 
     ii = findall(data.good)
     dom = Domain(data.λ[ii] ./ (1 + source.z))
     lum = Measures(dom,
-                   data.flux[ii] .* dered[ii] .* source.flux2lum .* (1 + source.z),
-                   data.err[ ii] .* dered[ii] .* source.flux2lum .* (1 + source.z))
+                   data.flux[ii] .* dered[ii] .* flux2lum .* (1 + source.z),
+                   data.err[ ii] .* dered[ii] .* flux2lum .* (1 + source.z))
 
-    return PreparedSpectrum(id, data, dom, lum, lcs)
+    return PreparedSpectrum(id, dom, lum, flux2lum, lcs, lgroups)
 end
 
-function minimizer(source::QSO{T}) where T <: DefaultRecipe
+
+function minimizer(::Type{T}, job::JobState) where T <: DefaultRecipe
     mzer = GFit.cmpfit()
     mzer.Δfitstat_threshold = 1.e-5
     return mzer
 end
 
-function fit!(source::QSO{T}, model::Model, pspec::PreparedSpectrum) where T <: DefaultRecipe
-    mzer = minimizer(source)
-    fitres = fit!(model, pspec.data, minimizer=mzer)
-    show(logio(source), model)
-    show(logio(source), fitres)
-    # @gp :QSFit pspec.data model
+
+function fit!(::Type{T}, job::JobState) where T <: DefaultRecipe
+    mzer = minimizer(job)
+    fitres = fit!(job.model, job.pspec.data, minimizer=mzer)
+    show(job.logio, job.model)
+    show(job.logio, fitres)
+    # @gp :QSFit job.pspec.data model
     # printstyled(color=:blink, "Press ENTER to continue..."); readline()
     return fitres
 end
 
 
-function fit!(source::QSO{T}, multi::MultiModel, pspecs::Vector{PreparedSpectrum}) where T <: DefaultRecipe
-    mzer = minimizer(source)
-    fitres = fit!(multi, getfield.(pspecs, :data), minimizer=mzer)
-    show(logio(source), multi)
-    show(logio(source), fitres)
-    # for id in 1:length(multi)
-    #     @gp Symbol("QSFit$(id)") pspecs[id].data multi[id]
-    # end
-    # printstyled(color=:blink, "Press ENTER to continue..."); readline()
-    return fitres
-end
+# TODO function fit!(job::JobStateMulti{T}) where T <: DefaultRecipe
+# TODO     mzer = minimizer(job)
+# TODO     fitres = fit!(job.models, getfield.(job.pspecs, :data), minimizer=mzer)
+# TODO     show(job.logio, job.model)
+# TODO     show(job.logio, fitres)
+# TODO     # for id in 1:length(job.model)
+# TODO     #     @gp Symbol("QSFit$(id)") job.pspecs[id].data job.model[id]
+# TODO     # end
+# TODO     # printstyled(color=:blink, "Press ENTER to continue..."); readline()
+# TODO     return fitres
+# TODO end
 
 
-function add_qso_continuum!(source::QSO{T}, pspec::PreparedSpectrum, model::Model) where T <: DefaultRecipe
-    λ = domain(model)[:]
+function add_qso_continuum!(::Type{T}, job::JobState) where T <: DefaultRecipe
+    λ = domain(job.model)[:]
 
     comp = QSFit.powerlaw(3000)
     comp.x0.val = median(λ)
-    comp.norm.val = Spline1D(λ, pspec.data.val, k=1, bc="error")(comp.x0.val)
+    comp.norm.val = Spline1D(λ, job.pspec.data.val, k=1, bc="error")(comp.x0.val)
     comp.norm.low = comp.norm.val / 1000.  # ensure contiuum remains positive (needed to estimate EWs)
     comp.alpha.val  = -1.5
     comp.alpha.low  = -3
     comp.alpha.high =  1
 
-    model[:qso_cont] = comp
-    push!(model[:Continuum].list, :qso_cont)
-    evaluate!(model)
+    job.model[:qso_cont] = comp
+    push!(job.model[:Continuum].list, :qso_cont)
+    evaluate!(job.model)
 end
 
 
-function add_host_galaxy!(source::QSO{T}, pspec::PreparedSpectrum, model::Model) where T <: DefaultRecipe
-    λ = domain(model)[:]
-    if source.options[:use_host_template]  &&
-        (source.options[:host_template_range][1] .< maximum(λ))  &&
-        (source.options[:host_template_range][2] .> minimum(λ))
-        model[:galaxy] = QSFit.hostgalaxy(source.options[:host_template])
-        push!(model[:Continuum].list, :galaxy)
+function add_host_galaxy!(::Type{T}, job::JobState) where T <: DefaultRecipe
+    λ = domain(job.model)[:]
+    if job.options[:use_host_template]  &&
+        (job.options[:host_template_range][1] .< maximum(λ))  &&
+        (job.options[:host_template_range][2] .> minimum(λ))
+        job.model[:galaxy] = QSFit.hostgalaxy(job.options[:host_template])
+        push!(job.model[:Continuum].list, :galaxy)
 
         # Split total flux between continuum and host galaxy
-        vv = Spline1D(λ, pspec.data.val, k=1, bc="extrapolate")(5500.)
-        model[:galaxy].norm.val    = 1/2 * vv
-        model[:qso_cont].norm.val *= 1/2 * vv / Spline1D(λ, model(:qso_cont), k=1, bc="extrapolate")(5500.)
-        evaluate!(model)
+        vv = Spline1D(λ, job.pspec.data.val, k=1, bc="extrapolate")(5500.)
+        job.model[:galaxy].norm.val    = 1/2 * vv
+        job.model[:qso_cont].norm.val *= 1/2 * vv / Spline1D(λ, job.model(:qso_cont), k=1, bc="extrapolate")(5500.)
+        evaluate!(job.model)
     end
 end
 
 
-function add_balmer_cont!(source::QSO{T}, pspec::PreparedSpectrum, model::Model) where T <: DefaultRecipe
-    if source.options[:use_balmer]
-        model[:balmer] = QSFit.balmercont(0.1, 0.5)
-        push!(model[:Continuum].list, :balmer)
-        c = model[:balmer]
+function add_balmer_cont!(::Type{T}, job::JobState) where T <: DefaultRecipe
+    if job.options[:use_balmer]
+        job.model[:balmer] = QSFit.balmercont(0.1, 0.5)
+        push!(job.model[:Continuum].list, :balmer)
+        c = job.model[:balmer]
         c.norm.val  = 0.1
         c.norm.fixed = false
         c.norm.high = 0.5
@@ -268,39 +345,40 @@ function add_balmer_cont!(source::QSO{T}, pspec::PreparedSpectrum, model::Model)
         c.ratio.fixed = false
         c.ratio.low  = 0.1
         c.ratio.high = 1
+        model = job.model # TODO: needed for @try_patch
         @try_patch! model[:balmer].norm *= model[:qso_cont].norm
-        evaluate!(model)
+        evaluate!(job.model)
     end
 end
 
 
-function renorm_cont!(source::QSO{T}, pspec::PreparedSpectrum, model::Model) where T <: DefaultRecipe
-    freeze(model, :qso_cont)
-    c = model[:qso_cont]
+function renorm_cont!(::Type{T}, job::JobState) where T <: DefaultRecipe
+    freeze(job.model, :qso_cont)
+    c = job.model[:qso_cont]
     initialnorm = c.norm.val
     if c.norm.val > 0
-        println(logio(source), "Cont. norm. (before): ", c.norm.val)
+        println(job.logio, "Cont. norm. (before): ", c.norm.val)
         while true
-            residuals = (model() - pspec.data.val) ./ pspec.data.unc
+            residuals = (job.model() - job.pspec.data.val) ./ job.pspec.data.unc
             ratio = count(residuals .< 0) / length(residuals)
             (ratio > 0.9)  &&  break
             (c.norm.val < (initialnorm / 5))  &&  break # give up
             c.norm.val *= 0.99
-            evaluate!(model)
+            evaluate!(job.model)
         end
-        println(logio(source), "Cont. norm. (after) : ", c.norm.val)
+        println(job.logio, "Cont. norm. (after) : ", c.norm.val)
     else
-        println(logio(source), "Skipping cont. renormalization")
+        println(job.logio, "Skipping cont. renormalization")
     end
-    evaluate!(model)
-    # @gp (domain(model), pspec.data) model
+    evaluate!(job.model)
+    # @gp (domain(job.model), job.pspec.data) job.model
     # printstyled(color=:blink, "Press ENTER to continue..."); readline()
 end
 
 
-function guess_norm_factor!(pspec::PreparedSpectrum, model::Model, name::Symbol; quantile=0.95)
-    @assert model[name].norm.val != 0
-    m = model(name)
+function guess_norm_factor!(::Type{T}, job::JobState, name::Symbol; quantile=0.95) where T <: DefaultRecipe
+    @assert job.model[name].norm.val != 0
+    m = job.model(name)
     c = cumsum(m)
     @assert maximum(c) != 0. "Model for $name evaluates to zero over the whole domain"
     c ./= maximum(c)
@@ -309,78 +387,80 @@ function guess_norm_factor!(pspec::PreparedSpectrum, model::Model, name::Symbol;
     if i1 >= i2
         return #Can't calculate normalization for component
     end
-    resid = pspec.data.val - model()
-    ratio = model[name].norm.val / sum(m[i1:i2])
+    resid = job.pspec.data.val - job.model()
+    ratio = job.model[name].norm.val / sum(m[i1:i2])
     off = sum(resid[i1:i2]) * ratio
-    model[name].norm.val += off
+    job.model[name].norm.val += off
     @assert !isnan(off) "Norm. offset is NaN for $name"
-    if model[name].norm.val < 0  # ensure line has positive normalization
-        model[name].norm.val = abs(off)
+    if job.model[name].norm.val < 0  # ensure line has positive normalization
+        job.model[name].norm.val = abs(off)
     end
 end
 
 
-function add_iron_uv!(source::QSO{T}, pspec::PreparedSpectrum, model::Model) where T <: DefaultRecipe
-    λ = domain(model)[:]
-    if source.options[:use_ironuv]
-        fwhm = source.options[:ironuv_fwhm]
-        if source.options[:iron_broadening]
-            fwhm = sqrt(fwhm^2 + pspec.orig.resolution^2)
+function add_iron_uv!(::Type{T}, job::JobState) where T <: DefaultRecipe
+    λ = domain(job.model)[:]
+    resolution = job.source.specs[job.pspec.id].resolution
+    if job.options[:use_ironuv]
+        fwhm = job.options[:ironuv_fwhm]
+        if job.options[:iron_broadening]
+            fwhm = sqrt(fwhm^2 + resolution^2)
         end
         comp = QSFit.ironuv(fwhm)
-        (_1, _2, coverage) = spectral_coverage(λ, pspec.orig.resolution, comp)
-        threshold = get(source.options[:min_spectral_coverage], :ironuv, source.options[:min_spectral_coverage][:default])
+        (_1, _2, coverage) = spectral_coverage(λ, resolution, comp)
+        threshold = get(job.options[:min_spectral_coverage], :ironuv, job.options[:min_spectral_coverage][:default])
         if coverage >= threshold
-            model[:ironuv] = comp
-            model[:ironuv].norm.val = 1.
-            push!(model[:Iron].list, :ironuv)
-            evaluate!(model)
-            QSFit.guess_norm_factor!(pspec, model, :ironuv)
-            evaluate!(model)
+            job.model[:ironuv] = comp
+            job.model[:ironuv].norm.val = 1.
+            push!(job.model[:Iron].list, :ironuv)
+            evaluate!(job.model)
+            QSFit.guess_norm_factor!(job.pspec, job.model, :ironuv)
+            evaluate!(job.model)
         else
-            println(logio(source), "Ignoring ironuv component (threshold: $threshold)")
+            println(job.logio, "Ignoring ironuv component (threshold: $threshold)")
         end
     end
 end
 
 
-function add_iron_opt!(source::QSO{T}, pspec::PreparedSpectrum, model::Model) where T <: DefaultRecipe
-    λ = domain(model)[:]
-    if source.options[:use_ironopt]
-        fwhm = source.options[:ironoptbr_fwhm]
-        if source.options[:iron_broadening]
-            fwhm = sqrt(fwhm^2 + pspec.orig.resolution^2)
+function add_iron_opt!(::Type{T}, job::JobState) where T <: DefaultRecipe
+    λ = domain(job.model)[:]
+    resolution = job.source.specs[job.pspec.id].resolution
+    if job.options[:use_ironopt]
+        fwhm = job.options[:ironoptbr_fwhm]
+        if job.options[:iron_broadening]
+            fwhm = sqrt(fwhm^2 + resolution^2)
         end
         comp = QSFit.ironopt_broad(fwhm)
-        (_1, _2, coverage) = spectral_coverage(λ, pspec.orig.resolution, comp)
-        threshold = get(source.options[:min_spectral_coverage], :ironopt, source.options[:min_spectral_coverage][:default])
+        (_1, _2, coverage) = spectral_coverage(λ, resolution, comp)
+        threshold = get(job.options[:min_spectral_coverage], :ironopt, job.options[:min_spectral_coverage][:default])
         if coverage >= threshold
-            model[:ironoptbr] = comp
-            model[:ironoptbr].norm.val = 1 # TODO: guess a sensible value
-            fwhm = source.options[:ironoptna_fwhm]
-            if source.options[:iron_broadening]
-                fwhm = sqrt(fwhm^2 + pspec.orig.resolution^2)
+            job.model[:ironoptbr] = comp
+            job.model[:ironoptbr].norm.val = 1 # TODO: guess a sensible value
+            fwhm = job.options[:ironoptna_fwhm]
+            if job.options[:iron_broadening]
+                fwhm = sqrt(fwhm^2 + resolution^2)
             end
-            model[:ironoptna] = QSFit.ironopt_narrow(fwhm)
-            model[:ironoptna].norm.val = 1 # TODO: guess a sensible value
-            model[:ironoptna].norm.fixed = false
-            push!(model[:Iron].list, :ironoptbr)
-            push!(model[:Iron].list, :ironoptna)
-            evaluate!(model)
-            QSFit.guess_norm_factor!(pspec, model, :ironoptbr)
-            evaluate!(model)
+            job.model[:ironoptna] = QSFit.ironopt_narrow(fwhm)
+            job.model[:ironoptna].norm.val = 1 # TODO: guess a sensible value
+            job.model[:ironoptna].norm.fixed = false
+            push!(job.model[:Iron].list, :ironoptbr)
+            push!(job.model[:Iron].list, :ironoptna)
+            evaluate!(job.model)
+            QSFit.guess_norm_factor!(job, :ironoptbr)
+            evaluate!(job.model)
         else
-            println(logio(source), "Ignoring ironopt component (threshold: $threshold)")
+            println(job.logio, "Ignoring ironopt component (threshold: $threshold)")
         end
     end
 end
 
 
-function add_emission_lines!(source::QSO{T}, pspec::PreparedSpectrum, model::Model) where T <: DefaultRecipe
+function add_emission_lines!(::Type{T}, job::JobState) where T <: DefaultRecipe
     groups = OrderedDict{Symbol, Vector{Symbol}}()
-    for (cname, lc) in pspec.lcs
+    for (cname, comp) in job.pspec.lcs
 
-        # All QSFit line progiles take spectral resolution into
+        # All Job line progiles take spectral resolution into
         # account.  This is significantly faster than convolving the
         # whole model with an instrument response but has some
         # limitations:
@@ -388,36 +468,36 @@ function add_emission_lines!(source::QSO{T}, pspec::PreparedSpectrum, model::Mod
         # - all components must be additive (i.e. no absorptions);
         # - further narrow components (besides known emission lines)
         #   will not be corrected for instrumental resolution.
-        if source.options[:line_broadening]
-            lc.comp.resolution = pspec.orig.resolution
+        if job.options[:line_broadening]
+            comp.resolution = job.source.specs[job.pspec.id].resolution
         end
 
-        model[cname] = lc.comp
-        grp = group(lc.line)
+        job.model[cname] = comp
+        grp = job.pspec.lgroups[cname]
         haskey(groups, grp)  ||  (groups[grp] = Vector{Symbol}())
         push!(groups[grp], cname)
     end
     for (group, lnames) in groups
-        model[group] = SumReducer(lnames)
+        job.model[group] = SumReducer(lnames)
     end
-    evaluate!(model)
+    evaluate!(job.model)
 end
 
 
-function guess_emission_lines!(source::QSO{T}, pspec::PreparedSpectrum, model::Model) where T <: DefaultRecipe
-    groups_to_go = unique([QSFit.group(v.line) for (k,v) in pspec.lcs])
+function guess_emission_lines!(::Type{T}, job::JobState) where T <: DefaultRecipe
+    groups_to_go = unique([QSFit.group(v.line) for (k,v) in job.pspec.lcs])
     for grp in [:BroadLines, :NarrowLines, :BroadBaseLines, :AsymmTailLines]  # Note: order is important
         found = false
-        for (cname, lc) in pspec.lcs
+        for (cname, lc) in job.pspec.lcs
             (grp == group(lc.line))  ||  continue
-            QSFit.guess_norm_factor!(pspec, model, cname)
+            QSFit.guess_norm_factor!(job.pspec, job.model, cname)
             found = true
         end
         if found
-            push!(model[:main].list, grp)
+            push!(job.model[:main].list, grp)
             deleteat!(groups_to_go, findfirst(groups_to_go .== grp))
         end
-        evaluate!(model)
+        evaluate!(job.model)
     end
 
     # Ensure all groups have been considered
@@ -425,7 +505,8 @@ function guess_emission_lines!(source::QSO{T}, pspec::PreparedSpectrum, model::M
 end
 
 
-function add_patch_functs!(source::QSO{T}, pspec::PreparedSpectrum, model::Model) where T <: DefaultRecipe
+function add_patch_functs!(::Type{T}, job::JobState) where T <: DefaultRecipe
+    model = job.model
     # Patch parameters
     @try_patch! begin
         # model[:OIII_4959].norm = model[:OIII_5007].norm / 3
@@ -482,41 +563,27 @@ function add_patch_functs!(source::QSO{T}, pspec::PreparedSpectrum, model::Model
 end
 
 
-function default_unk_line(source::QSO{T}) where T <: DefaultRecipe
-    comp = SpecLineGauss(5e3)
-    comp.norm.val = 0.
-    comp.center.fixed = false
-    comp.center.low = 0
-    comp.center.high = Inf
-    comp.fwhm.val  = 5e3
-    comp.fwhm.low  = 600
-    comp.fwhm.high = 1e4
-    comp.voff.fixed = true
-    return comp
-end
-
-
-function add_unknown_lines!(source::QSO{T}, pspec::PreparedSpectrum, model::Model) where T <: DefaultRecipe
-    (source.options[:n_unk] > 0)  ||  (return nothing)
-    λ = domain(model)[:]
-    for i in 1:source.options[:n_unk]
-        model[Symbol(:unk, i)] = default_unk_line(source)
+function add_unknown_lines!(::Type{T}, job::JobState) where T <: DefaultRecipe
+    (job.options[:n_unk] > 0)  ||  (return nothing)
+    λ = domain(job.model)[:]
+    for i in 1:job.options[:n_unk]
+        job.model[Symbol(:unk, i)] = EmlineComponent(job, 3000., unknown)
     end
-    model[:UnkLines] = SumReducer([Symbol(:unk, i) for i in 1:source.options[:n_unk]])
-    push!(model[:main].list, :UnkLines)
-    evaluate!(model)
-    for j in 1:source.options[:n_unk]
-        freeze(model, Symbol(:unk, j))
+    job.model[:UnkLines] = SumReducer([Symbol(:unk, i) for i in 1:job.options[:n_unk]])
+    push!(job.model[:main].list, :UnkLines)
+    evaluate!(job.model)
+    for j in 1:job.options[:n_unk]
+        freeze(job.model, Symbol(:unk, j))
     end
-    evaluate!(model)
+    evaluate!(job.model)
 
     # Set "unknown" line center wavelength where there is a maximum in
     # the fit residuals, and re-run a fit.
     λunk = Vector{Float64}()
     while true
-        (length(λunk) >= source.options[:n_unk])  &&  break
-        evaluate!(model)
-        Δ = (pspec.data.val - model()) ./ pspec.data.unc
+        (length(λunk) >= job.options[:n_unk])  &&  break
+        evaluate!(job.model)
+        Δ = (job.pspec.data.val - model()) ./ job.pspec.data.unc
 
         # Avoid considering again the same region (within 1A) TODO: within resolution
         for l in λunk
@@ -524,7 +591,7 @@ function add_unknown_lines!(source::QSO{T}, pspec::PreparedSpectrum, model::Mode
         end
 
         # Avoidance regions
-        for rr in source.options[:unk_avoid]
+        for rr in job.options[:unk_avoid]
             Δ[findall(rr[1] .< λ .< rr[2])] .= 0.
         end
 
@@ -537,35 +604,35 @@ function add_unknown_lines!(source::QSO{T}, pspec::PreparedSpectrum, model::Mode
         push!(λunk, λ[iadd])
 
         cname = Symbol(:unk, length(λunk))
-        model[cname].norm.val = 1.
-        model[cname].center.val  = λ[iadd]
-        model[cname].center.low  = λ[iadd] - λ[iadd]/10. # allow to shift 10%
-        model[cname].center.high = λ[iadd] + λ[iadd]/10.
+        job.model[cname].norm.val = 1.
+        job.model[cname].center.val  = λ[iadd]
+        job.model[cname].center.low  = λ[iadd] - λ[iadd]/10. # allow to shift 10%
+        job.model[cname].center.high = λ[iadd] + λ[iadd]/10.
 
-        thaw(model, cname)
-        fitres = fit!(source, model, pspec)
-        freeze(model, cname)
+        thaw(job.model, cname)
+        fitres = fit!(job)
+        freeze(job.model, cname)
     end
-    evaluate!(model)
+    evaluate!(job.model)
 end
 
 
-function neglect_weak_features!(source::QSO{T}, pspec::PreparedSpectrum, model::Model, fitres::GFit.FitResult) where T <: DefaultRecipe
+function neglect_weak_features!(::Type{T}, job::JobState) where T <: DefaultRecipe
     # Disable "unknown" lines whose normalization uncertainty is larger
     # than X times the normalization
     needs_fitting = false
-    for ii in 1:source.options[:n_unk]
+    for ii in 1:job.options[:n_unk]
         cname = Symbol(:unk, ii)
-        isfixed(model, cname)  &&  continue
-        if model[cname].norm.val == 0.
-            freeze(model, cname)
+        isfixed(job.model, cname)  &&  continue
+        if job.model[cname].norm.val == 0.
+            freeze(job.model, cname)
             needs_fitting = true
-            println(logio(source), "Disabling $cname (norm. = 0)")
-        elseif model[cname].norm.unc / model[cname].norm.val > 3
-            model[cname].norm.val = 0.
-            freeze(model, cname)
+            println(job.logio, "Disabling $cname (norm. = 0)")
+        elseif job.model[cname].norm.unc / job.model[cname].norm.val > 3
+            job.model[cname].norm.val = 0.
+            freeze(job.model, cname)
             needs_fitting = true
-            println(logio(source), "Disabling $cname (unc. / norm. > 3)")
+            println(job.logio, "Disabling $cname (unc. / norm. > 3)")
         end
     end
     return needs_fitting
@@ -573,4 +640,4 @@ end
 
 
 include("DefaultRecipe_single.jl")
-include("DefaultRecipe_multi.jl")
+# TODO include("DefaultRecipe_multi.jl")

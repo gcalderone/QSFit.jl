@@ -1,5 +1,18 @@
 export qsfitversion, spectral_coverage
 
+# The following macro is taken from ReusePatterns.jl
+macro copy_fields(T)
+    out = Expr(:block)
+    for name in fieldnames(__module__.eval(T))
+        e = Expr(Symbol("::"))
+        push!(e.args, name)
+        push!(e.args, fieldtype(__module__.eval(T), name))
+        push!(out.args, e)
+    end
+    return esc(out)
+end
+
+
 qsfitversion() = v"0.1.0"
 qsfit_data() = artifact"qsfit_data"
 

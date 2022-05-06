@@ -16,8 +16,9 @@ Pkg.add(url="https://github.com/lnicastro/GFitViewer.jl", rev="master")
 ```julia
 using QSFit, GFitViewer
 
-source = QSO{DefaultRecipe}("My SDSS source", 0.3806, ebv=0.)
+source = QSFit.Source("My SDSS source", 0.3806, ebv=0.)
 add_spec!(source, Spectrum(Val(:SDSS_DR10), "spec-0752-52251-0323.fits"))
-res = qsfit(source);
+job = QSFit.Job{DefaultRecipe}()
+res = QSFit.qsfit(source, job)
 viewer(res, filename="test_qsfit.html")
 ```
