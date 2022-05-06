@@ -412,7 +412,7 @@ function add_iron_uv!(::Type{T}, job::JobState) where T <: DefaultRecipe
             job.model[:ironuv].norm.val = 1.
             push!(job.model[:Iron].list, :ironuv)
             evaluate!(job.model)
-            QSFit.guess_norm_factor!(job.pspec, job.model, :ironuv)
+            QSFit.guess_norm_factor!(job, :ironuv)
             evaluate!(job.model)
         else
             println(job.logio, "Ignoring ironuv component (threshold: $threshold)")
@@ -481,17 +481,17 @@ end
 
 
 function guess_emission_lines!(::Type{T}, job::JobState) where T <: DefaultRecipe
-    groups_to_go = unique([QSFit.group(v.line) for (k,v) in job.pspec.lcs])
-    for grp in [:BroadLines, :NarrowLines, :BroadBaseLines, :AsymmTailLines]  # Note: order is important
+    groups_to_go = unique(getfield.(values(job.pspec.lcs), :group))
+    for group in [:BroadLines, :NarrowLines, :VeryBroadLines]  # Note: order is important
         found = false
         for (cname, lc) in job.pspec.lcs
-            (grp == group(lc.line))  ||  continue
-            QSFit.guess_norm_factor!(job.pspec, job.model, cname)
+            (lc.group == group)  ||  continue
+            QSFit.guess_norm_factor!(job, cname)
             found = true
         end
         if found
-            push!(job.model[:main].list, grp)
-            deleteat!(groups_to_go, findfirst(groups_to_go .== grp))
+            push!(job.model[:main].list, group)
+            deleteat!(groups_to_go, findfirst(groups_to_go .== group))
         end
         evaluate!(job.model)
     end
