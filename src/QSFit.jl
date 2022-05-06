@@ -92,8 +92,7 @@ struct PreparedSpectrum
     domain::GFit.Domain{1}
     data::GFit.Measures{1}
     flux2lum::Float64
-    lcs::OrderedDict{Symbol, AbstractComponent}
-    lgroups::OrderedDict{Symbol, Symbol}
+    lcs::OrderedDict{Symbol, EmLineComponent}
 end
 
 

@@ -64,17 +64,7 @@ struct Broad     <: SpecLineType; end; const broad     = Broad()
 struct VeryBroad <: SpecLineType; end; const verybroad = VeryBroad()
 struct Unknown   <: SpecLineType; end; const unknown   = Unknown()
 
-suffix(::Narrow)    = :_na
-suffix(::Broad)     = :_br
-suffix(::VeryBroad) = :_bb
-suffix(::Unknown)   = Symbol("")
-
-group(::Narrow)     = :NarrowLines
-group(::Broad)      = :BroadLines
-group(::VeryBroad)  = :VeryBroadLines
-group(::Unknown)    = :UnknownLines
-
-# Emission line descriptor including transition identifier and line types decomposition.
+# Emission line descriptor including transition identifier and line type decomposition.
 abstract type EmLineComposition end
 
 struct StdEmLine <: EmLineComposition
@@ -93,4 +83,11 @@ struct CustomEmLine <: EmLineComposition
         @assert length(T) >= 1
         new(λ, [T...])
     end
+end
+
+# Structure containing the actual GFit component for a single contribution to an emission line
+struct EmLineComponent{SpecLineType}
+    suffix::Symbol
+    group::Symbol
+    comp::AbstractComponent
 end

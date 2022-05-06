@@ -115,7 +115,7 @@ function EmLineComponent(::Type{T}, job::Job, λ::Float64, ::Narrow) where T <: 
     # TODO     comp.voff.low  = 0
     # TODO     comp.voff.high = 2e3
     # TODO end
-    return comp
+    return EmLineComponent{Narrow}(:_na, :NarrowLines, comp)
 end
 
 
@@ -126,7 +126,7 @@ function EmLineComponent(::Type{T}, job::Job, λ::Float64, ::Broad) where T <: D
     comp.fwhm.high = 1.5e4
     comp.voff.low  = -3e3
     comp.voff.high =  3e3
-    return comp
+    return EmLineComponent{Broad}(:_br, :BroadLines, comp)
 end
 
 
@@ -136,7 +136,7 @@ function EmLineComponent(::Type{T}, job::Job, λ::Float64, ::VeryBroad) where T 
     comp.fwhm.low  = 1e4
     comp.fwhm.high = 3e4
     comp.voff.fixed = true
-    return comp
+    return EmLineComponent{VeryBroad}(:_bb, :VeryBroadLines, comp)
 end
 
 
@@ -150,7 +150,7 @@ function EmLineComponent(::Type{T}, job::Job, λ::Float64, ::Unknown) where T <:
     comp.fwhm.low  = 600
     comp.fwhm.high = 1e4
     comp.voff.fixed = true
-    return comp
+    return EmLineComponent{Unknown}(Symbol(""), :Unknown, comp)
 end
 
 
@@ -164,25 +164,24 @@ function EmLineComponents(::Type{T}, job::Job, line::StdEmLine) where T <: Defau
         λ = λ[1]
     end
 
-    out = Vector{GFit.AbstractComponent}()
+    out = Vector{EmLineComponent}()
     for ltype in line.types
-        comp = EmLineComponent(job, λ, ltype)
+        lc = EmLineComponent(job, λ, ltype)
         if (ltype == Narrow)  &&  (length(line.types) > 1)
-            comp.fwhm.high = 1e3
+            lc.comp.fwhm.high = 1e3
         end
         if (ltype == Broad)  &&  (line.tid == :MgII_2798)
-            comp.voff.low  = -1e3
-            comp.voff.high =  1e3
+            lc.comp.voff.low  = -1e3
+            lc.comp.voff.high =  1e3
         end
-        push!(out, comp)
+        push!(out, lc)
     end
     return out
 end
 
 
 function EmLineComponents(::Type{T}, job::Job, line::CustomEmLine) where T <: DefaultRecipe
-    out = [EmLineComponent(job, line.λ, ltype) for ltype in line.types]
-    return out
+    return [EmLineComponent(job, line.λ, ltype) for ltype in line.types]
 end
 
 
@@ -208,47 +207,46 @@ function PreparedSpectrum(::Type{T}, job::Job, source::Source; id=1) where T <: 
     println(job.logio, "Good samples before line coverage filter: ", length(findall(data.good)))
 
     # Collect line components
-    lcs = OrderedDict{Symbol, AbstractComponent}()
-    lgroups = OrderedDict{Symbol, Symbol}()
+    llcs = OrderedDict{Symbol, EmLineComponent}()
     for (key, line) in job.options[:lines]
-        comps = EmLineComponents(job, line)
+        lcs = EmLineComponents(job, line)
+        @assert length(lcs) == length(line.types)
 
         # Line coverage test
         skip_line = false
-        for comp in comps
+        for lc in lcs
             threshold = get(job.options[:min_spectral_coverage], key, job.options[:min_spectral_coverage][:default])
-            (λmin, λmax, coverage) = spectral_coverage(λ .* data.good, data.resolution, comp)
-            println(job.logio, @sprintf("Line %-15s coverage: %5.3f (threshold: %4.2f)", key, coverage, threshold))
+            (λmin, λmax, coverage) = spectral_coverage(λ .* data.good, data.resolution, lc.comp)
+            print(job.logio, @sprintf("Line %-15s coverage: %5.3f", Symbol(key, lc.suffix), coverage))
             if coverage < threshold
-                println(job.logio, @sprintf("  neglecting range: %10.5g < λ < %10.5g", λmin, λmax))
+                print(job.logio, @sprintf("  (threshold: %4.2f), neglecting range: %10.5g < λ < %10.5g", threshold, λmin, λmax))
                 ii = findall(λmin .<= λ .< λmax)
                 data.good[ii] .= false
                 skip_line = true
             end
+            println(job.logio)
         end
         if skip_line
             println(job.logio, @sprintf("Neglecting line %-15s", key))
             continue
         end
 
-        @assert length(comps) == length(line.types)
-        if length(comps) == 1
-            lcs[key] = comps[1]
-            lgroups[key] = group(line.types[1])
-        else
-            for i in 1:length(comps)
-                kk = Symbol(key, suffix(line.types[i]))
-                lcs[kk] = comps[i]
-                lgroups[kk] = group(line.types[i])
+        for i in 1:length(lcs)
+            if length(lcs) == 1
+                kk = key
+            else
+                kk = Symbol(key, lcs[i].suffix)
             end
+            @assert !(kk in keys(llcs))
+            llcs[kk] = lcs[i]
         end
     end
 
     # Sort lines according to center wavelength    
-    kk = collect(keys(lcs))
-    vv = collect(values(lcs))
-    ii = sortperm(getfield.(getfield.(vv, :center), :val))
-    lcs = OrderedDict(Pair.(kk[ii], vv[ii]))
+    kk = collect(keys(llcs))
+    vv = collect(values(llcs))
+    ii = sortperm(getfield.(getfield.(getfield.(vv, :comp), :center), :val))
+    llcs = OrderedDict(Pair.(kk[ii], vv[ii]))
 
     # De-reddening
     dered = ccm_unred([1450, 3000, 5100.], source.mw_ebv)
@@ -264,7 +262,7 @@ function PreparedSpectrum(::Type{T}, job::Job, source::Source; id=1) where T <: 
                    data.flux[ii] .* dered[ii] .* flux2lum .* (1 + source.z),
                    data.err[ ii] .* dered[ii] .* flux2lum .* (1 + source.z))
 
-    return PreparedSpectrum(id, dom, lum, flux2lum, lcs, lgroups)
+    return PreparedSpectrum(id, dom, lum, flux2lum, llcs)
 end
 
 
@@ -458,9 +456,8 @@ end
 
 function add_emission_lines!(::Type{T}, job::JobState) where T <: DefaultRecipe
     groups = OrderedDict{Symbol, Vector{Symbol}}()
-    for (cname, comp) in job.pspec.lcs
-
-        # All Job line progiles take spectral resolution into
+    for (cname, lc) in job.pspec.lcs
+        # All QSFit line profiles take spectral resolution into
         # account.  This is significantly faster than convolving the
         # whole model with an instrument response but has some
         # limitations:
@@ -469,13 +466,12 @@ function add_emission_lines!(::Type{T}, job::JobState) where T <: DefaultRecipe
         # - further narrow components (besides known emission lines)
         #   will not be corrected for instrumental resolution.
         if job.options[:line_broadening]
-            comp.resolution = job.source.specs[job.pspec.id].resolution
+            lc.comp.resolution = job.source.specs[job.pspec.id].resolution
         end
 
-        job.model[cname] = comp
-        grp = job.pspec.lgroups[cname]
-        haskey(groups, grp)  ||  (groups[grp] = Vector{Symbol}())
-        push!(groups[grp], cname)
+        job.model[cname] = lc.comp
+        haskey(groups, lc.group)  ||  (groups[lc.group] = Vector{Symbol}())
+        push!(groups[lc.group], cname)
     end
     for (group, lnames) in groups
         job.model[group] = SumReducer(lnames)
