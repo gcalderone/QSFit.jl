@@ -1,5 +1,7 @@
-function qsfit(source::Source, _job::Job{T}) where T <: DefaultRecipe
-    job = JobState{T}(source, _job)
+qsfit(source::Source, job::Job{T}) where T <: DefaultRecipe =
+    qsfit(JobState{T}(source, job))
+
+function qsfit(job::JobState{T}) where T <: DefaultRecipe
     elapsed = time()
     model = job.model
 
@@ -57,7 +59,7 @@ function qsfit(source::Source, _job::Job{T}) where T <: DefaultRecipe
     for lname in keys(job.pspec.lcs)
         thaw(model, lname)
     end
-    for j in 1:source.options[:n_unk]
+    for j in 1:job.options[:n_unk]
         cname = Symbol(:unk, j)
         if model[cname].norm.val > 0
             thaw(model, cname)
