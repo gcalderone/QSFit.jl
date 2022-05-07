@@ -42,10 +42,10 @@ function Options(::Type{DefaultRecipe})
 
     out[:n_unk] = 10
     out[:unk_avoid] = [4863 .+ [-1,1] .* 50, 6565 .+ [-1,1] .* 150]
-    
+
     lines = OrderedDict{Symbol, EmLineComposition}()
     out[:lines] = lines
-    
+
     lines[:Lyb         ] = StdEmLine(:Lyb       ,  narrow, broad)
     # lines[:OV_1213     ] = CustomEmLine(1213.8  ,  narrow)  # Ferland+92, Shields+95
     lines[:Lya         ] = StdEmLine(:Lya       ,  narrow, broad)
@@ -213,36 +213,29 @@ function PreparedSpectrum(::Type{T}, job::Job, source::Source; id=1) where T <: 
         @assert length(lcs) == length(line.types)
 
         # Line coverage test
-        skip_line = false
         for lc in lcs
-            threshold = get(job.options[:min_spectral_coverage], key, job.options[:min_spectral_coverage][:default])
-            (λmin, λmax, coverage) = spectral_coverage(λ .* data.good, data.resolution, lc.comp)
-            print(job.logio, @sprintf("Line %-15s coverage: %5.3f", Symbol(key, lc.suffix), coverage))
-            if coverage < threshold
-                print(job.logio, @sprintf("  (threshold: %4.2f), neglecting range: %10.5g < λ < %10.5g", threshold, λmin, λmax))
-                ii = findall(λmin .<= λ .< λmax)
-                data.good[ii] .= false
-                skip_line = true
-            end
-            println(job.logio)
-        end
-        if skip_line
-            println(job.logio, @sprintf("Neglecting line %-15s", key))
-            continue
-        end
-
-        for i in 1:length(lcs)
             if length(lcs) == 1
-                kk = key
+                cname = key
             else
-                kk = Symbol(key, lcs[i].suffix)
+                cname = Symbol(key, lc.suffix)
             end
-            @assert !(kk in keys(llcs))
-            llcs[kk] = lcs[i]
+            @assert !(cname in keys(llcs))
+
+            threshold = get(job.options[:min_spectral_coverage], cname, job.options[:min_spectral_coverage][:default])
+            (λmin, λmax, coverage) = spectral_coverage(λ[findall(data.good)], data.resolution, lc.comp)
+            print(job.logio, @sprintf("Line %-15s coverage: %5.3f", cname, coverage))
+            if coverage < threshold
+                println(job.logio, @sprintf("  (threshold: %4.2f), neglecting range: %10.5g < λ < %10.5g", threshold, λmin, λmax))
+                data.good[λmin .<= λ .< λmax] .= false
+                println(job.logio, @sprintf("Neglecting line %-15s", key))
+            else
+                llcs[cname] = lc
+                println(job.logio)
+            end
         end
     end
 
-    # Sort lines according to center wavelength    
+    # Sort lines according to center wavelength
     kk = collect(keys(llcs))
     vv = collect(values(llcs))
     ii = sortperm(getfield.(getfield.(getfield.(vv, :comp), :center), :val))
