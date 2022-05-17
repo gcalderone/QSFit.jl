@@ -93,6 +93,7 @@ struct PreparedSpectrum
     data::GFit.Measures{1}
     flux2lum::Float64
     lcs::OrderedDict{Symbol, EmLineComponent}
+    lcs_unk::OrderedDict{Symbol, EmLineComponent}
 end
 
 

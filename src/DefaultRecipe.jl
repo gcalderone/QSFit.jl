@@ -252,6 +252,12 @@ function PreparedSpectrum(::Type{T}, job::Job, source::Source; id=1) where T <: 
     end
     println(job.logio, "Good samples after line coverage filter: ", count(data.good))
 
+    # Prepare unknown line components
+    llcs_unk = OrderedDict{Symbol, EmLineComponent}()
+    for i in 1:job.options[:n_unk]
+        llcs_unk[Symbol(:unk, i)] = EmLineComponent(job, 3000., unknown)
+    end
+
     # Sort lines according to center wavelength
     kk = collect(keys(llcs))
     vv = collect(values(llcs))
@@ -272,7 +278,7 @@ function PreparedSpectrum(::Type{T}, job::Job, source::Source; id=1) where T <: 
                    data.flux[ii] .* dered[ii] .* flux2lum .* (1 + source.z),
                    data.err[ ii] .* dered[ii] .* flux2lum .* (1 + source.z))
 
-    return PreparedSpectrum(id, dom, lum, flux2lum, llcs)
+    return PreparedSpectrum(id, dom, lum, flux2lum, llcs, llcs_unk)
 end
 
 
@@ -571,9 +577,9 @@ end
 
 function add_unknown_lines!(::Type{T}, job::JobState) where T <: DefaultRecipe
     (job.options[:n_unk] > 0)  ||  (return nothing)
-    λ = domain(job.model)[:]
-    for i in 1:job.options[:n_unk]
-        job.model[Symbol(:unk, i)] = EmLineComponent(job, 3000., unknown)
+
+    for (cname, lc) in job.pspec.lcs_unk
+        job.model[cname] = lc.comp
     end
     job.model[:UnkLines] = SumReducer([Symbol(:unk, i) for i in 1:job.options[:n_unk]])
     push!(job.model[:main].list, :UnkLines)
@@ -585,11 +591,12 @@ function add_unknown_lines!(::Type{T}, job::JobState) where T <: DefaultRecipe
 
     # Set "unknown" line center wavelength where there is a maximum in
     # the fit residuals, and re-run a fit.
+    λ = domain(job.model)[:]
     λunk = Vector{Float64}()
     while true
         (length(λunk) >= job.options[:n_unk])  &&  break
         evaluate!(job.model)
-        Δ = (job.pspec.data.val - model()) ./ job.pspec.data.unc
+        Δ = (job.pspec.data.val - job.model()) ./ job.pspec.data.unc
 
         # Avoid considering again the same region (within 1A) TODO: within resolution
         for l in λunk
