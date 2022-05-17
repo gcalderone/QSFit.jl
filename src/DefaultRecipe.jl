@@ -207,7 +207,7 @@ function PreparedSpectrum(::Type{T}, job::Job, source::Source; id=1) where T <: 
     worsening the fit due to missing model components. =#
     println(job.logio, "Good samples before line coverage filter: ", count(data.good))
 
-    # Collect line components
+    # Collect line components (neglect components with insufficent coverage)
     llcs = OrderedDict{Symbol, EmLineComponent}()
     good = deepcopy(data.good)
     for (key, line) in job.options[:lines]
@@ -221,21 +221,35 @@ function PreparedSpectrum(::Type{T}, job::Job, source::Source; id=1) where T <: 
             else
                 cname = Symbol(key, lc.suffix)
             end
-            @assert !(cname in keys(llcs))
 
             threshold = get(job.options[:min_spectral_coverage], cname, job.options[:min_spectral_coverage][:default])
             (λmin, λmax, coverage) = spectral_coverage(λ[findall(data.good)], data.resolution, lc.comp)
-            print(job.logio, @sprintf("Line %-15s coverage: %5.3f", cname, coverage))
+
+            print(job.logio, @sprintf("Line %-15s coverage: %5.3f on range %10.5g < λ < %10.5g", cname, coverage, λmin, λmax))
             if coverage < threshold
-                println(job.logio, @sprintf(" < %4.2f, neglecting range: %10.5g < λ < %10.5g and line component", threshold, λmin, λmax))
+                println(job.logio, @sprintf(", threshold is < %5.3f, neglecting...", threshold))
                 good[λmin .<= λ .< λmax] .= false
             else
+                @assert !(cname in keys(llcs))
                 llcs[cname] = lc
                 println(job.logio)
             end
         end
     end
     data.good .= good
+
+    # Second pass to neglect lines whose coverage has been affected by
+    # the neglected spectral samples.
+    for (cname, lc) in llcs
+        threshold = get(job.options[:min_spectral_coverage], cname, job.options[:min_spectral_coverage][:default])
+        (λmin, λmax, coverage) = spectral_coverage(λ[findall(data.good)], data.resolution, lc.comp)
+        if coverage < threshold
+            print(job.logio, @sprintf("Line %-15s updated coverage: %5.3f on range %10.5g < λ < %10.5g", cname, coverage, λmin, λmax))
+            println(job.logio, @sprintf(", threshold is < %5.3f, neglecting...", threshold))
+            delete!(llcs, cname)
+            data.good[λmin .<= λ .< λmax] .= false
+        end
+    end
     println(job.logio, "Good samples after line coverage filter: ", count(data.good))
 
     # Sort lines according to center wavelength
