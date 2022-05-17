@@ -573,7 +573,7 @@ function add_unknown_lines!(::Type{T}, job::JobState) where T <: DefaultRecipe
     (job.options[:n_unk] > 0)  ||  (return nothing)
     λ = domain(job.model)[:]
     for i in 1:job.options[:n_unk]
-        job.model[Symbol(:unk, i)] = EmlineComponent(job, 3000., unknown)
+        job.model[Symbol(:unk, i)] = EmLineComponent(job, 3000., unknown)
     end
     job.model[:UnkLines] = SumReducer([Symbol(:unk, i) for i in 1:job.options[:n_unk]])
     push!(job.model[:main].list, :UnkLines)

@@ -1,4 +1,4 @@
-export transition, custom_transition,
+export transition,
     AbstractLine, GenericLine, BroadLine, NarrowLine, BroadBaseLine, MultiCompLine, LineComponent
 
 const transitions_db = DataFrame()
@@ -34,26 +34,6 @@ function transition(tid::Symbol)
 end
 
 
-function custom_transition_default_tid(λ::Float64)
-    tid = "T" * string(λ)
-    tid = join(split(tid, "."), "p")
-    return Symbol(tid)
-end
-
-
-function custom_transition(λ_vac_ang::Float64; tid::Union{Symbol, Nothing}=nothing)
-    load_transitions()
-    isnothing(tid)  &&  (tid = custom_transition_default_tid(λ_vac_ang))
-    i = findall(transitions_db.tid .== tid)
-    if length(i) > 0
-        delete!(transitions_db, i)
-    end
-    t = [tid, string(tid), λ_vac_ang, fill("", ncol(transitions_db)-3)...]
-    push!(transitions_db, t)
-    return tid
-end
-
-transition(λ_vac_ang::Float64) = transition(custom_transition_default_tid(λ_vac_ang))
 
 
 
