@@ -188,8 +188,9 @@ end
 function PreparedSpectrum(::Type{T}, job::Job, source::Source; id=1) where T <: DefaultRecipe
     data = deepcopy(source.specs[id])
     println(job.logio, "Spectrum: " * data.label)
-    println(job.logio, "  good fraction:: ", goodfraction(data))
-    if goodfraction(data) < 0.5
+    goodfraction = count(data.good) / length(data.good)
+    println(job.logio, "  good fraction:: ", goodfraction)
+    if goodfraction < 0.5
         error("Good fraction < 0.5")
     end
     println(job.logio, "  resolution: ", @sprintf("%.4g", data.resolution), " km / s (FWHM)")
@@ -204,10 +205,11 @@ function PreparedSpectrum(::Type{T}, job::Job, source::Source; id=1) where T <: 
     not sufficient the component should not be added to the model,
     and corresponding spectral samples should be ignored to avoid
     worsening the fit due to missing model components. =#
-    println(job.logio, "Good samples before line coverage filter: ", length(findall(data.good)))
+    println(job.logio, "Good samples before line coverage filter: ", count(data.good))
 
     # Collect line components
     llcs = OrderedDict{Symbol, EmLineComponent}()
+    good = deepcopy(data.good)
     for (key, line) in job.options[:lines]
         lcs = EmLineComponents(job, line)
         @assert length(lcs) == length(line.types)
@@ -225,15 +227,16 @@ function PreparedSpectrum(::Type{T}, job::Job, source::Source; id=1) where T <: 
             (λmin, λmax, coverage) = spectral_coverage(λ[findall(data.good)], data.resolution, lc.comp)
             print(job.logio, @sprintf("Line %-15s coverage: %5.3f", cname, coverage))
             if coverage < threshold
-                println(job.logio, @sprintf("  (threshold: %4.2f), neglecting range: %10.5g < λ < %10.5g", threshold, λmin, λmax))
-                data.good[λmin .<= λ .< λmax] .= false
-                println(job.logio, @sprintf("Neglecting line %-15s", key))
+                println(job.logio, @sprintf(" < %4.2f, neglecting range: %10.5g < λ < %10.5g and line component", threshold, λmin, λmax))
+                good[λmin .<= λ .< λmax] .= false
             else
                 llcs[cname] = lc
                 println(job.logio)
             end
         end
     end
+    data.good .= good
+    println(job.logio, "Good samples after line coverage filter: ", count(data.good))
 
     # Sort lines according to center wavelength
     kk = collect(keys(llcs))

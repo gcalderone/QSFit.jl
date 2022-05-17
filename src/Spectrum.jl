@@ -1,6 +1,6 @@
 using FITSIO, DSP
 
-export Spectrum, goodfraction
+export Spectrum
 
 unit_λ() = u"angstrom"
 unit_flux() = u"erg" / u"s" / u"cm"^2
@@ -118,9 +118,6 @@ function Spectrum(::Val{:ASCII}, file::AbstractString; columns=[1,2,3], kw...)
     out = Spectrum(λ, flux, unc, label=file; kw...)
     return out
 end
-
-
-goodfraction(d::Spectrum) = length(findall(d.good)) / length(d.good)
 
 
 function instrumental_broadening(λ, flux, σ_kms)
