@@ -43,7 +43,7 @@ function Options(::Type{DefaultRecipe})
     out[:n_unk] = 10
     out[:unk_avoid] = [4863 .+ [-1,1] .* 50, 6565 .+ [-1,1] .* 150]
 
-    lines = OrderedDict{Symbol, EmLineComposition}()
+    lines = OrderedDict{Symbol, EmLineDescription}()
     out[:lines] = lines
 
     lines[:Lyb         ] = StdEmLine(:Lyb       ,  narrow, broad)

@@ -45,9 +45,9 @@ struct VeryBroad <: SpecLineType; end; const verybroad = VeryBroad()
 struct Unknown   <: SpecLineType; end; const unknown   = Unknown()
 
 # Emission line descriptor including transition identifier and line type decomposition.
-abstract type EmLineComposition end
+abstract type EmLineDescription end
 
-struct StdEmLine <: EmLineComposition
+struct StdEmLine <: EmLineDescription
     tid::Symbol
     types::Vector{SpecLineType}
     function StdEmLine(tid::Symbol, T::Vararg{SpecLineType})
@@ -56,7 +56,7 @@ struct StdEmLine <: EmLineComposition
     end
 end
 
-struct CustomEmLine <: EmLineComposition
+struct CustomEmLine <: EmLineDescription
     λ::Float64
     types::Vector{SpecLineType}
     function CustomEmLine(λ::Float64, T::Vararg{SpecLineType})
