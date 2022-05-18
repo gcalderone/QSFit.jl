@@ -12,7 +12,7 @@ using Unitful, UnitfulAstro
 using Dates
 using SpecialFunctions
 using Gnuplot
-using TextParse, DataFrames
+using TextParse
 
 include("cosmology.jl")
 include("ccm_unred.jl")

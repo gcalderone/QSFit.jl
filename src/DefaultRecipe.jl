@@ -155,8 +155,8 @@ end
 
 
 function EmLineComponents(::Type{T}, job::Job, line::StdEmLine) where T <: DefaultRecipe
-    tt = transition(line.tid)
-    λ = tt.LAMBDA_VAC_ANG
+    tt = transitions(line.tid)
+    λ = getfield.(tt, :λ)
     if length(λ) > 1
         println(job.logio, "Considering average wavelength for the $(line.tid) multiplet: " * string(mean(λ)) * "Å")
         λ = mean(λ)  # average lambda of multiplets
