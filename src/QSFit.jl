@@ -116,19 +116,19 @@ end
 # TODO     models::GFit.MultiModel
 # TODO end
 
+run(source::Source, job::Job{T}) where T <: AbstractRecipe =
+    run(JobState{T}(source, job))
 
 abstract type JobResults{T <: AbstractRecipe} <: JobState{T} end
 struct       cJobResults{T} <: JobResults{T}
     @copy_fields(cJobState)
     fitres::GFit.FitResult
-    EW::OrderedDict{Symbol, Float64}
+    reduction::OrderedDict{Symbol, Any}
 end
 
 JobResults(job::JobState{T}, fitres::GFit.FitResult) where T <: AbstractRecipe =
-    cJobResults{T}(getfield.(Ref(job), fieldnames(typeof(job)))..., fitres, estimate_line_EWs(source, pspec, model))
+    cJobResults{T}(getfield.(Ref(job), fieldnames(typeof(job)))..., fitres, OrderedDict{Symbol, Any}())
 
-run(source::Source, job::Job{T}) where T <: AbstractRecipe =
-    run(JobState{T}(source, job))
 
 
 include("DefaultRecipe.jl")
