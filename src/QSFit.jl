@@ -93,7 +93,6 @@ struct StdSpectrum{T <: AbstractRecipe}
     domain::GFit.Domain{1}
     data::GFit.Measures{1}
     lcs::OrderedDict{Symbol, EmLineComponent}
-    lcs_unk::OrderedDict{Symbol, EmLineComponent}
 end
 
 

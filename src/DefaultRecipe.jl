@@ -252,12 +252,6 @@ function StdSpectrum{T}(::Type{T}, job::Job, source::Source; id=1) where T <: De
     end
     println(job.logio, "Good samples after line coverage filter: ", count(data.good))
 
-    # Prepare unknown line components
-    llcs_unk = OrderedDict{Symbol, EmLineComponent}()
-    for i in 1:job.options[:n_unk]
-        llcs_unk[Symbol(:unk, i)] = EmLineComponent(job, 3000., unknown)
-    end
-
     # Sort lines according to center wavelength
     kk = collect(keys(llcs))
     vv = collect(values(llcs))
@@ -278,7 +272,7 @@ function StdSpectrum{T}(::Type{T}, job::Job, source::Source; id=1) where T <: De
                    data.flux[ii] .* dered[ii] .* flux2lum .* (1 + source.z),
                    data.err[ ii] .* dered[ii] .* flux2lum .* (1 + source.z))
 
-    return StdSpectrum{T}(id, dom, lum, llcs, llcs_unk)
+    return StdSpectrum{T}(id, dom, lum, llcs)
 end
 
 
@@ -578,8 +572,9 @@ end
 function add_unknown_lines!(::Type{T}, job::JobState) where T <: DefaultRecipe
     (job.options[:n_unk] > 0)  ||  (return nothing)
 
-    for (cname, lc) in job.pspec.lcs_unk
-        job.model[cname] = lc.comp
+    # Prepare unknown line components
+    for i in 1:job.options[:n_unk]
+        job.model[Symbol(:unk, i)] = EmLineComponent(job, 3000., unknown).comp
     end
     job.model[:UnkLines] = SumReducer([Symbol(:unk, i) for i in 1:job.options[:n_unk]])
     push!(job.model[:main].list, :UnkLines)
