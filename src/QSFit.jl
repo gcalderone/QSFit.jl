@@ -13,8 +13,8 @@ using Dates
 using SpecialFunctions
 using Gnuplot
 using TextParse
+using Cosmology
 
-include("cosmology.jl")
 include("ccm_unred.jl")
 include("components/powerlaw.jl")
 include("components/sbpl.jl")
@@ -55,14 +55,11 @@ abstract type AbstractRecipe end
 abstract type Job{T <: AbstractRecipe} end
 struct       cJob{T <: AbstractRecipe} <: Job{T}
     options::OrderedDict{Symbol, Any}
-    cosmo::Cosmology.AbstractCosmology
     logfile::Union{Nothing, String}
     logio::Union{IOStream, Base.TTY}
 end
 
-function Job{T}(;
-                logfile=nothing,
-                cosmo=default_cosmology()) where T <: AbstractRecipe
+function Job{T}(; logfile=nothing) where T <: AbstractRecipe
     if isnothing(logfile)
         GFit.showsettings.plain = false
         logio = stdout
@@ -74,8 +71,7 @@ function Job{T}(;
         println(logio, "Timestamp: ", now())
         GFit.showsettings.plain = true
     end
-    return cJob{T}(Options(T), cosmo,
-                   logfile, logio)
+    return cJob{T}(Options(T), logfile, logio)
 end
 
 
