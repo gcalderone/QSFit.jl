@@ -33,6 +33,10 @@ include("Spectrum.jl")
 include("SpectralLines.jl")
 
 
+version() = v"0.1.0"
+qsfit_data() = artifact"qsfit_data"
+
+
 struct Source
     name::String
     z::Float64

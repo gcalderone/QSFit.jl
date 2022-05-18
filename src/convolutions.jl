@@ -74,3 +74,17 @@ y2 = QSFit.conv_gauss(x, y, 10000.)
 QSFit.int_tabulated(x, y)  # still ~ 2
 
 =#
+
+
+function convol(v, _k)
+    k = reverse(_k)
+    nk = length(k)
+    @assert nk < length(v)
+    @assert mod(nk, 2) == 1
+    r = div(nk, 2)
+    out = fill(0., length(v))
+    for i in r+1:length(v)-r
+        out[i-r:i+r] .+= v[i] .* k
+    end
+    return out ./ sum(abs.(k))
+end

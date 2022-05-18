@@ -1,5 +1,3 @@
-export qsfitversion, spectral_coverage
-
 # The following macro is taken from ReusePatterns.jl
 macro copy_fields(T)
     out = Expr(:block)
@@ -13,9 +11,6 @@ macro copy_fields(T)
 end
 
 
-qsfitversion() = v"0.1.0"
-qsfit_data() = artifact"qsfit_data"
-
 gauss(x, μ, σ) = exp.(-0.5 .* ((x .- μ) ./ σ).^2) ./ sqrt(2pi) ./ σ
 
 
@@ -28,19 +23,6 @@ function planck(λ, T)
     return b ./ (exp.(d) .- 1)
 end
 
-
-function convol(v, _k)
-    k = reverse(_k)
-    nk = length(k)
-    @assert nk < length(v)
-    @assert mod(nk, 2) == 1
-    r = div(nk, 2)
-    out = fill(0., length(v))
-    for i in r+1:length(v)-r
-        out[i-r:i+r] .+= v[i] .* k
-    end
-    return out ./ sum(abs.(k))
-end
 
 
 function estimate_fwhm(λ, f; plot=false)
