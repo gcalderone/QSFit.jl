@@ -3,7 +3,7 @@ export DefaultRecipe # TODO, qsfit, qsfit_multi
 abstract type DefaultRecipe <: AbstractRecipe end
 
 EmLineComponent(       job::Job{T}     , args...; kws...) where T <: AbstractRecipe = EmLineComponent(       T, job, args...; kws...)
-EmLineComponents(      job::Job{T}     , args...; kws...) where T <: AbstractRecipe = EmLineComponents(      T, job, args...; kws...)
+collect_linecomps(     job::Job{T}     , args...; kws...) where T <: AbstractRecipe = collect_linecomps(     T, job, args...; kws...)
 StdSpectrum(           job::Job{T}     , args...; kws...) where T <: AbstractRecipe = StdSpectrum{T}(        T, job, args...; kws...)
 minimizer(             job::JobState{T}, args...; kws...) where T <: AbstractRecipe = minimizer(             T, job, args...; kws...)
 fit!(                  job::JobState{T}, args...; kws...) where T <: AbstractRecipe = fit!(                  T, job, args...; kws...)
@@ -108,13 +108,6 @@ function EmLineComponent(::Type{T}, job::Job, λ::Float64, ::Narrow) where T <: 
     comp.fwhm.high = 2e3
     comp.voff.low  = -1e3
     comp.voff.high =  1e3
-
-    # TODO if line.cname == :OIII_5007_bw
-    # TODO     comp.fwhm.val  = 500
-    # TODO     comp.fwhm.high = 1e3
-    # TODO     comp.voff.low  = 0
-    # TODO     comp.voff.high = 2e3
-    # TODO end
     return EmLineComponent{Narrow}(:_na, :NarrowLines, comp)
 end
 
@@ -154,34 +147,52 @@ function EmLineComponent(::Type{T}, job::Job, λ::Float64, ::Unknown) where T <:
 end
 
 
-function EmLineComponents(::Type{T}, job::Job, line::StdEmLine) where T <: DefaultRecipe
-    tt = transitions(line.tid)
-    λ = getfield.(tt, :λ)
-    if length(λ) > 1
-        println(job.logio, "Considering average wavelength for the $(line.tid) multiplet: " * string(mean(λ)) * "Å")
-        λ = mean(λ)  # average lambda of multiplets
-    else
-        λ = λ[1]
-    end
-
-    out = Vector{EmLineComponent}()
-    for ltype in line.types
-        lc = EmLineComponent(job, λ, ltype)
-        if (ltype == Narrow)  &&  (length(line.types) > 1)
-            lc.comp.fwhm.high = 1e3
+function collect_linecomps(::Type{T}, job::Job) where T <: DefaultRecipe
+    lcs = OrderedDict{Symbol, EmLineComponent}()
+    for (name, linedesc) in job.options[:lines]
+        if isa(linedesc, StdEmLine)
+            tt = transitions(linedesc.tid)
+            λ = getfield.(tt, :λ)
+            if length(λ) > 1
+                println(job.logio, "Considering average wavelength for the $(linedesc.tid) multiplet: " * string(mean(λ)) * "Å")
+                λ = mean(λ)  # average lambda of multiplets
+            else
+                λ = λ[1]
+            end
+        else
+            @assert isa(linedesc, CustomEmLine)
+            λ = linedesc.λ
         end
-        if (ltype == Broad)  &&  (line.tid == :MgII_2798)
-            lc.comp.voff.low  = -1e3
-            lc.comp.voff.high =  1e3
+
+        for ltype in linedesc.types
+            lc = EmLineComponent(job, λ, ltype)
+
+            if isa(linedesc, StdEmLine)
+                if (ltype == Narrow)  &&  (length(linedesc.types) > 1)
+                    lc.comp.fwhm.high = 1e3
+                end
+                if (ltype == Broad)  &&  (name == :MgII_2798)
+                    lc.comp.voff.low  = -1e3
+                    lc.comp.voff.high =  1e3
+                end
+                if (ltype == Narrow)  &&  (name == :OIII_5007_bw)
+                    lc.comp.fwhm.val  = 500
+                    lc.comp.fwhm.high = 1e3
+                    lc.comp.voff.low  = 0
+                    lc.comp.voff.high = 2e3
+                end
+            end
+
+            if length(linedesc.types) == 1
+                cname = name
+            else
+                cname = Symbol(name, lc.suffix)
+            end
+            @assert !(cname in keys(lcs))
+            lcs[cname] = lc
         end
-        push!(out, lc)
     end
-    return out
-end
-
-
-function EmLineComponents(::Type{T}, job::Job, line::CustomEmLine) where T <: DefaultRecipe
-    return [EmLineComponent(job, line.λ, ltype) for ltype in line.types]
+    return lcs
 end
 
 
@@ -208,55 +219,42 @@ function StdSpectrum{T}(::Type{T}, job::Job, source::Source; id=1) where T <: De
     println(job.logio, "Good samples before line coverage filter: ", count(data.good))
 
     # Collect line components (neglect components with insufficent coverage)
-    llcs = OrderedDict{Symbol, EmLineComponent}()
+    lcs = collect_linecomps(job)
     good = deepcopy(data.good)
-    for (key, line) in job.options[:lines]
-        lcs = EmLineComponents(job, line)
-        @assert length(lcs) == length(line.types)
-
+    for (cname, lc) in lcs
         # Line coverage test
-        for lc in lcs
-            if length(lcs) == 1
-                cname = key
-            else
-                cname = Symbol(key, lc.suffix)
-            end
+        threshold = get(job.options[:min_spectral_coverage], cname, job.options[:min_spectral_coverage][:default])
+        (λmin, λmax, coverage) = spectral_coverage(λ[findall(data.good)], data.resolution, lc.comp)
 
-            threshold = get(job.options[:min_spectral_coverage], cname, job.options[:min_spectral_coverage][:default])
-            (λmin, λmax, coverage) = spectral_coverage(λ[findall(data.good)], data.resolution, lc.comp)
-
-            print(job.logio, @sprintf("Line %-15s coverage: %5.3f on range %10.5g < λ < %10.5g", cname, coverage, λmin, λmax))
-            if coverage < threshold
-                println(job.logio, @sprintf(", threshold is < %5.3f, neglecting...", threshold))
-                good[λmin .<= λ .< λmax] .= false
-            else
-                @assert !(cname in keys(llcs))
-                llcs[cname] = lc
-                println(job.logio)
-            end
+        print(job.logio, @sprintf("Line %-15s coverage: %5.3f on range %10.5g < λ < %10.5g", cname, coverage, λmin, λmax))
+        if coverage < threshold
+            print(job.logio, @sprintf(", threshold is < %5.3f, neglecting...", threshold))
+            good[λmin .<= λ .< λmax] .= false
+            delete!(lcs, cname)
         end
+        println(job.logio)
     end
     data.good .= good
 
     # Second pass to neglect lines whose coverage has been affected by
     # the neglected spectral samples.
-    for (cname, lc) in llcs
+    for (cname, lc) in lcs
         threshold = get(job.options[:min_spectral_coverage], cname, job.options[:min_spectral_coverage][:default])
         (λmin, λmax, coverage) = spectral_coverage(λ[findall(data.good)], data.resolution, lc.comp)
         if coverage < threshold
             print(job.logio, @sprintf("Line %-15s updated coverage: %5.3f on range %10.5g < λ < %10.5g", cname, coverage, λmin, λmax))
             println(job.logio, @sprintf(", threshold is < %5.3f, neglecting...", threshold))
-            delete!(llcs, cname)
+            delete!(lcs, cname)
             data.good[λmin .<= λ .< λmax] .= false
         end
     end
     println(job.logio, "Good samples after line coverage filter: ", count(data.good))
 
     # Sort lines according to center wavelength
-    kk = collect(keys(llcs))
-    vv = collect(values(llcs))
+    kk = collect(keys(lcs))
+    vv = collect(values(lcs))
     ii = sortperm(getfield.(getfield.(getfield.(vv, :comp), :center), :val))
-    llcs = OrderedDict(Pair.(kk[ii], vv[ii]))
+    lcs = OrderedDict(Pair.(kk[ii], vv[ii]))
 
     # De-reddening
     dered = ccm_unred([1450, 3000, 5100.], source.mw_ebv)
@@ -272,7 +270,7 @@ function StdSpectrum{T}(::Type{T}, job::Job, source::Source; id=1) where T <: De
                    data.flux[ii] .* dered[ii] .* flux2lum .* (1 + source.z),
                    data.err[ ii] .* dered[ii] .* flux2lum .* (1 + source.z))
 
-    return StdSpectrum{T}(id, dom, lum, llcs)
+    return StdSpectrum{T}(id, dom, lum, lcs)
 end
 
 
