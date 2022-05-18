@@ -74,9 +74,13 @@ function run(job::JobState{T}) where T <: DefaultRecipe
     println(job.logio)
     show(job.logio, fitres)
 
-    out = JobResults(job, fitres)
-    elapsed = time() - elapsed
-    println(job.logio, "\nElapsed time: $elapsed s")
+    # Estimate line EWs
+    EWs = estimate_line_EWs(job)
+
+    out = JobResults(job, fitres, time() - elapsed)
+    out.reduction[:EW] = EWs
+
+    println(job.logio, "\nElapsed time: $(out.elapsed) s")
     close_log(job)
     return out
 end

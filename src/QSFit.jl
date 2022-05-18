@@ -121,16 +121,16 @@ abstract type JobResults{T <: AbstractRecipe} <: JobState{T} end
 struct       cJobResults{T} <: JobResults{T}
     @copy_fields(cJobState)
     fitres::GFit.FitResult
-    reduction::OrderedDict{Symbol, Any}
+    elapsed::Float64
+    reduced::OrderedDict{Symbol, Any}
 end
 
-JobResults(job::JobState{T}, fitres::GFit.FitResult) where T <: AbstractRecipe =
-    cJobResults{T}(getfield.(Ref(job), fieldnames(typeof(job)))..., fitres, OrderedDict{Symbol, Any}())
-
+JobResults(job::JobState{T}, fitres::GFit.FitResult, elapsed::Float64) where T <: AbstractRecipe =
+    cJobResults{T}(getfield.(Ref(job), fieldnames(typeof(job)))..., fitres, elapsed, OrderedDict{Symbol, Any}())
 
 
 include("DefaultRecipe.jl")
-# TODO include("reduce.jl")
+include("reduce.jl")
 # TODO include("viewer.jl")
 # TODO include("gnuplot.jl")
 # TODO include("interactive_guess.jl")

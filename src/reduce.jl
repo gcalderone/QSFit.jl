@@ -1,31 +1,20 @@
-export QSFitResults, QSFitMultiResults
-
-function estimate_line_EWs(source::QSO{T}, pspec::PreparedSpectrum, model::Model) where T <: AbstractRecipe
+function estimate_line_EWs(job::JobState{T}) where T <: AbstractRecipe
     EW = OrderedDict{Symbol, Float64}()
 
-    cont = deepcopy(model())
-    for (lname, lc) in pspec.lcs
-        haskey(model, lname) || continue
-        cont .-= model(lname)
+    cont = deepcopy(job.model())
+    for (lname, lc) in job.pspec.lcs
+        haskey(job.model, lname) || continue
+        cont .-= job.model(lname)
     end
     @assert all(cont .> 0) "Continuum model is zero or negative"
-    for (lname, lc) in pspec.lcs
-        haskey(model, lname) || continue
-        EW[lname] = int_tabulated(domain(model)[:],
-                                  model(lname) ./ cont)[1]
+    for (lname, lc) in job.pspec.lcs
+        haskey(job.model, lname) || continue
+        EW[lname] = int_tabulated(domain(job.model)[:],
+                                  job.model(lname) ./ cont)[1]
     end
     return EW
 end
 
-
-struct JobResults{T}
-    @copy_fields(JobState)
-    fitres::GFit.FitResult
-    EW::OrderedDict{Symbol, Float64}
-end
-
-JobResults(job::JobState{T}, fitres::GFit.FitResult) where T <: AbstractRecipe =
-    JobResults{T}(getfield.(Ref(job), fieldnames(typeof(job)))..., fitres, estimate_line_EWs(source, pspec, model))
 
 struct QSFitMultiResults{T}
     source::QSO{T}
