@@ -93,11 +93,7 @@ function eval_balmer_continuum(Temp, Tau, fwhm)
     cont ./= maximum(cont)
 
     # Broadening
-    σ = fwhm / 3.e5 / 2.355 * edge
-    kernel = gauss(λ, mean(λ), σ)
-    kernel = kernel[findall(kernel .> maximum(kernel) / 1e3)]
-    (mod(length(kernel), 2) == 0)  &&  (push!(kernel, 0.))
-    cont = convol(cont, kernel)
+    cont = conv_gauss(λ, cont, fwhm / 2.355)
 
     # Normalize Balmer continuum at 3000A
     cont ./=     Spline1D(λ, cont, k=1, bc="extrapolate")(3000.)
