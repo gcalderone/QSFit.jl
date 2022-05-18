@@ -1,4 +1,4 @@
-export DefaultRecipe # TODO, qsfit, qsfit_multi
+export DefaultRecipe
 
 abstract type DefaultRecipe <: AbstractRecipe end
 

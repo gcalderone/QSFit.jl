@@ -21,7 +21,5 @@ add_spec!(source, Spectrum(Val(:SDSS_DR10), "/home/gcalderone/my/work/software/q
 job = QSFit.Job{DefaultRecipe}()
 res = QSFit.run(source, job)
 
-job = QSFit.JobState{DefaultRecipe}(source, job)
-res = QSFit.qsfit(job)
 viewer(res, filename="test_qsfit.html")
 ```
