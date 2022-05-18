@@ -118,7 +118,7 @@ end
 
 
 include("DefaultRecipe.jl")
-# TODO include("reduce.jl")
+include("reduce.jl")
 # TODO include("viewer.jl")
 # TODO include("gnuplot.jl")
 # TODO include("interactive_guess.jl")

@@ -18,16 +18,14 @@ function estimate_line_EWs(source::QSO{T}, pspec::PreparedSpectrum, model::Model
 end
 
 
-struct QSFitResults{T}
-    source::QSO{T}
-    pspec::PreparedSpectrum
-    model::Model
+struct JobResults{T}
+    @copy_fields(JobState)
     fitres::GFit.FitResult
     EW::OrderedDict{Symbol, Float64}
 end
 
-QSFitResults(source::QSO{T}, pspec::PreparedSpectrum, model::Model, fitres::GFit.FitResult) where T <: AbstractRecipe =
-    QSFitResults{T}(source, pspec, model, fitres, estimate_line_EWs(source, pspec, model))
+JobResults(job::JobState{T}, fitres::GFit.FitResult) where T <: AbstractRecipe =
+    JobResults{T}(getfield.(Ref(job), fieldnames(typeof(job)))..., fitres, estimate_line_EWs(source, pspec, model))
 
 struct QSFitMultiResults{T}
     source::QSO{T}
@@ -41,9 +39,9 @@ QSFitMultiResults(source::QSO{T}, pspecs::Vector{PreparedSpectrum}, multi::Multi
     QSFitMultiResults{T}(source, pspecs, multi, fitres, [estimate_line_EWs(source, pspecs[id], multi[id]) for id in 1:length(multi)])
 
 
-function qsfit(res::QSFitResults{T}) where T
+function qsfit(res::JobResults{T}) where T
     fitres = fit!(res.source, res.model, res.pspec)
-    return QSFitResults(res.source, res.pspec, res.model, fitres)
+    return JobResults(res.source, res.pspec, res.model, fitres)
 end
 
 function qsfit(res::QSFitMultiResults{T}) where T

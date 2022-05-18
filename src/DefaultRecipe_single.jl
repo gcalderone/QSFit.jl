@@ -77,7 +77,7 @@ function qsfit(job::JobState{T}) where T <: DefaultRecipe
     println(job.logio)
     show(job.logio, fitres)
 
-    out = QSFitResults(job, fitres)
+    out = JobResults(job, fitres)
     elapsed = time() - elapsed
     println(job.logio, "\nElapsed time: $elapsed s")
     close_log(job)
