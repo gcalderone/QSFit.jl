@@ -119,11 +119,3 @@ function Spectrum(::Val{:ASCII}, file::AbstractString; columns=[1,2,3], kw...)
     return out
 end
 
-
-function instrumental_broadening(λ, flux, σ_kms)
-    # In some case the main reducer may evaluate to a single value
-    # (rather than a vector)
-    (length(flux) == 1)  &&  (return flux)
-
-    return conv_gauss(λ, flux, σ_kms)
-end
