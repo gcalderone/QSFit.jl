@@ -127,6 +127,9 @@ end
 JobResults(job::JobState{T}, fitres::GFit.FitResult) where T <: AbstractRecipe =
     cJobResults{T}(getfield.(Ref(job), fieldnames(typeof(job)))..., fitres, estimate_line_EWs(source, pspec, model))
 
+run(source::Source, job::Job{T}) where T <: AbstractRecipe =
+    run(JobState{T}(source, job))
+
 
 include("DefaultRecipe.jl")
 # TODO include("reduce.jl")

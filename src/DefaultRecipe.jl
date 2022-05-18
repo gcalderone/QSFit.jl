@@ -2,6 +2,10 @@ export DefaultRecipe # TODO, qsfit, qsfit_multi
 
 abstract type DefaultRecipe <: AbstractRecipe end
 
+# Use DefaultRecipe when no Job object is provided
+run(source::Source) = run(source, QSFit.Job{DefaultRecipe}())
+
+
 get_cosmology(         job::Job{T}     , args...; kws...) where T <: AbstractRecipe = get_cosmology(         T, job, args...; kws...)
 EmLineComponent(       job::Job{T}     , args...; kws...) where T <: AbstractRecipe = EmLineComponent(       T, job, args...; kws...)
 collect_linecomps(     job::Job{T}     , args...; kws...) where T <: AbstractRecipe = collect_linecomps(     T, job, args...; kws...)

@@ -1,7 +1,4 @@
-qsfit(source::Source, job::Job{T}) where T <: DefaultRecipe =
-    qsfit(JobState{T}(source, job))
-
-function qsfit(job::JobState{T}) where T <: DefaultRecipe
+function run(job::JobState{T}) where T <: DefaultRecipe
     elapsed = time()
     model = job.model
 
