@@ -89,7 +89,7 @@ end
 
 
 struct StdSpectrum{T <: AbstractRecipe}
-    id::Int
+    resolution::Float64
     domain::GFit.Domain{1}
     data::GFit.Measures{1}
     lcs::OrderedDict{Symbol, EmLineComponent}
@@ -99,19 +99,17 @@ end
 abstract type JobState{T <: AbstractRecipe} <: Job{T} end
 struct       cJobState{T <: AbstractRecipe} <: JobState{T}
     @copy_fields(cJob)
-    source::Source
     pspec::StdSpectrum
     model::GFit.Model
 end
 
 function JobState{T}(source::Source, job::Job{T}) where T <: AbstractRecipe
     pspec = StdSpectrum(job, source)
-    cJobState{T}(getfield.(Ref(job), fieldnames(typeof(job)))..., source, pspec, Model(pspec.domain))
+    cJobState{T}(getfield.(Ref(job), fieldnames(typeof(job)))..., pspec, Model(pspec.domain))
 end
 
 # TODO struct JobStateMulti{T <: AbstractRecipe}
 # TODO     @copy_fields(Job)
-# TODO     source::Source
 # TODO     pspecs::Vector{StdSpectrum}
 # TODO     models::GFit.MultiModel
 # TODO end

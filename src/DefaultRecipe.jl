@@ -279,7 +279,7 @@ function StdSpectrum{T}(::Type{T}, job::Job, source::Source; id=1) where T <: De
                    data.flux[ii] .* dered[ii] .* flux2lum .* (1 + source.z),
                    data.err[ ii] .* dered[ii] .* flux2lum .* (1 + source.z))
 
-    return StdSpectrum{T}(id, dom, lum, lcs)
+    return StdSpectrum{T}(data.resolution, dom, lum, lcs)
 end
 
 
@@ -293,7 +293,7 @@ end
 function fit!(::Type{T}, job::JobState) where T <: DefaultRecipe
     mzer = minimizer(job)
     fitres = fit!(job.model, job.pspec.data, minimizer=mzer)
-    show(job.logio, job.model)
+    # show(job.logio, job.model)
     show(job.logio, fitres)
     # @gp :QSFit job.pspec.data model
     # printstyled(color=:blink, "Press ENTER to continue..."); readline()
@@ -415,7 +415,7 @@ end
 
 function add_iron_uv!(::Type{T}, job::JobState) where T <: DefaultRecipe
     λ = domain(job.model)[:]
-    resolution = job.source.specs[job.pspec.id].resolution
+    resolution = job.pspec.resolution
     if job.options[:use_ironuv]
         fwhm = job.options[:ironuv_fwhm]
         if job.options[:iron_broadening]
@@ -440,7 +440,7 @@ end
 
 function add_iron_opt!(::Type{T}, job::JobState) where T <: DefaultRecipe
     λ = domain(job.model)[:]
-    resolution = job.source.specs[job.pspec.id].resolution
+    resolution = job.pspec.resolution
     if job.options[:use_ironopt]
         fwhm = job.options[:ironoptbr_fwhm]
         if job.options[:iron_broadening]
@@ -483,7 +483,7 @@ function add_emission_lines!(::Type{T}, job::JobState) where T <: DefaultRecipe
         # - further narrow components (besides known emission lines)
         #   will not be corrected for instrumental resolution.
         if job.options[:line_broadening]
-            lc.comp.resolution = job.source.specs[job.pspec.id].resolution
+            lc.comp.resolution = job.pspec.resolution
         end
 
         job.model[cname] = lc.comp
