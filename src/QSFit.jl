@@ -129,6 +129,7 @@ function run(source::Source, job::Job{T}) where T <: AbstractRecipe
     return run(JobMultiState{T}(source, job))
 end
 
+
 abstract type JobResults{T <: AbstractRecipe} <: JobState{T} end
 struct       cJobResults{T} <: JobResults{T}
     @copy_fields(cJobState)
@@ -139,6 +140,18 @@ end
 
 JobResults(job::JobState{T}, fitres::GFit.FitResult, elapsed::Float64) where T <: AbstractRecipe =
     cJobResults{T}(getfield.(Ref(job), fieldnames(typeof(job)))..., fitres, elapsed, OrderedDict{Symbol, Any}())
+
+
+abstract type JobMultiResults{T <: AbstractRecipe} <: JobMultiState{T} end
+struct       cJobMultiResults{T} <: JobMultiResults{T}
+    @copy_fields(cJobMultiState)
+    fitres::GFit.FitResult
+    elapsed::Float64
+    reduced::Vector{OrderedDict{Symbol, Any}}
+end
+
+JobMultiResults(job::JobMultiState{T}, fitres::GFit.FitResult, elapsed::Float64) where T <: AbstractRecipe =
+    cJobMultiResults{T}(getfield.(Ref(job), fieldnames(typeof(job)))..., fitres, elapsed, Vector{OrderedDict{Symbol, Any}}())
 
 
 include("DefaultRecipe.jl")
