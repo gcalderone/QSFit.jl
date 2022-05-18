@@ -4,7 +4,7 @@ abstract type DefaultRecipe <: AbstractRecipe end
 
 EmLineComponent(       job::Job{T}     , args...; kws...) where T <: AbstractRecipe = EmLineComponent(       T, job, args...; kws...)
 EmLineComponents(      job::Job{T}     , args...; kws...) where T <: AbstractRecipe = EmLineComponents(      T, job, args...; kws...)
-PreparedSpectrum(      job::Job{T}     , args...; kws...) where T <: AbstractRecipe = PreparedSpectrum(      T, job, args...; kws...)
+StdSpectrum(           job::Job{T}     , args...; kws...) where T <: AbstractRecipe = StdSpectrum{T}(        T, job, args...; kws...)
 minimizer(             job::JobState{T}, args...; kws...) where T <: AbstractRecipe = minimizer(             T, job, args...; kws...)
 fit!(                  job::JobState{T}, args...; kws...) where T <: AbstractRecipe = fit!(                  T, job, args...; kws...)
 add_qso_continuum!(    job::JobState{T}, args...; kws...) where T <: AbstractRecipe = add_qso_continuum!(    T, job, args...; kws...)
@@ -185,7 +185,7 @@ function EmLineComponents(::Type{T}, job::Job, line::CustomEmLine) where T <: De
 end
 
 
-function PreparedSpectrum(::Type{T}, job::Job, source::Source; id=1) where T <: DefaultRecipe
+function StdSpectrum{T}(::Type{T}, job::Job, source::Source; id=1) where T <: DefaultRecipe
     data = deepcopy(source.specs[id])
     println(job.logio, "Spectrum: " * data.label)
     goodfraction = count(data.good) / length(data.good)
@@ -278,7 +278,7 @@ function PreparedSpectrum(::Type{T}, job::Job, source::Source; id=1) where T <: 
                    data.flux[ii] .* dered[ii] .* flux2lum .* (1 + source.z),
                    data.err[ ii] .* dered[ii] .* flux2lum .* (1 + source.z))
 
-    return PreparedSpectrum(id, dom, lum, flux2lum, llcs, llcs_unk)
+    return StdSpectrum{T}(id, dom, lum, llcs, llcs_unk)
 end
 
 

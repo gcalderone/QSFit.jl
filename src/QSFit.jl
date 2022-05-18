@@ -51,13 +51,14 @@ add_spec!(source::Source, spec::Spectrum) =
 
 abstract type AbstractRecipe end
 
-struct Job{T <: AbstractRecipe}
+
+abstract type Job{T <: AbstractRecipe} end
+struct       cJob{T <: AbstractRecipe} <: Job{T}
     options::OrderedDict{Symbol, Any}
     cosmo::Cosmology.AbstractCosmology
     logfile::Union{Nothing, String}
     logio::Union{IOStream, Base.TTY}
 end
-
 
 function Job{T}(;
                 logfile=nothing,
@@ -73,8 +74,8 @@ function Job{T}(;
         println(logio, "Timestamp: ", now())
         GFit.showsettings.plain = true
     end
-    return Job{T}(Options(T), cosmo,
-                  logfile, logio)
+    return cJob{T}(Options(T), cosmo,
+                   logfile, logio)
 end
 
 
@@ -87,38 +88,49 @@ function close_log(job::Job{T}) where T <: AbstractRecipe
 end
 
 
-struct PreparedSpectrum
+struct StdSpectrum{T <: AbstractRecipe}
     id::Int
     domain::GFit.Domain{1}
     data::GFit.Measures{1}
-    flux2lum::Float64
     lcs::OrderedDict{Symbol, EmLineComponent}
     lcs_unk::OrderedDict{Symbol, EmLineComponent}
 end
 
 
-struct JobState{T <: AbstractRecipe}
-    @copy_fields(Job)
+abstract type JobState{T <: AbstractRecipe} <: Job{T} end
+struct       cJobState{T <: AbstractRecipe} <: JobState{T}
+    @copy_fields(cJob)
     source::Source
-    pspec::PreparedSpectrum
+    pspec::StdSpectrum
     model::GFit.Model
 end
 
 function JobState{T}(source::Source, job::Job{T}) where T <: AbstractRecipe
-    pspec = PreparedSpectrum(job, source)
-    JobState{T}(getfield.(Ref(job), fieldnames(typeof(job)))..., source, pspec, Model(pspec.domain))
+    pspec = StdSpectrum(job, source)
+    cJobState{T}(getfield.(Ref(job), fieldnames(typeof(job)))..., source, pspec, Model(pspec.domain))
 end
 
 # TODO struct JobStateMulti{T <: AbstractRecipe}
 # TODO     @copy_fields(Job)
 # TODO     source::Source
-# TODO     pspecs::Vector{PreparedSpectrum}
+# TODO     pspecs::Vector{StdSpectrum}
 # TODO     models::GFit.MultiModel
 # TODO end
 
 
+abstract type JobResults{T <: AbstractRecipe} <: JobState{T} end
+struct       cJobResults{T} <: JobResults{T}
+    @copy_fields(cJobState)
+    fitres::GFit.FitResult
+    EW::OrderedDict{Symbol, Float64}
+end
+
+JobResults(job::JobState{T}, fitres::GFit.FitResult) where T <: AbstractRecipe =
+    cJobResults{T}(getfield.(Ref(job), fieldnames(typeof(job)))..., fitres, estimate_line_EWs(source, pspec, model))
+
+
 include("DefaultRecipe.jl")
-include("reduce.jl")
+# TODO include("reduce.jl")
 # TODO include("viewer.jl")
 # TODO include("gnuplot.jl")
 # TODO include("interactive_guess.jl")
