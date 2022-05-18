@@ -103,19 +103,31 @@ struct       cJobState{T <: AbstractRecipe} <: JobState{T}
     model::GFit.Model
 end
 
-function JobState{T}(source::Source, job::Job{T}) where T <: AbstractRecipe
-    pspec = StdSpectrum(job, source)
+function JobState{T}(source::Source, job::Job{T}; id=1) where T <: AbstractRecipe
+    pspec = StdSpectrum(job, source, id=id)
     cJobState{T}(getfield.(Ref(job), fieldnames(typeof(job)))..., pspec, Model(pspec.domain))
 end
 
-# TODO struct JobStateMulti{T <: AbstractRecipe}
-# TODO     @copy_fields(Job)
-# TODO     pspecs::Vector{StdSpectrum}
-# TODO     models::GFit.MultiModel
-# TODO end
 
-run(source::Source, job::Job{T}) where T <: AbstractRecipe =
-    run(JobState{T}(source, job))
+abstract type JobMultiState{T <: AbstractRecipe} <: Job{T} end
+struct       cJobMultiState{T <: AbstractRecipe} <: JobMultiState{T}
+    @copy_fields(cJob)
+    pspecs::Vector{StdSpectrum}
+    models::GFit.MultiModel
+end
+
+function JobMultiState{T}(source::Source, job::Job{T}) where T <: AbstractRecipe
+    pspecs = [StdSpectrum(job, source, id=id) for id in 1:length(source.specs)]
+    cJobMultiState{T}(getfield.(Ref(job), fieldnames(typeof(job)))..., pspecs, MultiModel())
+end
+
+
+function run(source::Source, job::Job{T}) where T <: AbstractRecipe
+    if length(source.specs) == 1
+        return run(JobState{T}(source, job))
+    end
+    return run(JobMultiState{T}(source, job))
+end
 
 abstract type JobResults{T <: AbstractRecipe} <: JobState{T} end
 struct       cJobResults{T} <: JobResults{T}

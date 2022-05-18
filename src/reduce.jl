@@ -14,26 +14,3 @@ function estimate_line_EWs(job::JobState{T}) where T <: AbstractRecipe
     end
     return EW
 end
-
-
-struct QSFitMultiResults{T}
-    source::QSO{T}
-    pspecs::Vector{PreparedSpectrum}
-    multi::MultiModel
-    fitres::GFit.FitResult
-    EW::Vector{OrderedDict{Symbol, Float64}}
-end
-
-QSFitMultiResults(source::QSO{T}, pspecs::Vector{PreparedSpectrum}, multi::MultiModel, fitres::GFit.FitResult) where T <: AbstractRecipe =
-    QSFitMultiResults{T}(source, pspecs, multi, fitres, [estimate_line_EWs(source, pspecs[id], multi[id]) for id in 1:length(multi)])
-
-
-function qsfit(res::JobResults{T}) where T
-    fitres = fit!(res.source, res.model, res.pspec)
-    return JobResults(res.source, res.pspec, res.model, fitres)
-end
-
-function qsfit(res::QSFitMultiResults{T}) where T
-    fitres = fit!(res.source, res.model, res.pspecs)
-    return QSFitMultiResults(res.source, res.pspecs, res.model, fitres)
-end
