@@ -6,6 +6,17 @@ qsfit_data() = artifact"qsfit_data"
 gauss(x, μ, σ) = exp.(-0.5 .* ((x .- μ) ./ σ).^2) ./ sqrt(2pi) ./ σ
 
 
+
+function int_tabulated(x, y)
+    @assert issorted(x)
+    @assert all(isfinite.(x))
+    @assert all(isfinite.(y))
+    b = x[2:end] .- x[1:end-1]
+    h = y[2:end] .+ y[1:end-1]
+    return sum(b .* h) / 2
+end
+
+
 function planck(λ, T)
     h = 6.6260755  * 1e-27  # Planck's constant [erg s]
     c = 2.99792458 * 1e10   # Vacuum speed of light [cm / s]
