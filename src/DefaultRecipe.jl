@@ -341,6 +341,7 @@ function add_host_galaxy!(::Type{T}, job::JobState) where T <: DefaultRecipe
 
         # Split total flux between continuum and host galaxy
         vv = Spline1D(λ, job.pspec.data.val, k=1, bc="extrapolate")(5500.)
+        @assert vv > 0 "Predicted L_λ at 5500A is negative"        
         job.model[:galaxy].norm.val    = 1/2 * vv
         job.model[:qso_cont].norm.val *= 1/2 * vv / Spline1D(λ, job.model(:qso_cont), k=1, bc="extrapolate")(5500.)
         evaluate!(job.model)
