@@ -249,6 +249,7 @@ function add_host_galaxy!(source::QSO{T}, pspec::PreparedSpectrum, model::Model)
 
         # Split total flux between continuum and host galaxy
         vv = Spline1D(λ, pspec.data.val, k=1, bc="extrapolate")(5500.)
+        @assert vv > 0 "Predicted L_λ at 5500A is negative"
         model[:galaxy].norm.val    = 1/2 * vv
         model[:qso_cont].norm.val *= 1/2 * vv / Spline1D(λ, model(:qso_cont), k=1, bc="extrapolate")(5500.)
         evaluate!(model)
