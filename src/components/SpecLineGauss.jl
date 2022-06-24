@@ -28,7 +28,7 @@ function prepare!(comp::SpecLineGauss, domain::Domain{1})
     return fill(NaN, length(domain))
 end
 
-function evaluate!(buffer, comp::SpecLineGauss, x::Domain{1},
+function evaluate!(buffer::Vector{Float64}, comp::SpecLineGauss, x::Domain{1},
                    norm, center, fwhm, voff)
     x0 = center - (voff / 3.e5) * center
     σ_res = comp.resolution / 2.355 / 3.e5 * center

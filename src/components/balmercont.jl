@@ -72,7 +72,7 @@ function eval_balmer_pseudocont(Temp, Ne, fwhm)
     for i in 1:length(wave)
         cont += norm[i] * gauss.(λ, wave[i], σ[i])
     end
-    cont ./= Spline1D(λ, cont, k=1, bc="error")(edge)
+    cont ./= Dierckx.Spline1D(λ, cont, k=1, bc="error")(edge)
     return (λ, cont)
 end
 
@@ -96,8 +96,8 @@ function eval_balmer_continuum(Temp, Tau, fwhm)
     cont = conv_gauss(λ, cont, fwhm / 2.355)
 
     # Normalize Balmer continuum at 3000A
-    cont ./=     Spline1D(λ, cont, k=1, bc="extrapolate")(3000.)
-    contAtEdge = Spline1D(λ, cont, k=1, bc="extrapolate")(3000.)
+    cont ./=     Dierckx.Spline1D(λ, cont, k=1, bc="extrapolate")(3000.)
+    contAtEdge = Dierckx.Spline1D(λ, cont, k=1, bc="extrapolate")(3000.)
     return (λ, cont, contAtEdge)
 end
 
@@ -127,14 +127,14 @@ function prepare!(comp::balmercont, domain::Domain{1})
     (λ1, c1, contAtEdge) = eval_balmer_continuum(T, Tau, fwhm)
     (λ2, c2) = eval_balmer_pseudocont(T, Ne, fwhm)
     c2 .*= contAtEdge
-    comp.c1 = Spline1D(λ1, c1, k=1, bc="extrapolate")(domain[:])
-    comp.c2 = Spline1D(λ2, c2, k=1, bc="extrapolate")(domain[:])
+    comp.c1 = Dierckx.Spline1D(λ1, c1, k=1, bc="extrapolate")(domain[:])
+    comp.c2 = Dierckx.Spline1D(λ2, c2, k=1, bc="extrapolate")(domain[:])
     comp.c1[findall(comp.c1 .< 0.)] .= 0.
     comp.c2[findall(comp.c2 .< 0.)] .= 0.
     return fill(NaN, length(domain))
 end
 
-function evaluate!(buffer, comp::balmercont, domain::Domain{1},
+function evaluate!(buffer::Vector{Float64}, comp::balmercont, domain::Domain{1},
                    norm, ratio)
     buffer .= norm .* (comp.c1 .+ ratio .* comp.c2)
 end

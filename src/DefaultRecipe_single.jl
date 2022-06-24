@@ -2,11 +2,10 @@ function run(job::JobState{T}) where T <: DefaultRecipe
     elapsed = time()
     model = job.model
 
-    model[:Continuum] = SumReducer([])
-    model[:main] = SumReducer([])
+    model[:Continuum] = SumReducer()
+    model[:main] = SumReducer()
     push!(model[:main].list, :Continuum)
-    select_reducer!(model, :main)
-    delete!(model.revals, :default_sum)
+    select_maincomp!(model, :main)
 
     println(job.logio, "\nFit continuum components...")
     add_qso_continuum!(job)
@@ -17,10 +16,10 @@ function run(job::JobState{T}) where T <: DefaultRecipe
     freeze(model, :qso_cont)
     haskey(model, :galaxy)  &&  freeze(model, :galaxy)
     haskey(model, :balmer)  &&  freeze(model, :balmer)
-    evaluate!(model)
+    evaluate(model)
 
     println(job.logio, "\nFit iron templates...")
-    model[:Iron] = SumReducer([])
+    model[:Iron] = SumReducer()
     push!(model[:main].list, :Iron)
     add_iron_uv!( job)
     add_iron_opt!(job)
@@ -31,7 +30,7 @@ function run(job::JobState{T}) where T <: DefaultRecipe
         haskey(model, :ironoptbr)  &&  freeze(model, :ironoptbr)
         haskey(model, :ironoptna)  &&  freeze(model, :ironoptna)
     end
-    evaluate!(model)
+    evaluate(model)
 
     println(job.logio, "\nFit known emission lines...")
     add_emission_lines!(job)

@@ -25,7 +25,7 @@ function conv_gauss(λ, data, σ_kms; oversampling::Int=5)
     # check with: extrema([(grid_λ[i+1] - grid_λ[i]) / grid_λ[i] * 3e5 for i in 1:length(grid_λ)-1]) .* oversampling, σ_kms
     step = log10(σ_kms / 3e5 + 1) / oversampling
     grid_λ = 10. .^ range(log10(minimum(λ)), log10(maximum(λ)), step=step)
-    grid_y = Spline1D(λ, data, k=1)(grid_λ)
+    grid_y = Dierckx.Spline1D(λ, data, k=1)(grid_λ)
 
     # Convolution with Gaussian kernel and extraction of proper subset
     kernel = gauss.(-5:1. / oversampling:5, 0., 1.)
@@ -34,16 +34,16 @@ function conv_gauss(λ, data, σ_kms; oversampling::Int=5)
     out = DSP.conv(grid_y, kernel)[i1:i2] ./ oversampling
 
     # Interpolate back to original domain
-    out = Spline1D(grid_λ, out, k=1, bc="extrapolate")(λ)
+    out = Dierckx.Spline1D(grid_λ, out, k=1, bc="extrapolate")(λ)
 
     # Replace data close to the edges
     ee = (1 + 2σ_kms / 3e5) * minimum(λ)
     i = findall(λ .< ee)
-    out[i] = Spline1D(grid_λ, grid_y, k=1, bc="extrapolate")(λ[i])
+    out[i] = Dierckx.Spline1D(grid_λ, grid_y, k=1, bc="extrapolate")(λ[i])
 
     ee = (1 - 2σ_kms / 3e5) * maximum(λ)
     i = findall(λ .> ee)
-    out[i] = Spline1D(grid_λ, grid_y, k=1, bc="extrapolate")(λ[i])
+    out[i] = Dierckx.Spline1D(grid_λ, grid_y, k=1, bc="extrapolate")(λ[i])
 
     # @gp    λ data "w lp t 'Data'"
     # @gp :- λ out  "w lp t 'Convolution'"

@@ -7,13 +7,15 @@ import GFit: Domain, CompEval,
 
 using CMPFit, GFit, SortMerge
 using Pkg, Pkg.Artifacts
-using Statistics, DelimitedFiles, Dierckx, Printf, DataStructures
+using Statistics, DelimitedFiles, Printf, DataStructures
 using Unitful, UnitfulAstro
 using Dates
 using SpecialFunctions
 using Gnuplot
 using TextParse
 using Cosmology
+
+import Dierckx  # import (instead of using) avoid conflicts with evaluate()
 
 include("ccm_unred.jl")
 include("components/powerlaw.jl")

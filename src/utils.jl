@@ -14,6 +14,16 @@ end
 gauss(x, μ, σ) = exp.(-0.5 .* ((x .- μ) ./ σ).^2) ./ sqrt(2pi) ./ σ
 
 
+function int_tabulated(x, y)
+    @assert issorted(x)
+    @assert all(isfinite.(x))
+    @assert all(isfinite.(y))
+    b = x[2:end] .- x[1:end-1]
+    h = y[2:end] .+ y[1:end-1]
+    return sum(b .* h) / 2
+end
+
+
 function planck(λ, T)
     h = 6.6260755  * 1e-27  # Planck's constant [erg s]
     c = 2.99792458 * 1e10   # Vacuum speed of light [cm / s]
@@ -36,10 +46,10 @@ function estimate_fwhm(λ, f; plot=false)
     @assert j1 < i1
     @assert i2 < j2
     x = collect(range(λ[j1], λ[i1], length=1000))
-    y = Spline1D(λ, f)(x)
+    y = Dierckx.Spline1D(λ, f)(x)
     λ1 = x[argmin(abs.(y .- half_max))]
     x = collect(range(λ[i2], λ[j2], length=1000))
-    y = Spline1D(λ, f)(x)
+    y = Dierckx.Spline1D(λ, f)(x)
     λ2 = x[argmin(abs.(y .- half_max))]
     fwhm = λ2 - λ1
 

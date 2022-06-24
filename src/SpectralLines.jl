@@ -1,5 +1,4 @@
-export transition,
-    AbstractLine, GenericLine, BroadLine, NarrowLine, BroadBaseLine, MultiCompLine, LineComponent
+export StdEmLine, broad, narrow, verybroad, unknown
 
 struct SpectralTransition
     id::Symbol

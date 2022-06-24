@@ -292,7 +292,7 @@ end
 
 function fit!(::Type{T}, job::JobState) where T <: DefaultRecipe
     mzer = minimizer(job)
-    fitres = fit!(job.model, job.pspec.data, minimizer=mzer)
+    fitres = fit!(mzer, job.model, job.pspec.data)
     # show(job.logio, job.model)
     show(job.logio, fitres)
     # @gp :QSFit job.pspec.data model
@@ -319,7 +319,7 @@ function add_qso_continuum!(::Type{T}, job::JobState) where T <: DefaultRecipe
 
     comp = QSFit.powerlaw(3000)
     comp.x0.val = median(λ)
-    comp.norm.val = Spline1D(λ, job.pspec.data.val, k=1, bc="error")(comp.x0.val)
+    comp.norm.val = Dierckx.Spline1D(λ, job.pspec.data.val, k=1, bc="error")(comp.x0.val)
     comp.norm.low = comp.norm.val / 1000.  # ensure contiuum remains positive (needed to estimate EWs)
     comp.alpha.val  = -1.5
     comp.alpha.low  = -3
@@ -327,7 +327,7 @@ function add_qso_continuum!(::Type{T}, job::JobState) where T <: DefaultRecipe
 
     job.model[:qso_cont] = comp
     push!(job.model[:Continuum].list, :qso_cont)
-    evaluate!(job.model)
+    evaluate(job.model)
 end
 
 
@@ -340,11 +340,11 @@ function add_host_galaxy!(::Type{T}, job::JobState) where T <: DefaultRecipe
         push!(job.model[:Continuum].list, :galaxy)
 
         # Split total flux between continuum and host galaxy
-        vv = Spline1D(λ, job.pspec.data.val, k=1, bc="extrapolate")(5500.)
+        vv = Dierckx.Spline1D(λ, job.pspec.data.val, k=1, bc="extrapolate")(5500.)
         @assert vv > 0 "Predicted L_λ at 5500A is negative"        
         job.model[:galaxy].norm.val    = 1/2 * vv
-        job.model[:qso_cont].norm.val *= 1/2 * vv / Spline1D(λ, job.model(:qso_cont), k=1, bc="extrapolate")(5500.)
-        evaluate!(job.model)
+        job.model[:qso_cont].norm.val *= 1/2 * vv / Dierckx.Spline1D(λ, job.model(:qso_cont), k=1, bc="extrapolate")(5500.)
+        evaluate(job.model)
     end
 end
 
@@ -361,9 +361,8 @@ function add_balmer_cont!(::Type{T}, job::JobState) where T <: DefaultRecipe
         c.ratio.fixed = false
         c.ratio.low  = 0.1
         c.ratio.high = 1
-        model = job.model # TODO: needed for @try_patch
-        @try_patch! model[:balmer].norm *= model[:qso_cont].norm
-        evaluate!(job.model)
+        job.model[:balmer].norm.patch = @λ (v, m) -> v * m[:qso_cont].norm
+        evaluate(job.model)
     end
 end
 
@@ -380,13 +379,13 @@ function renorm_cont!(::Type{T}, job::JobState) where T <: DefaultRecipe
             (ratio > 0.9)  &&  break
             (c.norm.val < (initialnorm / 5))  &&  break # give up
             c.norm.val *= 0.99
-            evaluate!(job.model)
+            evaluate(job.model)
         end
         println(job.logio, "Cont. norm. (after) : ", c.norm.val)
     else
         println(job.logio, "Skipping cont. renormalization")
     end
-    evaluate!(job.model)
+    evaluate(job.model)
     # @gp (domain(job.model), job.pspec.data) job.model
     # printstyled(color=:blink, "Press ENTER to continue..."); readline()
 end
@@ -429,9 +428,9 @@ function add_iron_uv!(::Type{T}, job::JobState) where T <: DefaultRecipe
             job.model[:ironuv] = comp
             job.model[:ironuv].norm.val = 1.
             push!(job.model[:Iron].list, :ironuv)
-            evaluate!(job.model)
+            evaluate(job.model)
             QSFit.guess_norm_factor!(job, :ironuv)
-            evaluate!(job.model)
+            evaluate(job.model)
         else
             println(job.logio, "Ignoring ironuv component (threshold: $threshold)")
         end
@@ -462,9 +461,9 @@ function add_iron_opt!(::Type{T}, job::JobState) where T <: DefaultRecipe
             job.model[:ironoptna].norm.fixed = false
             push!(job.model[:Iron].list, :ironoptbr)
             push!(job.model[:Iron].list, :ironoptna)
-            evaluate!(job.model)
+            evaluate(job.model)
             QSFit.guess_norm_factor!(job, :ironoptbr)
-            evaluate!(job.model)
+            evaluate(job.model)
         else
             println(job.logio, "Ignoring ironopt component (threshold: $threshold)")
         end
@@ -494,7 +493,7 @@ function add_emission_lines!(::Type{T}, job::JobState) where T <: DefaultRecipe
     for (group, lnames) in groups
         job.model[group] = SumReducer(lnames)
     end
-    evaluate!(job.model)
+    evaluate(job.model)
 end
 
 
@@ -511,7 +510,7 @@ function guess_emission_lines!(::Type{T}, job::JobState) where T <: DefaultRecip
             push!(job.model[:main].list, group)
             deleteat!(groups_to_go, findfirst(groups_to_go .== group))
         end
-        evaluate!(job.model)
+        evaluate(job.model)
     end
 
     # Ensure all groups have been considered
@@ -520,59 +519,60 @@ end
 
 
 function add_patch_functs!(::Type{T}, job::JobState) where T <: DefaultRecipe
-    model = job.model
     # Patch parameters
-    @try_patch! begin
-        # model[:OIII_4959].norm = model[:OIII_5007].norm / 3
-        model[:OIII_4959].voff = model[:OIII_5007].voff
+    if haskey(job.model, :OIII_4959)  &&  haskey(job.model, :OIII_5007)
+        # job.model[:OIII_4959].norm.patch = @λ m -> m[:OIII_5007].norm / 3
+        job.model[:OIII_4959].voff.patch = :OIII_5007
     end
-    @try_patch! begin
-        model[:OIII_5007_bw].voff += model[:OIII_5007].voff
-        model[:OIII_5007_bw].fwhm += model[:OIII_5007].fwhm
+    if haskey(job.model, :OIII_5007)  &&  haskey(job.model, :OIII_5007_bw)
+        job.model[:OIII_5007_bw].voff.patch = @λ (v,m) -> v + m[:OIII_5007].voff
+        job.model[:OIII_5007_bw].fwhm.patch = @λ (v,m) -> v + m[:OIII_5007].fwhm
     end
-    @try_patch! begin
-        # model[:OI_6300].norm = model[:OI_6364].norm / 3
-        model[:OI_6300].voff = model[:OI_6364].voff
+    if haskey(job.model, :OI_6300)  &&  haskey(job.model, :OI_6364)
+        # job.model[:OI_6300].norm.patch = @λ m -> m[:OI_6364].norm / 3
+        job.model[:OI_6300].voff.patch = :OI_6364
     end
-    @try_patch! begin
-        # model[:NII_6549].norm = model[:NII_6583].norm / 3
-        model[:NII_6549].voff = model[:NII_6583].voff
+    if haskey(job.model, :NII_6549)  &&  haskey(job.model, :NII_6583)
+        # job.model[:NII_6549].norm.patch = @λ m -> m[:NII_6583].norm / 3
+        job.model[:NII_6549].voff.patch = :NII_6583
     end
-    @try_patch! begin
-        # model[:SII_6716].norm = model[:SII_6731].norm / 1.5
-        model[:SII_6716].voff = model[:SII_6731].voff
+    if haskey(job.model, :SII_6716)  &&  haskey(job.model, :SII_6731)
+        # job.model[:SII_6716].norm.patch = @λ m -> m[:SII_6731].norm / 3
+        job.model[:SII_6716].voff.patch = :SII_6731
     end
 
-    @try_patch! model[:Hb_na].voff = model[:Ha_na].voff
+    if haskey(job.model, :Hb_na)  &&  haskey(job.model, :Ha_na)
+        job.model[:Hb_na].voff.patch = :Ha_na
+    end
 
     # The following are required to avoid degeneracy with iron
     # template
-    @try_patch! begin
-        model[:Hg].voff = model[:Hb_br].voff
-        model[:Hg].fwhm = model[:Hb_br].fwhm
+    if haskey(job.model, :Hg)  &&  haskey(job.model, :Hb_br)
+        job.model[:Hg].voff.patch = :Hb_br
+        job.model[:Hg].fwhm.patch = :Hb_br
     end
-    @try_patch! begin
-        model[:Hg_br].voff = model[:Hb_br].voff
-        model[:Hg_br].fwhm = model[:Hb_br].fwhm
+    if haskey(job.model, :Hg_br)  &&  haskey(job.model, :Hb_br)
+        job.model[:Hg_br].voff.patch = :Hb_br
+        job.model[:Hg_br].fwhm.patch = :Hb_br
     end
-    @try_patch! begin
-        model[:Hg_na].voff = model[:Hb_na].voff
-        model[:Hg_na].fwhm = model[:Hb_na].fwhm
+    if haskey(job.model, :Hg_na)  &&  haskey(job.model, :Hb_na)
+        job.model[:Hg_na].voff.patch = :Hb_na
+        job.model[:Hg_na].fwhm.patch = :Hb_na
     end
 
     # Ensure luminosity at peak of the broad base component is
     # smaller than the associated broad component:
-    if  haskey(model, :Hb_br)  &&
-        haskey(model, :Hb_bb)
-        model[:Hb_bb].norm.high = 1
-        model[:Hb_bb].norm.val  = 0.5
-        @try_patch! model[:Hb_bb].norm *= model[:Hb_br].norm / model[:Hb_br].fwhm * model[:Hb_bb].fwhm
+    if  haskey(job.model, :Hb_br)  &&
+        haskey(job.model, :Hb_bb)
+        job.model[:Hb_bb].norm.high = 1
+        job.model[:Hb_bb].norm.val  = 0.5
+        job.model[:Hb_bb].norm.patch = @λ (v,m) -> v * m[:Hb_br].norm / m[:Hb_br].fwhm * m[:Hb_bb].fwhm
     end
-    if  haskey(model, :Ha_br)  &&
-        haskey(model, :Ha_bb)
-        model[:Ha_bb].norm.high = 1
-        model[:Ha_bb].norm.val  = 0.5
-        @try_patch! model[:Ha_bb].norm *= model[:Ha_br].norm / model[:Ha_br].fwhm * model[:Ha_bb].fwhm
+    if  haskey(job.model, :Ha_br)  &&
+        haskey(job.model, :Ha_bb)
+        job.model[:Ha_bb].norm.high = 1
+        job.model[:Ha_bb].norm.val  = 0.5
+        job.model[:Ha_bb].norm.patch = @λ (v,m) -> v * m[:Ha_br].norm / m[:Ha_br].fwhm * m[:Ha_bb].fwhm
     end
 end
 
@@ -586,11 +586,11 @@ function add_unknown_lines!(::Type{T}, job::JobState) where T <: DefaultRecipe
     end
     job.model[:UnkLines] = SumReducer([Symbol(:unk, i) for i in 1:job.options[:n_unk]])
     push!(job.model[:main].list, :UnkLines)
-    evaluate!(job.model)
+    evaluate(job.model)
     for j in 1:job.options[:n_unk]
         freeze(job.model, Symbol(:unk, j))
     end
-    evaluate!(job.model)
+    evaluate(job.model)
 
     # Set "unknown" line center wavelength where there is a maximum in
     # the fit residuals, and re-run a fit.
@@ -598,7 +598,7 @@ function add_unknown_lines!(::Type{T}, job::JobState) where T <: DefaultRecipe
     λunk = Vector{Float64}()
     while true
         (length(λunk) >= job.options[:n_unk])  &&  break
-        evaluate!(job.model)
+        evaluate(job.model)
         Δ = (job.pspec.data.val - job.model()) ./ job.pspec.data.unc
 
         # Avoid considering again the same region (within 1A) TODO: within resolution
@@ -629,7 +629,7 @@ function add_unknown_lines!(::Type{T}, job::JobState) where T <: DefaultRecipe
         fitres = fit!(job)
         freeze(job.model, cname)
     end
-    evaluate!(job.model)
+    evaluate(job.model)
 end
 
 
