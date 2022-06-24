@@ -12,13 +12,13 @@ function Gnuplot.recipe(spec::Spectrum)
 
 end
 
-function Gnuplot.recipe(res::QSFitResults)
+function Gnuplot.recipe(res::JobResults)
     out = [Gnuplot.recipe(res.pspec.data), Gnuplot.recipe(res.model)...]
     return reverse(out)
 end
 
 
-function residuals(res::QSFitResults)
+function residuals(res::JobResults)
     out1 = Gnuplot.PlotElement(
         cmds=["set grid"],
         data = Gnuplot.DatasetBin(res.pspec.data.domain[:],

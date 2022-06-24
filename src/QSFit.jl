@@ -159,7 +159,7 @@ JobMultiResults(job::JobMultiState{T}, fitres::GFit.FitResult, elapsed::Float64)
 include("DefaultRecipe.jl")
 include("reduce.jl")
 # TODO include("viewer.jl")
-# TODO include("gnuplot.jl")
+include("gnuplot.jl")
 # TODO include("interactive_guess.jl")
 
 end  # module
