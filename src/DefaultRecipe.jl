@@ -319,7 +319,7 @@ function add_qso_continuum!(::Type{T}, job::JobState) where T <: DefaultRecipe
 
     comp = QSFit.powerlaw(3000)
     comp.x0.val = median(λ)
-    comp.norm.val = Dierckx.Spline1D(λ, job.pspec.data.val, k=1, bc="error")(comp.x0.val)
+    comp.norm.val = median(job.pspec.data.val) # Can't use Dierckx.Spline1D since it may fail when data is segmented (non-good channels)
     comp.norm.low = comp.norm.val / 1000.  # ensure contiuum remains positive (needed to estimate EWs)
     comp.alpha.val  = -1.5
     comp.alpha.low  = -3
