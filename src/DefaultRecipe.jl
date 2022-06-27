@@ -473,6 +473,8 @@ end
 
 function add_emission_lines!(::Type{T}, job::JobState) where T <: DefaultRecipe
     groups = OrderedDict{Symbol, Vector{Symbol}}()
+
+    # Create model components
     for (cname, lc) in job.pspec.lcs
         # All QSFit line profiles take spectral resolution into
         # account.  This is significantly faster than convolving the
@@ -490,33 +492,24 @@ function add_emission_lines!(::Type{T}, job::JobState) where T <: DefaultRecipe
         haskey(groups, lc.group)  ||  (groups[lc.group] = Vector{Symbol}())
         push!(groups[lc.group], cname)
     end
+
+    # Create reducers for groups
     for (group, lnames) in groups
+        @assert group in [:BroadLines, :NarrowLines, :VeryBroadLines] "Unexpected group for emission lines: $group"
         job.model[group] = SumReducer(lnames)
+        push!(job.model[:main].list, group)
     end
     evaluate(job.model)
-end
 
-
-function guess_emission_lines!(::Type{T}, job::JobState) where T <: DefaultRecipe
-    groups_to_go = unique(getfield.(values(job.pspec.lcs), :group))
+    # Guess normalizations
     for group in [:BroadLines, :NarrowLines, :VeryBroadLines]  # Note: order is important
-        found = false
-        for (cname, lc) in job.pspec.lcs
-            (lc.group == group)  ||  continue
-            QSFit.guess_norm_factor!(job, cname)
-            found = true
+        if group in keys(groups)
+            for cname in groups[group]
+                QSFit.guess_norm_factor!(job, cname)
+            end
         end
-        if found
-            push!(job.model[:main].list, group)
-            deleteat!(groups_to_go, findfirst(groups_to_go .== group))
-        end
-        evaluate(job.model)
     end
-
-    # Ensure all groups have been considered
-    @assert length(groups_to_go) == 0 "The following line groups have not been considered: $groups_to_go"
 end
-
 
 function add_patch_functs!(::Type{T}, job::JobState) where T <: DefaultRecipe
     # Patch parameters

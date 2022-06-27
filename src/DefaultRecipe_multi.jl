@@ -60,7 +60,6 @@ function qsfit_multi(source::QSO{TRecipe}; ref_id=1) where TRecipe <: DefaultRec
         model = multi[id]
         pspec = pspecs[id]
         QSFit.add_emission_lines!(source, pspec, model)
-        QSFit.guess_emission_lines!(source, pspec, model)
         QSFit.add_patch_functs!(source, pspec, model)
 
         if id != ref_id

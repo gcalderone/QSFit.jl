@@ -34,7 +34,6 @@ function run(job::JobState{T}) where T <: DefaultRecipe
 
     println(job.logio, "\nFit known emission lines...")
     add_emission_lines!(job)
-    guess_emission_lines!(job)
     add_patch_functs!(job)
 
     fitres = fit!(job)
