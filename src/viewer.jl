@@ -2,6 +2,10 @@ using GFitViewer
 import GFitViewer: ViewerData, viewer
 
 function ViewerData(source::Source, res::cJobResults{T}; kw...) where T
+    if !haskey(kw, :comps)
+        # Avoid showing line components
+        kw = (:comps=>(cname, ctype) -> !(ctype in [SpecLineGauss, SpecLineLorentz, SpecLineVoigt]), kw...)
+    end
     vd = ViewerData(res.model, res.pspec.data, res.fitres; kw...)
     vd.dict[:meta][:banner] = "QSFit (v0.1)<br />Date: " * string(trunc(res.fitres.timestamp, Second))
 
