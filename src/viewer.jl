@@ -1,13 +1,17 @@
 using GFitViewer
 import GFitViewer: ViewerData, viewer
 
-function ViewerData(res::QSFitResults{T}; kw...) where T
+function ViewerData(source::Source, res::cJobResults{T}; kw...) where T
+    if !haskey(kw, :comps)
+        # Avoid showing line components
+        kw = (:comps=>(cname, ctype) -> !(ctype in [SpecLineGauss, SpecLineLorentz, SpecLineVoigt]), kw...)
+    end
     vd = ViewerData(res.model, res.pspec.data, res.fitres; kw...)
     vd.dict[:meta][:banner] = "QSFit (v0.1)<br />Date: " * string(trunc(res.fitres.timestamp, Second))
 
     id = 1
     m = vd.dict[:models][id][:meta]
-    m[:label] = res.source.name * ", z=" * string(res.source.z) * ", E(B-V)=" * string(res.source.mw_ebv)
+    m[:label] = source.name * ", z=" * string(source.z) * ", E(B-V)=" * string(source.mw_ebv)
     m[:label_x] = "Rest frame wavelength"
     m[:unit_x]  = string(QSFit.unit_λ())
     m[:log10scale_x] = 0
@@ -24,7 +28,7 @@ function ViewerData(res::QSFitResults{T}; kw...) where T
         delete!(ENV, "UNITFUL_FANCY_EXPONENTS")
     end
     m[:log10scale_y] = QSFit.log10_scale_lum()
-    vd.dict[:data][id][:meta][:label] = res.source.specs[id].label
+    vd.dict[:data][id][:meta][:label] = source.specs[id].label
 
     m = vd.dict[:extra][id]
     m[:EW] = GFitViewer.MDict()
@@ -33,11 +37,11 @@ function ViewerData(res::QSFitResults{T}; kw...) where T
     m[:EW][:fields][:Label] = GFitViewer.MDict()
     m[:EW][:fields][:Label][:meta] = GFitViewer.MDict()
     m[:EW][:fields][:Label][:meta][:desc] = "Em. line"
-    m[:EW][:fields][:Label][:data] = collect(keys(res.EW))
+    m[:EW][:fields][:Label][:data] = collect(keys(res.reduced[:EW]))
     m[:EW][:fields][:Value] = GFitViewer.MDict()
     m[:EW][:fields][:Value][:meta] = GFitViewer.MDict()
     m[:EW][:fields][:Label][:meta][:desc] = "EW [A]"
-    m[:EW][:fields][:Value][:data] = collect(values(res.EW))
+    m[:EW][:fields][:Value][:data] = collect(values(res.reduced[:EW]))
 
     m[:extratab_2] = GFitViewer.MDict()
     m[:extratab_2][:label] = "Second extra table"
@@ -55,10 +59,10 @@ function ViewerData(res::QSFitResults{T}; kw...) where T
     return vd
 end
 
-viewer(res::QSFitResults{T}; filename=nothing, offline=false, kw...) where T =
+viewer(res::cJobResults{T}; filename=nothing, offline=false, kw...) where T =
     viewer(ViewerData(res; kw...); filename=filename, offline=offline)
 
-
+#= TODO
 function ViewerData(res::QSFitMultiResults{T}; kw...) where T
     vd = ViewerData(res.multi, [res.pspecs[id].data for id in 1:length(res.pspecs)], res.fitres; kw...)
     vd.dict[:meta][:banner] = "QSFit (v0.1)<br />Date: " * string(trunc(res.fitres.timestamp, Second))
@@ -116,3 +120,4 @@ end
 
 viewer(res::QSFitMultiResults{T}; filename=nothing, offline=false, kw...) where T =
     viewer(ViewerData(res; kw...); filename=filename, offline=offline)
+=#

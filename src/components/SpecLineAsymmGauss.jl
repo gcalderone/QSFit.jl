@@ -32,7 +32,7 @@ function prepare!(comp::SpecLineAsymmGauss, domain::Domain{1})
     return fill(NaN, length(domain))
 end
 
-function evaluate!(buffer, comp::SpecLineAsymmGauss, x::Domain{1},
+function evaluate!(buffer::Vector{Float64}, comp::SpecLineAsymmGauss, x::Domain{1},
                    norm, center, fwhm, voff, asymm)
     buffer[comp.index] .= 0.
     empty!(comp.index)

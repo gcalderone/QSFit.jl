@@ -12,11 +12,11 @@ function ironuv_read()
     lmax = 3.3e3 # avoid overshooting to negative values
 
     λ = lmin:(ia[2,1]-ia[1,1]):lmax
-    ia   = Spline1D(  ia[:,1],   ia[:,2], k=1, bc="zero")(λ)
-    ib   = Spline1D(  ib[:,1],   ib[:,2], k=1, bc="zero")(λ)
-    i34  = Spline1D( i34[:,1],  i34[:,2], k=1, bc="zero")(λ)
-    i47  = Spline1D( i47[:,1],  i47[:,2], k=1, bc="zero")(λ)
-    i191 = Spline1D(i191[:,1], i191[:,2], k=1, bc="zero")(λ)
+    ia   = Dierckx.Spline1D(  ia[:,1],   ia[:,2], k=1, bc="zero")(λ)
+    ib   = Dierckx.Spline1D(  ib[:,1],   ib[:,2], k=1, bc="zero")(λ)
+    i34  = Dierckx.Spline1D( i34[:,1],  i34[:,2], k=1, bc="zero")(λ)
+    i47  = Dierckx.Spline1D( i47[:,1],  i47[:,2], k=1, bc="zero")(λ)
+    i191 = Dierckx.Spline1D(i191[:,1], i191[:,2], k=1, bc="zero")(λ)
 
     L = ib .+ i47 .+ i191
     L ./= sum(L .* (λ[2] - λ[1]))
@@ -42,12 +42,12 @@ function prepare!(comp::ironuv, domain::Domain{1})
     λ, L = QSFit.ironuv_read()
     L = QSFit.conv_gauss(λ, L, sqrt(comp.fwhm^2. - 900^2) / 2.355)
     L ./= int_tabulated(λ, L)[1]
-    comp.L = Spline1D(λ, L, k=1, bc="zero")(domain[:])
+    comp.L = Dierckx.Spline1D(λ, L, k=1, bc="zero")(domain[:])
     return fill(NaN, length(domain))
 end
 
 
-function evaluate!(buffer, comp::ironuv, domain::Domain{1},
+function evaluate!(buffer::Vector{Float64}, comp::ironuv, domain::Domain{1},
                    norm)
     buffer .= norm .* comp.L
 end

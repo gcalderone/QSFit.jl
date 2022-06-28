@@ -55,12 +55,12 @@ function prepare!(comp::ironopt, domain::Domain{1})
 
     λ, L = delta_conv_gauss(df[:wavelength], df[:wht], comp.fwhm / 2.355)
     L ./= int_tabulated(λ, L)[1]
-    comp.L = Spline1D(λ, L, k=1, bc="zero")(domain[:])
+    comp.L = Dierckx.Spline1D(λ, L, k=1, bc="zero")(domain[:])
     return fill(NaN, length(domain))
 end
 
 
-function evaluate!(buffer, comp::ironopt, domain::Domain{1},
+function evaluate!(buffer::Vector{Float64}, comp::ironopt, domain::Domain{1},
                    norm)
     buffer .= norm .* comp.L
 end

@@ -1,119 +1,81 @@
-export transition, custom_transition,
-    AbstractLine, GenericLine, BroadLine, NarrowLine, BroadBaseLine, MultiCompLine, LineComponent
+export StdEmLine, broad, narrow, verybroad, unknown
 
-const transitions_db = DataFrame()
+struct SpectralTransition
+    id::Symbol
+    label::String
+    λ::Float64  # vacuum wavelength in Angstrom
+    element::String
+    ttype::String
+    config::String
+    term::String
+    JJ::String
+    levels::NTuple{2, Float64}
+    notes::String
+end
 
-function load_transitions()
-    global transitions_db
-    (nrow(transitions_db) > 0)  &&  (return nothing)
+const known_transitions = OrderedDict{Symbol, Vector{SpectralTransition}}()
+function transitions(tid::Symbol)
+    global known_transitions
 
-    d, c = csvread(joinpath(@__DIR__, "atomic_line_list.vac"), '|', commentchar='#', header_exists=true)
-    out = DataFrame(collect(d), Symbol.(strip.(c)))
-    for i in 1:ncol(out)
-        if isa(out[1, i], String)
-            out[:, i] .= strip.(out[:,i])
+    if length(known_transitions) == 0
+        d, c = csvread(joinpath(@__DIR__, "atomic_line_list.vac"), '|', commentchar='#', header_exists=true)
+        for i in 1:length(d)
+            isa(d[i][1], AbstractString)  ||  continue
+            d[i] .= strip.(d[i])
         end
-    end
-    delete!(out, findall((out.tid .== "")  .|
-                         (out.Label .== "")))
 
-    out[!, :tid] .= Symbol.(out.tid)
+        db = Vector{SpectralTransition}()
+        for i in 1:length(d[1])
+            ll = split(d[9][i], '-')
+            tt = SpectralTransition(Symbol(d[1][i]),
+                                    d[2][i], d[3][i], d[4][i],
+                                    d[5][i], d[6][i], d[7][i], d[8][i],
+                                    (Meta.parse(ll[1]), Meta.parse(ll[2])),
+                                    d[10][i])
+            push!(db, tt)
+        end
+        db = db[sortperm(getfield.(db, :λ))]
 
-    append!(transitions_db, out)
-    return nothing
-end
-
-
-function transition(tid::Symbol)
-    load_transitions()
-    i = findall(transitions_db.tid .== tid)
-    if length(i) == 0
-        error("No known transition with ID: $tid")
-    end
-    return transitions_db[i, :]
-end
-
-
-function custom_transition_default_tid(λ::Float64)
-    tid = "T" * string(λ)
-    tid = join(split(tid, "."), "p")
-    return Symbol(tid)
-end
-
-
-function custom_transition(λ_vac_ang::Float64; tid::Union{Symbol, Nothing}=nothing)
-    load_transitions()
-    isnothing(tid)  &&  (tid = custom_transition_default_tid(λ_vac_ang))
-    i = findall(transitions_db.tid .== tid)
-    if length(i) > 0
-        delete!(transitions_db, i)
-    end
-    t = [tid, string(tid), λ_vac_ang, fill("", ncol(transitions_db)-3)...]
-    push!(transitions_db, t)
-    return tid
-end
-
-transition(λ_vac_ang::Float64) = transition(custom_transition_default_tid(λ_vac_ang))
-
-
-
-# Line type descriptors associated to a specific transition
-abstract type AbstractLine end
-
-macro define_line(name, suffix, group)
-    return esc(:(
-        struct $name <: AbstractLine;
-        cname::Symbol;
-        tid::Symbol;
-        $name(tid; cname=tid) = new(Symbol(cname), tid);
-        end;
-        suffix(::$(name), multicomp::Bool) = multicomp  ?  $(QuoteNode(suffix))  :  Symbol("");
-        group( ::$(name)) = $(QuoteNode(group));
-    ))
-end
-
-@define_line GenericLine   _gen GenericLines
-@define_line BroadLine     _br  BroadLines
-@define_line NarrowLine    _na  NarrowLines
-@define_line BroadBaseLine _bb  BroadBaseLines
-
-struct MultiCompLine <: AbstractLine
-    cname::Symbol
-    tid::Symbol
-    types::Vector{Type}
-    MultiCompLine(tid::Symbol, types::Vector{DataType}; cname=tid) = new(Symbol(cname), tid, types)
-end
-
-struct LineComponent
-    line::AbstractLine
-    comp::AbstractComponent
-    multicomp::Bool
-end
-
-function collect_LineComponent(source::QSO)
-    out = OrderedDict{Symbol, LineComponent}()
-    for line in known_spectral_lines(source)
-        if isa(line, MultiCompLine)
-            for t in line.types
-                nn = Symbol(line.cname, suffix(t(line.tid), true))
-                (nn in source.options[:skip_lines])  &&  continue
-                @assert !haskey(out, nn) "Duplicated line name in known_spectral_lines(): $nn"
-                lc = LineComponent(source, t(line.tid), true)
-                out[nn] = lc
+        for tt in db
+            if haskey(known_transitions, tt.id)
+                push!(known_transitions[tt.id], tt)
+            else
+                known_transitions[tt.id] = [tt]
             end
-        else
-            nn = Symbol(line.cname, suffix(line, false))
-            (nn in source.options[:skip_lines])  &&  continue
-            @assert !haskey(out, nn) "Duplicated line name in known_spectral_lines(): $nn"
-            out[nn] = LineComponent(source, line, false)
         end
     end
-    ii = tuple.(getfield.(getfield.(getfield.(values(out), :comp), :center), :val), keys(out))
-    kk = collect(keys(out))[sortperm(ii)]
-    out = OrderedDict(Pair.(kk, getindex.(Ref(out), kk)))
-    return out
+
+    @assert haskey(known_transitions, tid) "Unknown transition identifier: $tid"
+    return known_transitions[tid]
 end
 
 
-LineComponent(source::QSO, line::AbstractLine, multicomp::Bool) =
-    error("No constructor method has been defined for LineComponent($(typeof(source)), $(typeof(line)), ::Bool)")
+# Emission line descriptor including transition identifier and line type decomposition.
+abstract type EmLineDescription end
+
+struct StdEmLine <: EmLineDescription
+    tid::Symbol
+    types::Vector{Val}
+    function StdEmLine(tid::Symbol, T::Vararg{Symbol})
+        @assert length(T) >= 1
+        new(tid, [Val.(T)...])
+    end
+end
+
+struct CustomEmLine <: EmLineDescription
+    λ::Float64
+    types::Vector{Val}
+    function CustomEmLine(λ::Float64, T::Vararg{Symbol})
+        @assert length(T) >= 1
+        new(λ, [Val.(T)...])
+    end
+end
+
+# Structure containing the actual GFit component for a single contribution to an emission line
+struct EmLineComponent{Val}
+    suffix::Symbol
+    group::Symbol
+    comp::AbstractComponent
+    EmLineComponent{T}(suffix::Symbol, group::Symbol, comp::AbstractComponent) where T =
+        new{T}(suffix, group, comp)
+end

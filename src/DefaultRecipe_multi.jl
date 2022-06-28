@@ -9,11 +9,10 @@ function qsfit_multi(source::QSO{TRecipe}; ref_id=1) where TRecipe <: DefaultRec
     for id in 1:length(pspecs)
         pspec = pspecs[id]
         model = Model(pspec.domain)
-        model[:Continuum] = SumReducer([])
-        model[:main] = SumReducer([])
+        model[:Continuum] = SumReducer()
+        model[:main] = SumReducer()
         push!(model[:main].list, :Continuum)
-        select_reducer!(model, :main)
-        delete!(model.revals, :default_sum)
+        select_maincomp!(model, :main)
 
         QSFit.add_qso_continuum!(source, pspec, model)
         QSFit.add_host_galaxy!(source, pspec, model)
@@ -41,7 +40,7 @@ function qsfit_multi(source::QSO{TRecipe}; ref_id=1) where TRecipe <: DefaultRec
     for id in 1:length(pspecs)
         model = multi[id]
         pspec = pspecs[id]
-        model[:Iron] = SumReducer([])
+        model[:Iron] = SumReducer()
         push!(model[:main].list, :Iron)
         QSFit.add_iron_uv!( source, pspec, model)
         QSFit.add_iron_opt!(source, pspec, model)
@@ -61,7 +60,6 @@ function qsfit_multi(source::QSO{TRecipe}; ref_id=1) where TRecipe <: DefaultRec
         model = multi[id]
         pspec = pspecs[id]
         QSFit.add_emission_lines!(source, pspec, model)
-        QSFit.guess_emission_lines!(source, pspec, model)
         QSFit.add_patch_functs!(source, pspec, model)
 
         if id != ref_id

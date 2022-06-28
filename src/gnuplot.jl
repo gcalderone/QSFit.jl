@@ -3,13 +3,22 @@ import Gnuplot.recipe
 
 export residuals
 
-function Gnuplot.recipe(res::QSFitResults)
+function Gnuplot.recipe(spec::Spectrum)
+    i = findall(spec.good)
+    return [Gnuplot.PlotElement(cmds=["set bars 0"], title=spec.label),
+            Gnuplot.PlotElement(data=Gnuplot.DatasetBin(spec.λ[i], spec.flux[i], spec.err[i]), plot="with yerr notit ps 0 lc rgb 'black'"),
+            Gnuplot.PlotElement(data=Gnuplot.DatasetBin(spec.λ   , spec.flux   , spec.err   ), plot="with yerr notit ps 0 lc rgb 'gray'")
+            ]
+
+end
+
+function Gnuplot.recipe(res::JobResults)
     out = [Gnuplot.recipe(res.pspec.data), Gnuplot.recipe(res.model)...]
     return reverse(out)
 end
 
 
-function residuals(res::QSFitResults)
+function residuals(res::JobResults)
     out1 = Gnuplot.PlotElement(
         cmds=["set grid"],
         data = Gnuplot.DatasetBin(res.pspec.data.domain[:],

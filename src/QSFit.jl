@@ -1,20 +1,22 @@
 module QSFit
 
-export QSO, parent_recipe, add_spec!, logio, close_logio, PreparedSpectrum
+export add_spec!, close_log
 
 import GFit: Domain, CompEval,
     Parameter, AbstractComponent, prepare!, evaluate!, fit!
 
 using CMPFit, GFit, SortMerge
 using Pkg, Pkg.Artifacts
-using Statistics, DelimitedFiles, Dierckx, Printf, DataStructures
+using Statistics, DelimitedFiles, Printf, DataStructures
 using Unitful, UnitfulAstro
 using Dates
 using SpecialFunctions
 using Gnuplot
-using TextParse, DataFrames
+using TextParse
+using Cosmology
 
-include("cosmology.jl")
+import Dierckx  # import (instead of using) avoid conflicts with evaluate()
+
 include("ccm_unred.jl")
 include("components/powerlaw.jl")
 include("components/sbpl.jl")
@@ -30,88 +32,134 @@ include("components/SpecLineVoigt.jl")
 include("utils.jl")
 include("convolutions.jl")
 include("Spectrum.jl")
+include("SpectralLines.jl")
+
+
+version() = v"0.1.0"
+qsfit_data() = artifact"qsfit_data"
+
+
+struct Source
+    name::String
+    z::Float64
+    mw_ebv::Float64
+    specs::Vector{Spectrum}
+    function Source(name, z; ebv=0.)
+        @assert z > 0
+        @assert ebv >= 0
+        return new(string(name), float(z), float(ebv), Vector{Spectrum}())
+    end
+end
+
+add_spec!(source::Source, spec::Spectrum) =
+    push!(source.specs, spec)
 
 
 abstract type AbstractRecipe end
 
-function default_options(::Type{T}) where T <: AbstractRecipe
-    out = OrderedDict{Symbol, Any}()
-    out[:wavelength_range] = [1215, 7.3e3]
-    out[:min_spectral_coverage] = Dict{Symbol, Float64}(:default => 0.6)
-    out[:skip_lines] = Vector{Symbol}()
-    return out
-end
 
-
-struct QSO{T <: AbstractRecipe}
-    name::String
-    z::Float64
-    mw_ebv::Float64
-    cosmo::Cosmology.AbstractCosmology
-    flux2lum::Float64
-    logfile::Union{Nothing, String}
+abstract type Job{T <: AbstractRecipe} end
+struct       cJob{T <: AbstractRecipe} <: Job{T}
     options::OrderedDict{Symbol, Any}
-    specs::Vector{Spectrum}
+    logfile::Union{Nothing, String}
+    logio::Union{IOStream, Base.TTY}
 end
 
-function QSO{T}(name, z; ebv=0., logfile=nothing, cosmo=default_cosmology()) where T <: AbstractRecipe
-    @assert z > 0
-    @assert ebv >= 0
-    ld = uconvert(u"cm", luminosity_dist(cosmo, float(z)))
-    flux2lum = 4pi * ld^2 * (scale_flux() * unit_flux()) / (scale_lum() * unit_lum())
-    return QSO{T}(string(name), float(z), float(ebv), cosmo, flux2lum, logfile,
-                  default_options(T), Vector{Spectrum}())
-end
-
-parent_recipe(source::QSO{T}) where T <: AbstractRecipe =
-    QSO{supertype(T)}(getfield.(Ref(source), fieldnames(typeof(source)))...)
-
-add_spec!(source::QSO, spec::Spectrum) =
-    push!(source.specs, spec)
-
-const logio_streams = Dict{String, IOStream}()
-
-function logio(source::QSO)
-    if isnothing(source.logfile)
+function Job{T}(; logfile=nothing) where T <: AbstractRecipe
+    if isnothing(logfile)
         GFit.showsettings.plain = false
-        return stdout
-    end
-    if !haskey(logio_streams, source.logfile)
-        if isfile(source.logfile)
-            f = open(source.logfile, "a")
-        else
-            f = open(source.logfile, "w")
+        logio = stdout
+    else
+        if isfile(logfile)
+            @warn "Logfile: $logfile already exists, overwriting..."
         end
-        logio_streams[source.logfile] = f
-        println(f, "Timestamp: ", now())
+        logio = open(logfile, "w")
+        println(logio, "Timestamp: ", now())
         GFit.showsettings.plain = true
     end
-    return logio_streams[source.logfile]
+    return cJob{T}(Options(T), logfile, logio)
 end
 
-function close_logio(source::QSO)
-    if haskey(logio_streams, source.logfile)
-        close(logio_streams[source.logfile])
-        delete!(logio_streams, source.logfile)
+
+function close_log(job::Job{T}) where T <: AbstractRecipe
+    if !isnothing(job.logfile)
+        close(job.logio)
         GFit.showsettings.plain = false
     end
+    nothing
 end
 
-include("SpectralLines.jl")
 
-struct PreparedSpectrum
-    id::Int
-    orig::Spectrum
+struct StdSpectrum{T <: AbstractRecipe}
+    resolution::Float64
     domain::GFit.Domain{1}
     data::GFit.Measures{1}
-    lcs::OrderedDict{Symbol, LineComponent}
+    lcs::OrderedDict{Symbol, EmLineComponent}
 end
+
+
+abstract type JobState{T <: AbstractRecipe} <: Job{T} end
+struct       cJobState{T <: AbstractRecipe} <: JobState{T}
+    @copy_fields(cJob)
+    pspec::StdSpectrum
+    model::GFit.Model
+end
+
+function JobState{T}(source::Source, job::Job{T}; id=1) where T <: AbstractRecipe
+    pspec = StdSpectrum(job, source, id=id)
+    cJobState{T}(getfield.(Ref(job), fieldnames(typeof(job)))..., pspec, Model(pspec.domain))
+end
+
+
+abstract type JobMultiState{T <: AbstractRecipe} <: Job{T} end
+struct       cJobMultiState{T <: AbstractRecipe} <: JobMultiState{T}
+    @copy_fields(cJob)
+    pspecs::Vector{StdSpectrum}
+    models::GFit.MultiModel
+end
+
+function JobMultiState{T}(source::Source, job::Job{T}) where T <: AbstractRecipe
+    pspecs = [StdSpectrum(job, source, id=id) for id in 1:length(source.specs)]
+    cJobMultiState{T}(getfield.(Ref(job), fieldnames(typeof(job)))..., pspecs, MultiModel())
+end
+
+
+function run(source::Source, job::Job{T}) where T <: AbstractRecipe
+    if length(source.specs) == 1
+        return run(JobState{T}(source, job))
+    end
+    return run(JobMultiState{T}(source, job))
+end
+
+
+abstract type JobResults{T <: AbstractRecipe} <: JobState{T} end
+struct       cJobResults{T} <: JobResults{T}
+    @copy_fields(cJobState)
+    fitres::GFit.FitResult
+    elapsed::Float64
+    reduced::OrderedDict{Symbol, Any}
+end
+
+JobResults(job::JobState{T}, fitres::GFit.FitResult, elapsed::Float64) where T <: AbstractRecipe =
+    cJobResults{T}(getfield.(Ref(job), fieldnames(typeof(job)))..., fitres, elapsed, OrderedDict{Symbol, Any}())
+
+
+abstract type JobMultiResults{T <: AbstractRecipe} <: JobMultiState{T} end
+struct       cJobMultiResults{T} <: JobMultiResults{T}
+    @copy_fields(cJobMultiState)
+    fitres::GFit.FitResult
+    elapsed::Float64
+    reduced::Vector{OrderedDict{Symbol, Any}}
+end
+
+JobMultiResults(job::JobMultiState{T}, fitres::GFit.FitResult, elapsed::Float64) where T <: AbstractRecipe =
+    cJobMultiResults{T}(getfield.(Ref(job), fieldnames(typeof(job)))..., fitres, elapsed, Vector{OrderedDict{Symbol, Any}}())
 
 
 include("DefaultRecipe.jl")
 include("reduce.jl")
 include("viewer.jl")
 include("gnuplot.jl")
-include("interactive_guess.jl")
+# TODO include("interactive_guess.jl")
 
 end  # module

@@ -1,10 +1,17 @@
-export qsfitversion, spectral_coverage
+# The following macro is taken from ReusePatterns.jl
+macro copy_fields(T)
+    out = Expr(:block)
+    for name in fieldnames(__module__.eval(T))
+        e = Expr(Symbol("::"))
+        push!(e.args, name)
+        push!(e.args, fieldtype(__module__.eval(T), name))
+        push!(out.args, e)
+    end
+    return esc(out)
+end
 
-qsfitversion() = v"0.1.0"
-qsfit_data() = artifact"qsfit_data"
 
 gauss(x, μ, σ) = exp.(-0.5 .* ((x .- μ) ./ σ).^2) ./ sqrt(2pi) ./ σ
-
 
 
 function int_tabulated(x, y)
@@ -27,32 +34,31 @@ function planck(λ, T)
 end
 
 
-function convol(v, _k)
-    k = reverse(_k)
-    nk = length(k)
-    @assert nk < length(v)
-    @assert mod(nk, 2) == 1
-    r = div(nk, 2)
-    out = fill(0., length(v))
-    for i in r+1:length(v)-r
-        out[i-r:i+r] .+= v[i] .* k
-    end
-    return out ./ sum(abs.(k))
-end
-
 
 function estimate_fwhm(λ, f; plot=false)
-    i = argmax(f)
-    maxv = f[i]
-    i = findall(f .>= (maxv/2))
-    (i1, i2) = extrema(i)
-    fwhm = λ[i2] - λ[i1]
+    imax = argmax(f)
+    half_max = f[imax] / 2
+
+    (i1, i2) = extrema(findall(f .>= half_max))
+
+    j1 = maximum(findall(f[1:imax]   .<  half_max))
+    j2 = minimum(findall(f[imax:end] .<  half_max)) + imax - 1
+    @assert j1 < i1
+    @assert i2 < j2
+    x = collect(range(λ[j1], λ[i1], length=1000))
+    y = Dierckx.Spline1D(λ, f)(x)
+    λ1 = x[argmin(abs.(y .- half_max))]
+    x = collect(range(λ[i2], λ[j2], length=1000))
+    y = Dierckx.Spline1D(λ, f)(x)
+    λ2 = x[argmin(abs.(y .- half_max))]
+    fwhm = λ2 - λ1
+
     if plot
         yr = [extrema(f)...]
-        @gp :estfwhm λ f "w l notit"
-        @gp :- :estfwhm λ[i1] .* [1,1] yr "w l notit lc rgb 'gray'"
-        @gp :- :estfwhm λ[i2] .* [1,1] yr "w l notit lc rgb 'gray'"
-        @gp :- :estfwhm Gnuplot.gpranges().x maxv/2 .* [1,1]  "w l notit lc rgb 'gray'"
+        @gp    :estfwhm λ f "w l notit"
+        @gp :- :estfwhm λ1 .* [1,1] yr "w l notit lc rgb 'gray'"
+        @gp :- :estfwhm λ2 .* [1,1] yr "w l notit lc rgb 'gray'"
+        @gp :- :estfwhm [λ1, λ2] half_max .* [1,1]  "w l notit lc rgb 'gray'"
     end
     return fwhm
 end

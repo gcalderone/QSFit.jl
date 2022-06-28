@@ -32,7 +32,7 @@ function prepare!(comp::SpecLineVoigt, domain::Domain{1})
     return fill(NaN, length(domain))
 end
 
-function evaluate!(buffer, comp::SpecLineVoigt, x::Domain{1},
+function evaluate!(buffer::Vector{Float64}, comp::SpecLineVoigt, x::Domain{1},
                    norm, center, fwhm, log_a, voff)
     x0 = center - (voff / 3.e5) * center
     σ_res = comp.resolution / 2.355 / 3.e5 * center
