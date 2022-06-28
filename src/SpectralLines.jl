@@ -50,37 +50,32 @@ function transitions(tid::Symbol)
 end
 
 
-# Define spectral line types and corresponding singletons
-abstract type SpecLineType end
-struct Narrow    <: SpecLineType; end; const narrow    = Narrow()
-struct Broad     <: SpecLineType; end; const broad     = Broad()
-struct VeryBroad <: SpecLineType; end; const verybroad = VeryBroad()
-struct Unknown   <: SpecLineType; end; const unknown   = Unknown()
-
 # Emission line descriptor including transition identifier and line type decomposition.
 abstract type EmLineDescription end
 
 struct StdEmLine <: EmLineDescription
     tid::Symbol
-    types::Vector{SpecLineType}
-    function StdEmLine(tid::Symbol, T::Vararg{SpecLineType})
+    types::Vector{Val}
+    function StdEmLine(tid::Symbol, T::Vararg{Symbol})
         @assert length(T) >= 1
-        new(tid, [T...])
+        new(tid, [Val.(T)...])
     end
 end
 
 struct CustomEmLine <: EmLineDescription
     λ::Float64
-    types::Vector{SpecLineType}
-    function CustomEmLine(λ::Float64, T::Vararg{SpecLineType})
+    types::Vector{Val}
+    function CustomEmLine(λ::Float64, T::Vararg{Symbol})
         @assert length(T) >= 1
-        new(λ, [T...])
+        new(λ, [Val.(T)...])
     end
 end
 
 # Structure containing the actual GFit component for a single contribution to an emission line
-struct EmLineComponent{SpecLineType}
+struct EmLineComponent{Val}
     suffix::Symbol
     group::Symbol
     comp::AbstractComponent
+    EmLineComponent{T}(suffix::Symbol, group::Symbol, comp::AbstractComponent) where T =
+        new{T}(suffix, group, comp)
 end

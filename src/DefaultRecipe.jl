@@ -51,42 +51,42 @@ function Options(::Type{DefaultRecipe})
     lines = OrderedDict{Symbol, EmLineDescription}()
     out[:lines] = lines
 
-    lines[:Lyb         ] = StdEmLine(:Lyb       ,  narrow, broad)
-    # lines[:OV_1213     ] = CustomEmLine(1213.8  ,  narrow)  # Ferland+92, Shields+95
-    lines[:Lya         ] = StdEmLine(:Lya       ,  narrow, broad)
-    # lines[:OV_1218     ] = CustomEmLine(1218.3  ,  narrow)  # Ferland+92, Shields+95
-    lines[:NV_1241     ] = StdEmLine(:NV_1241   ,  narrow )
-    lines[:OI_1306     ] = StdEmLine(:OI_1306   ,  broad  )
-    lines[:CII_1335    ] = StdEmLine(:CII_1335  ,  broad  )
-    lines[:SiIV_1400   ] = StdEmLine(:SiIV_1400 ,  broad  )
-    lines[:CIV_1549    ] = StdEmLine(:CIV_1549  ,  narrow, broad)
-    lines[:HeII_1640   ] = StdEmLine(:HeII_1640 ,  broad  )
-    lines[:OIII_1664   ] = StdEmLine(:OIII_1664 ,  broad  )
-    lines[:AlIII_1858  ] = StdEmLine(:AlIII_1858,  broad  )
-    lines[:CIII_1909   ] = StdEmLine(:CIII_1909 ,  broad  )
-    lines[:CII_2326    ] = StdEmLine(:CII_2326  ,  broad  )
-    lines[:F2420       ] = CustomEmLine(2420.0  ,  broad  )
-    lines[:MgII_2798   ] = StdEmLine(:MgII_2798 ,  narrow, broad)
-    lines[:NeV_3345    ] = StdEmLine(:NeV_3345  ,  narrow )
-    lines[:NeV_3426    ] = StdEmLine(:NeV_3426  ,  narrow )
-    lines[:OII_3727    ] = StdEmLine(:OII_3727  ,  narrow )
-    lines[:NeIII_3869  ] = StdEmLine(:NeIII_3869,  narrow )
-    lines[:Hd          ] = StdEmLine(:Hd        ,  broad  )
-    lines[:Hg          ] = StdEmLine(:Hg        ,  broad  )
-    lines[:OIII_4363   ] = StdEmLine(:OIII_4363 ,  narrow )
-    lines[:HeII_4686   ] = StdEmLine(:HeII_4686 ,  broad  )
-    lines[:Hb          ] = StdEmLine(:Hb        ,  narrow, broad)
-    lines[:OIII_4959   ] = StdEmLine(:OIII_4959 ,  narrow )
-    lines[:OIII_5007   ] = StdEmLine(:OIII_5007 ,  narrow )
-    lines[:OIII_5007_bw] = StdEmLine(:OIII_5007 ,  narrow )
-    lines[:HeI_5876    ] = StdEmLine(:HeI_5876  ,  broad  )
-    lines[:OI_6300     ] = StdEmLine(:OI_6300   ,  narrow )
-    lines[:OI_6364     ] = StdEmLine(:OI_6364   ,  narrow )
-    lines[:NII_6549    ] = StdEmLine(:NII_6549  ,  narrow )
-    lines[:Ha          ] = StdEmLine(:Ha        ,  narrow, broad, verybroad)
-    lines[:NII_6583    ] = StdEmLine(:NII_6583  ,  narrow )
-    lines[:SII_6716    ] = StdEmLine(:SII_6716  ,  narrow )
-    lines[:SII_6731    ] = StdEmLine(:SII_6731  ,  narrow )
+    lines[:Lyb         ] = StdEmLine(:Lyb       ,  :narrow, :broad)
+    # lines[:OV_1213     ] = CustomEmLine(1213.8  ,  :narrow)  # Ferland+92, Shields+95
+    lines[:Lya         ] = StdEmLine(:Lya       ,  :narrow, :broad)
+    # lines[:OV_1218     ] = CustomEmLine(1218.3  ,  :narrow)  # Ferland+92, Shields+95
+    lines[:NV_1241     ] = StdEmLine(:NV_1241   ,  :narrow )
+    lines[:OI_1306     ] = StdEmLine(:OI_1306   ,  :broad  )
+    lines[:CII_1335    ] = StdEmLine(:CII_1335  ,  :broad  )
+    lines[:SiIV_1400   ] = StdEmLine(:SiIV_1400 ,  :broad  )
+    lines[:CIV_1549    ] = StdEmLine(:CIV_1549  ,  :narrow, :broad)
+    lines[:HeII_1640   ] = StdEmLine(:HeII_1640 ,  :broad  )
+    lines[:OIII_1664   ] = StdEmLine(:OIII_1664 ,  :broad  )
+    lines[:AlIII_1858  ] = StdEmLine(:AlIII_1858,  :broad  )
+    lines[:CIII_1909   ] = StdEmLine(:CIII_1909 ,  :broad  )
+    lines[:CII_2326    ] = StdEmLine(:CII_2326  ,  :broad  )
+    lines[:F2420       ] = CustomEmLine(2420.0  ,  :broad  )
+    lines[:MgII_2798   ] = StdEmLine(:MgII_2798 ,  :narrow, :broad)
+    lines[:NeV_3345    ] = StdEmLine(:NeV_3345  ,  :narrow )
+    lines[:NeV_3426    ] = StdEmLine(:NeV_3426  ,  :narrow )
+    lines[:OII_3727    ] = StdEmLine(:OII_3727  ,  :narrow )
+    lines[:NeIII_3869  ] = StdEmLine(:NeIII_3869,  :narrow )
+    lines[:Hd          ] = StdEmLine(:Hd        ,  :broad  )
+    lines[:Hg          ] = StdEmLine(:Hg        ,  :broad  )
+    lines[:OIII_4363   ] = StdEmLine(:OIII_4363 ,  :narrow )
+    lines[:HeII_4686   ] = StdEmLine(:HeII_4686 ,  :broad  )
+    lines[:Hb          ] = StdEmLine(:Hb        ,  :narrow, :broad)
+    lines[:OIII_4959   ] = StdEmLine(:OIII_4959 ,  :narrow )
+    lines[:OIII_5007   ] = StdEmLine(:OIII_5007 ,  :narrow )
+    lines[:OIII_5007_bw] = StdEmLine(:OIII_5007 ,  :narrow )
+    lines[:HeI_5876    ] = StdEmLine(:HeI_5876  ,  :broad  )
+    lines[:OI_6300     ] = StdEmLine(:OI_6300   ,  :narrow )
+    lines[:OI_6364     ] = StdEmLine(:OI_6364   ,  :narrow )
+    lines[:NII_6549    ] = StdEmLine(:NII_6549  ,  :narrow )
+    lines[:Ha          ] = StdEmLine(:Ha        ,  :narrow, :broad, :verybroad)
+    lines[:NII_6583    ] = StdEmLine(:NII_6583  ,  :narrow )
+    lines[:SII_6716    ] = StdEmLine(:SII_6716  ,  :narrow )
+    lines[:SII_6731    ] = StdEmLine(:SII_6731  ,  :narrow )
     return out
 end
 
@@ -110,39 +110,39 @@ function EmLineComponent(::Type{T}, job::Job, λ::Float64) where T <: DefaultRec
 end
 
 
-function EmLineComponent(::Type{T}, job::Job, λ::Float64, ::Narrow) where T <: DefaultRecipe
+function EmLineComponent(::Type{T}, job::Job, λ::Float64, ::Val{:narrow}) where T <: DefaultRecipe
     comp = EmLineComponent(job, λ)
     comp.fwhm.val  = 5e2
     comp.fwhm.low  = 100
     comp.fwhm.high = 2e3
     comp.voff.low  = -1e3
     comp.voff.high =  1e3
-    return EmLineComponent{Narrow}(:_na, :NarrowLines, comp)
+    return EmLineComponent{Val{:narrow}}(:_na, :NarrowLines, comp)
 end
 
 
-function EmLineComponent(::Type{T}, job::Job, λ::Float64, ::Broad) where T <: DefaultRecipe
+function EmLineComponent(::Type{T}, job::Job, λ::Float64, ::Val{:broad}) where T <: DefaultRecipe
     comp = EmLineComponent(job, λ)
     comp.fwhm.val  = 5e3
     comp.fwhm.low  = 900
     comp.fwhm.high = 1.5e4
     comp.voff.low  = -3e3
     comp.voff.high =  3e3
-    return EmLineComponent{Broad}(:_br, :BroadLines, comp)
+    return EmLineComponent{Val{:broad}}(:_br, :BroadLines, comp)
 end
 
 
-function EmLineComponent(::Type{T}, job::Job, λ::Float64, ::VeryBroad) where T <: DefaultRecipe
+function EmLineComponent(::Type{T}, job::Job, λ::Float64, ::Val{:verybroad}) where T <: DefaultRecipe
     comp = EmLineComponent(job, λ)
     comp.fwhm.val  = 2e4
     comp.fwhm.low  = 1e4
     comp.fwhm.high = 3e4
     comp.voff.fixed = true
-    return EmLineComponent{VeryBroad}(:_bb, :VeryBroadLines, comp)
+    return EmLineComponent{Val{:verybroad}}(:_bb, :VeryBroadLines, comp)
 end
 
 
-function EmLineComponent(::Type{T}, job::Job, λ::Float64, ::Unknown) where T <: DefaultRecipe
+function EmLineComponent(::Type{T}, job::Job, λ::Float64, ::Val{:unknown}) where T <: DefaultRecipe
     comp = EmLineComponent(job, λ)
     comp.norm.val = 0.
     comp.center.fixed = false
@@ -152,7 +152,7 @@ function EmLineComponent(::Type{T}, job::Job, λ::Float64, ::Unknown) where T <:
     comp.fwhm.low  = 600
     comp.fwhm.high = 1e4
     comp.voff.fixed = true
-    return EmLineComponent{Unknown}(Symbol(""), :Unknown, comp)
+    return EmLineComponent{Val{:unknown}}(Symbol(""), :Unknown, comp)
 end
 
 
@@ -177,14 +177,14 @@ function collect_linecomps(::Type{T}, job::Job) where T <: DefaultRecipe
             lc = EmLineComponent(job, λ, ltype)
 
             if isa(linedesc, StdEmLine)
-                if (ltype == Narrow)  &&  (length(linedesc.types) > 1)
+                if (ltype == Val(:narrow))  &&  (length(linedesc.types) > 1)
                     lc.comp.fwhm.high = 1e3
                 end
-                if (ltype == Broad)  &&  (name == :MgII_2798)
+                if (ltype == Val(:broad))  &&  (name == :MgII_2798)
                     lc.comp.voff.low  = -1e3
                     lc.comp.voff.high =  1e3
                 end
-                if (ltype == Narrow)  &&  (name == :OIII_5007_bw)
+                if (ltype == Val(:narrow))  &&  (name == :OIII_5007_bw)
                     lc.comp.fwhm.val  = 500
                     lc.comp.fwhm.high = 1e3
                     lc.comp.voff.low  = 0
@@ -575,7 +575,7 @@ function add_unknown_lines!(::Type{T}, job::JobState) where T <: DefaultRecipe
 
     # Prepare unknown line components
     for i in 1:job.options[:n_unk]
-        job.model[Symbol(:unk, i)] = EmLineComponent(job, 3000., unknown).comp
+        job.model[Symbol(:unk, i)] = EmLineComponent(job, 3000., Val(:unknown)).comp
     end
     job.model[:UnkLines] = SumReducer([Symbol(:unk, i) for i in 1:job.options[:n_unk]])
     push!(job.model[:main].list, :UnkLines)
