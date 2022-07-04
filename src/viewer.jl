@@ -43,6 +43,7 @@ function ViewerData(source::Source, res::cJobResults{T}; kw...) where T
     m[:EW][:fields][:Label][:meta][:desc] = "EW [A]"
     m[:EW][:fields][:Value][:data] = collect(values(res.reduced[:EW]))
 
+    #=
     m[:extratab_2] = GFitViewer.MDict()
     m[:extratab_2][:label] = "Second extra table"
     m[:extratab_2][:fields] = GFitViewer.MDict()
@@ -56,6 +57,7 @@ function ViewerData(source::Source, res::cJobResults{T}; kw...) where T
     m[:extratab_2][:fields][:fname_3] = GFitViewer.MDict()
     m[:extratab_2][:fields][:fname_3][:meta] = GFitViewer.MDict()
     m[:extratab_2][:fields][:fname_3][:data] = ["String_1", "String_2", "String_3"]
+    =#
     return vd
 end
 
