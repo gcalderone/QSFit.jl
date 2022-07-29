@@ -38,7 +38,7 @@ function evaluate!(buffer::Vector{Float64}, comp::SpecLineVoigt, x::Domain{1},
     σ_res = comp.resolution / 2.355 / 3.e5 * center
     σ, γ = voigt_σγ(fwhm            / 3.e5 * center, log_a)
     σ = sqrt(σ^2 + σ_res^2)
-    X = x .- x0
+    X = x[:] .- x0
 
     function profile(x)
         return norm * voigt.(x, σ, γ)

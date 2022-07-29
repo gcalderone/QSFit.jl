@@ -25,5 +25,5 @@ end
 
 function evaluate!(buffer, comp::cutoff_powerlaw, x::Domain{1},
                    norm, x0, alpha, beta)
-    buffer .= norm .* (x ./ x0).^alpha .* exp.(1 .- ((x ./ x0) .^beta))
+    buffer .= norm .* (x[:] ./ x0).^alpha .* exp.(1 .- ((x[:] ./ x0) .^beta))
 end

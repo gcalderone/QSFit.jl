@@ -42,7 +42,7 @@ function evaluate!(buffer::Vector{Float64}, comp::SpecLineAsymmGauss, x::Domain{
 
     sigma0 = hwhm / (2.355 / 2)
     sigma = 2. * sigma0 ./ (1 .+ exp.(asymm .* (x .- x0) ./ 2 ./ sigma0))
-    X = (x .- x0) ./ sigma
+    X = (x[:] .- x0) ./ sigma
     i = findall(abs.(X) .< 4) # optimization
     append!(comp.index, i)
     buffer[i] .= norm * exp.(-X[i].^2 ./ 2) ./ sqrt(2pi) * sigma0
