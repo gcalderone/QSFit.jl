@@ -45,7 +45,7 @@ struct Source
     mw_ebv::Float64
     specs::Vector{Spectrum}
     function Source(name, z; ebv=0.)
-        @assert z > 0
+        @assert z >= 0
         @assert ebv >= 0
         return new(string(name), float(z), float(ebv), Vector{Spectrum}())
     end

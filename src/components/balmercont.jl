@@ -79,7 +79,7 @@ end
 
 function eval_balmer_continuum(Temp, Tau, fwhm)
     ryd = 911.2671808036101 # Rydberg in A
-    edge = 4 * ryd          # Balmer (2^2=4) edge in Angstrom
+    edge = 4 * ryd          # Balmer (2^2=4) edge in Angstrom, ~3645.1A
 
     λ = 10 .^range(log10(912.), stop=log10(5000), length=600) .* 1e-8 # cm
     

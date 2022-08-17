@@ -271,7 +271,11 @@ function StdSpectrum{T}(::Type{T}, job::Job, source::Source; id=1) where T <: De
     dered = ccm_unred(data.λ, source.mw_ebv)
 
     ld = uconvert(u"cm", luminosity_dist(get_cosmology(job), source.z))
-    flux2lum = 4pi * ld^2 * (scale_flux() * unit_flux()) / (scale_lum() * unit_lum())
+    if source.z == 0
+        flux2lum = 1  # Input spectrum is already given in proper units, no need to multiply
+    else
+        flux2lum = 4pi * ld^2 * (scale_flux() * unit_flux()) / (scale_lum() * unit_lum())
+    end
 
     ii = findall(data.good)
     dom = Domain(data.λ[ii] ./ (1 + source.z))
@@ -341,7 +345,8 @@ function add_host_galaxy!(::Type{T}, job::JobState) where T <: DefaultRecipe
 
         # Split total flux between continuum and host galaxy
         vv = Dierckx.Spline1D(λ, values(job.pspec.data), k=1, bc="extrapolate")(5500.)
-        @assert vv > 0 "Predicted L_λ at 5500A is negative"        
+        @assert vv > 0 "Predicted L_λ at 5500A is negative"
+        # (vv <= 0)  &&  (vv = .1 * median(values(job.pspec.data)))
         job.model[:galaxy].norm.val    = 1/2 * vv
         job.model[:qso_cont].norm.val *= 1/2 * vv / Dierckx.Spline1D(λ, job.model(:qso_cont), k=1, bc="extrapolate")(5500.)
         evaluate(job.model)
