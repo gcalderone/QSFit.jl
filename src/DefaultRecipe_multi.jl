@@ -29,9 +29,9 @@ function qsfit_multi(source::QSO{TRecipe}; ref_id=1) where TRecipe <: DefaultRec
         model = multi[id]
         pspec = pspecs[id]
         QSFit.renorm_cont!(source, pspec, model)
-        freeze(model, :qso_cont)
-        haskey(model, :galaxy)  &&  freeze(model, :galaxy)
-        haskey(model, :balmer)  &&  freeze(model, :balmer)
+        freeze!(model, :qso_cont)
+        haskey(model, :galaxy)  &&  freeze!(model, :galaxy)
+        haskey(model, :balmer)  &&  freeze!(model, :balmer)
         evaluate!(model)
     end
     evaluate!(multi)
@@ -47,9 +47,9 @@ function qsfit_multi(source::QSO{TRecipe}; ref_id=1) where TRecipe <: DefaultRec
 
         if length(model[:Iron].list) > 0
             fitres = fit!(source, model, pspec)
-            haskey(model, :ironuv   )  &&  freeze(model, :ironuv)
-            haskey(model, :ironoptbr)  &&  freeze(model, :ironoptbr)
-            haskey(model, :ironoptna)  &&  freeze(model, :ironoptna)
+            haskey(model, :ironuv   )  &&  freeze!(model, :ironuv)
+            haskey(model, :ironoptbr)  &&  freeze!(model, :ironoptbr)
+            haskey(model, :ironoptna)  &&  freeze!(model, :ironoptna)
         end
         evaluate!(model)
     end
@@ -71,7 +71,7 @@ function qsfit_multi(source::QSO{TRecipe}; ref_id=1) where TRecipe <: DefaultRec
         model = multi[id]
         pspec = pspecs[id]
         for lname in keys(pspec.lcs)
-            freeze(model, lname)
+            freeze!(model, lname)
         end
     end
     evaluate!(multi)
@@ -88,21 +88,21 @@ function qsfit_multi(source::QSO{TRecipe}; ref_id=1) where TRecipe <: DefaultRec
     for id in 1:length(pspecs)
         model = multi[id]
         pspec = pspecs[id]
-        thaw(model, :qso_cont)
-        haskey(model, :galaxy   )  &&  thaw(model, :galaxy)
-        haskey(model, :balmer   )  &&  thaw(model, :balmer)
-        haskey(model, :ironuv   )  &&  thaw(model, :ironuv)
-        haskey(model, :ironoptbr)  &&  thaw(model, :ironoptbr)
-        haskey(model, :ironoptna)  &&  thaw(model, :ironoptna)
+        thaw!(model, :qso_cont)
+        haskey(model, :galaxy   )  &&  thaw!(model, :galaxy)
+        haskey(model, :balmer   )  &&  thaw!(model, :balmer)
+        haskey(model, :ironuv   )  &&  thaw!(model, :ironuv)
+        haskey(model, :ironoptbr)  &&  thaw!(model, :ironoptbr)
+        haskey(model, :ironoptna)  &&  thaw!(model, :ironoptna)
         for lname in keys(pspec.lcs)
-            thaw(model, lname)
+            thaw!(model, lname)
         end
         for j in 1:source.options[:n_unk]
             cname = Symbol(:unk, j)
             if model[cname].norm.val > 0
-                thaw(model, cname)
+                thaw!(model, cname)
             else
-                freeze(model, cname)
+                freeze!(model, cname)
             end
         end
     end

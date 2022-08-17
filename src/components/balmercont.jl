@@ -127,8 +127,8 @@ function prepare!(comp::balmercont, domain::Domain{1})
     (λ1, c1, contAtEdge) = eval_balmer_continuum(T, Tau, fwhm)
     (λ2, c2) = eval_balmer_pseudocont(T, Ne, fwhm)
     c2 .*= contAtEdge
-    comp.c1 = Dierckx.Spline1D(λ1, c1, k=1, bc="extrapolate")(domain[:])
-    comp.c2 = Dierckx.Spline1D(λ2, c2, k=1, bc="extrapolate")(domain[:])
+    comp.c1 = Dierckx.Spline1D(λ1, c1, k=1, bc="extrapolate")(coords(domain))
+    comp.c2 = Dierckx.Spline1D(λ2, c2, k=1, bc="extrapolate")(coords(domain))
     comp.c1[findall(comp.c1 .< 0.)] .= 0.
     comp.c2[findall(comp.c2 .< 0.)] .= 0.
     return fill(NaN, length(domain))

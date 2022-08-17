@@ -292,7 +292,7 @@ end
 
 function fit!(::Type{T}, job::JobState) where T <: DefaultRecipe
     mzer = minimizer(job)
-    fitres = fit!(mzer, job.model, job.pspec.data)
+    fitres = fit!(job.model, job.pspec.data, mzer)
     # show(job.logio, job.model)
     show(job.logio, fitres)
     # @gp :QSFit job.pspec.data model
@@ -315,11 +315,11 @@ end
 
 
 function add_qso_continuum!(::Type{T}, job::JobState) where T <: DefaultRecipe
-    λ = domain(job.model)[:]
+    λ = coords(domain(job.model))
 
     comp = QSFit.powerlaw(3000)
     comp.x0.val = median(λ)
-    comp.norm.val = median(job.pspec.data.val) # Can't use Dierckx.Spline1D since it may fail when data is segmented (non-good channels)
+    comp.norm.val = median(values(job.pspec.data)) # Can't use Dierckx.Spline1D since it may fail when data is segmented (non-good channels)
     comp.norm.low = comp.norm.val / 1000.  # ensure contiuum remains positive (needed to estimate EWs)
     comp.alpha.val  = -1.5
     comp.alpha.low  = -3
@@ -332,7 +332,7 @@ end
 
 
 function add_host_galaxy!(::Type{T}, job::JobState) where T <: DefaultRecipe
-    λ = domain(job.model)[:]
+    λ = coords(domain(job.model))
     if job.options[:use_host_template]  &&
         (job.options[:host_template_range][1] .< maximum(λ))  &&
         (job.options[:host_template_range][2] .> minimum(λ))
@@ -340,7 +340,7 @@ function add_host_galaxy!(::Type{T}, job::JobState) where T <: DefaultRecipe
         push!(job.model[:Continuum].list, :galaxy)
 
         # Split total flux between continuum and host galaxy
-        vv = Dierckx.Spline1D(λ, job.pspec.data.val, k=1, bc="extrapolate")(5500.)
+        vv = Dierckx.Spline1D(λ, values(job.pspec.data), k=1, bc="extrapolate")(5500.)
         @assert vv > 0 "Predicted L_λ at 5500A is negative"        
         job.model[:galaxy].norm.val    = 1/2 * vv
         job.model[:qso_cont].norm.val *= 1/2 * vv / Dierckx.Spline1D(λ, job.model(:qso_cont), k=1, bc="extrapolate")(5500.)
@@ -368,13 +368,13 @@ end
 
 
 function renorm_cont!(::Type{T}, job::JobState) where T <: DefaultRecipe
-    freeze(job.model, :qso_cont)
+    freeze!(job.model, :qso_cont)
     c = job.model[:qso_cont]
     initialnorm = c.norm.val
     if c.norm.val > 0
         println(job.logio, "Cont. norm. (before): ", c.norm.val)
         while true
-            residuals = (job.model() - job.pspec.data.val) ./ job.pspec.data.unc
+            residuals = (job.model() - values(job.pspec.data)) ./ uncerts(job.pspec.data)
             ratio = count(residuals .< 0) / length(residuals)
             (ratio > 0.9)  &&  break
             (c.norm.val < (initialnorm / 5))  &&  break # give up
@@ -402,7 +402,7 @@ function guess_norm_factor!(::Type{T}, job::JobState, name::Symbol; quantile=0.9
     if i1 >= i2
         return #Can't calculate normalization for component
     end
-    resid = job.pspec.data.val - job.model()
+    resid = values(job.pspec.data) - job.model()
     ratio = job.model[name].norm.val / sum(m[i1:i2])
     off = sum(resid[i1:i2]) * ratio
     job.model[name].norm.val += off
@@ -414,7 +414,7 @@ end
 
 
 function add_iron_uv!(::Type{T}, job::JobState) where T <: DefaultRecipe
-    λ = domain(job.model)[:]
+    λ = coords(domain(job.model))
     resolution = job.pspec.resolution
     if job.options[:use_ironuv]
         fwhm = job.options[:ironuv_fwhm]
@@ -439,7 +439,7 @@ end
 
 
 function add_iron_opt!(::Type{T}, job::JobState) where T <: DefaultRecipe
-    λ = domain(job.model)[:]
+    λ = coords(domain(job.model))
     resolution = job.pspec.resolution
     if job.options[:use_ironopt]
         fwhm = job.options[:ironoptbr_fwhm]
@@ -581,18 +581,18 @@ function add_unknown_lines!(::Type{T}, job::JobState) where T <: DefaultRecipe
     push!(job.model[:main].list, :UnkLines)
     evaluate(job.model)
     for j in 1:job.options[:n_unk]
-        freeze(job.model, Symbol(:unk, j))
+        freeze!(job.model, Symbol(:unk, j))
     end
     evaluate(job.model)
 
     # Set "unknown" line center wavelength where there is a maximum in
     # the fit residuals, and re-run a fit.
-    λ = domain(job.model)[:]
+    λ = coords(domain(job.model))
     λunk = Vector{Float64}()
     while true
         (length(λunk) >= job.options[:n_unk])  &&  break
         evaluate(job.model)
-        Δ = (job.pspec.data.val - job.model()) ./ job.pspec.data.unc
+        Δ = (values(job.pspec.data) - job.model()) ./ uncerts(job.pspec.data)
 
         # Avoid considering again the same region (within 1A) TODO: within resolution
         for l in λunk
@@ -618,9 +618,9 @@ function add_unknown_lines!(::Type{T}, job::JobState) where T <: DefaultRecipe
         job.model[cname].center.low  = λ[iadd] - λ[iadd]/10. # allow to shift 10%
         job.model[cname].center.high = λ[iadd] + λ[iadd]/10.
 
-        thaw(job.model, cname)
+        thaw!(job.model, cname)
         fitres = fit!(job)
-        freeze(job.model, cname)
+        freeze!(job.model, cname)
     end
     evaluate(job.model)
 end
@@ -632,14 +632,14 @@ function neglect_weak_features!(::Type{T}, job::JobState) where T <: DefaultReci
     needs_fitting = false
     for ii in 1:job.options[:n_unk]
         cname = Symbol(:unk, ii)
-        isfixed(job.model, cname)  &&  continue
+        isfreezed(job.model, cname)  &&  continue
         if job.model[cname].norm.val == 0.
-            freeze(job.model, cname)
+            freeze!(job.model, cname)
             needs_fitting = true
             println(job.logio, "Disabling $cname (norm. = 0)")
         elseif job.model[cname].norm.unc / job.model[cname].norm.val > 3
             job.model[cname].norm.val = 0.
-            freeze(job.model, cname)
+            freeze!(job.model, cname)
             needs_fitting = true
             println(job.logio, "Disabling $cname (unc. / norm. > 3)")
         end

@@ -33,7 +33,7 @@ function evaluate!(buffer::Vector{Float64}, comp::SpecLineLorentz, x::Domain{1},
     x0 = center - (voff / 3.e5) * center
     σ_res = comp.resolution / 2.355 / 3.e5 * center
     γ     = fwhm            / 2     / 3.e5 * center
-    X = x[:] .- x0
+    X = coords(x) .- x0
 
     function profile(x)
         if σ_res > 0.

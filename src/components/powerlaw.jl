@@ -20,5 +20,5 @@ end
 
 function evaluate!(buffer::Vector{Float64}, comp::powerlaw, x::Domain{1},
                    norm, x0, alpha)
-    buffer .= norm .* (x[:] ./ x0).^alpha
+    buffer .= norm .* (coords(x) ./ x0).^alpha
 end

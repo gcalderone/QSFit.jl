@@ -26,7 +26,7 @@ end
 
 function evaluate!(buffer, comp::sbpl, x::Domain{1},
                    norm, x0, alpha1, alpha2, delta)
-    xx = x[:] ./ x0
+    xx = coords(x) ./ x0
 
     # The quantity `t = (x / x_b)^(1 / delta)` can become quite large.
     # To avoid overflow errors we will start by calculating its

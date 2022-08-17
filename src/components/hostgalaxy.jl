@@ -60,7 +60,7 @@ function prepare!(comp::hostgalaxy, domain::Domain{1})
     x = x[i]
     y = y[i]
     itp = Dierckx.Spline1D(x, y, k=1, bc="error")
-    comp.base = itp(domain[:])
+    comp.base = itp(coords(domain))
     comp.base ./= itp(5500.)
     return fill(NaN, length(domain))
 end

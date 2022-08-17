@@ -9,7 +9,7 @@ function estimate_line_EWs(job::JobState{T}) where T <: AbstractRecipe
     @assert all(cont .> 0) "Continuum model is zero or negative"
     for (lname, lc) in job.pspec.lcs
         haskey(job.model, lname) || continue
-        EW[lname] = int_tabulated(domain(job.model)[:],
+        EW[lname] = int_tabulated(coords(domain(job.model)),
                                   job.model(lname) ./ cont)[1]
     end
     return EW

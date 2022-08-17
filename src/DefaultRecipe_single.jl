@@ -13,9 +13,9 @@ function run(job::JobState{T}) where T <: DefaultRecipe
     add_balmer_cont!(job)
     fitres = fit!(job)
     renorm_cont!(job)
-    freeze(model, :qso_cont)
-    haskey(model, :galaxy)  &&  freeze(model, :galaxy)
-    haskey(model, :balmer)  &&  freeze(model, :balmer)
+    freeze!(model, :qso_cont)
+    haskey(model, :galaxy)  &&  freeze!(model, :galaxy)
+    haskey(model, :balmer)  &&  freeze!(model, :balmer)
     evaluate(model)
 
     println(job.logio, "\nFit iron templates...")
@@ -26,9 +26,9 @@ function run(job::JobState{T}) where T <: DefaultRecipe
 
     if length(model[:Iron].list) > 0
         fitres = fit!(job)
-        haskey(model, :ironuv   )  &&  freeze(model, :ironuv)
-        haskey(model, :ironoptbr)  &&  freeze(model, :ironoptbr)
-        haskey(model, :ironoptna)  &&  freeze(model, :ironoptna)
+        haskey(model, :ironuv   )  &&  freeze!(model, :ironuv)
+        haskey(model, :ironoptbr)  &&  freeze!(model, :ironoptbr)
+        haskey(model, :ironoptna)  &&  freeze!(model, :ironoptna)
     end
     evaluate(model)
 
@@ -38,28 +38,28 @@ function run(job::JobState{T}) where T <: DefaultRecipe
 
     fitres = fit!(job)
     for lname in keys(job.pspec.lcs)
-        freeze(model, lname)
+        freeze!(model, lname)
     end
 
     println(job.logio, "\nFit unknown emission lines...")
     add_unknown_lines!(job)
 
     println(job.logio, "\nLast run with all parameters free...")
-    thaw(model, :qso_cont)
-    haskey(model, :galaxy   )  &&  thaw(model, :galaxy)
-    haskey(model, :balmer   )  &&  thaw(model, :balmer)
-    haskey(model, :ironuv   )  &&  thaw(model, :ironuv)
-    haskey(model, :ironoptbr)  &&  thaw(model, :ironoptbr)
-    haskey(model, :ironoptna)  &&  thaw(model, :ironoptna)
+    thaw!(model, :qso_cont)
+    haskey(model, :galaxy   )  &&  thaw!(model, :galaxy)
+    haskey(model, :balmer   )  &&  thaw!(model, :balmer)
+    haskey(model, :ironuv   )  &&  thaw!(model, :ironuv)
+    haskey(model, :ironoptbr)  &&  thaw!(model, :ironoptbr)
+    haskey(model, :ironoptna)  &&  thaw!(model, :ironoptna)
     for lname in keys(job.pspec.lcs)
-        thaw(model, lname)
+        thaw!(model, lname)
     end
     for j in 1:job.options[:n_unk]
         cname = Symbol(:unk, j)
         if model[cname].norm.val > 0
-            thaw(model, cname)
+            thaw!(model, cname)
         else
-            freeze(model, cname)
+            freeze!(model, cname)
         end
     end
     fitres = fit!(job)
