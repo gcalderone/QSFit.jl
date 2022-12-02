@@ -275,6 +275,7 @@ function StdSpectrum{T}(::Type{T}, job::Job, source::Source; id=1) where T <: De
         flux2lum = 1  # Input spectrum is already given in proper units, no need to multiply
     else
         flux2lum = 4pi * ld^2 * (scale_flux() * unit_flux()) / (scale_lum() * unit_lum())
+        println(job.logio, "Using flux-to-lum. conversion factor: ", flux2lum)
     end
 
     ii = findall(data.good)
@@ -282,8 +283,7 @@ function StdSpectrum{T}(::Type{T}, job::Job, source::Source; id=1) where T <: De
     lum = Measures(dom,
                    data.flux[ii] .* dered[ii] .* flux2lum .* (1 + source.z),
                    data.err[ ii] .* dered[ii] .* flux2lum .* (1 + source.z))
-
-    return StdSpectrum{T}(data.resolution, dom, lum, lcs)
+    return StdSpectrum{T}(data.resolution, dom, lum, lcs, flux2lum)
 end
 
 

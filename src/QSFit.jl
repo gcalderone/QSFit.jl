@@ -95,6 +95,7 @@ struct StdSpectrum{T <: AbstractRecipe}
     domain::GFit.Domain{1}
     data::GFit.Measures{1}
     lcs::OrderedDict{Symbol, EmLineComponent}
+    flux2lum::Float64
 end
 
 
