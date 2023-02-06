@@ -296,7 +296,7 @@ end
 
 function fit!(::Type{T}, job::JobState) where T <: DefaultRecipe
     mzer = minimizer(job)
-    fitres = fit!(job.model, job.pspec.data, mzer)
+    fitres = fit!(job.model, job.pspec.data, minimizer=mzer)
     # show(job.logio, job.model)
     show(job.logio, fitres)
     # @gp :QSFit job.pspec.data model
@@ -366,7 +366,7 @@ function add_balmer_cont!(::Type{T}, job::JobState) where T <: DefaultRecipe
         c.ratio.fixed = false
         c.ratio.low  = 0.1
         c.ratio.high = 1
-        job.model[:balmer].norm.patch = @λ (v, m) -> v * m[:qso_cont].norm
+        job.model[:balmer].norm.patch = @λ (m, v) -> v * m[:qso_cont].norm
         evaluate(job.model)
     end
 end
@@ -523,8 +523,8 @@ function add_patch_functs!(::Type{T}, job::JobState) where T <: DefaultRecipe
         job.model[:OIII_4959].voff.patch = :OIII_5007
     end
     if haskey(job.model, :OIII_5007)  &&  haskey(job.model, :OIII_5007_bw)
-        job.model[:OIII_5007_bw].voff.patch = @λ (v,m) -> v + m[:OIII_5007].voff
-        job.model[:OIII_5007_bw].fwhm.patch = @λ (v,m) -> v + m[:OIII_5007].fwhm
+        job.model[:OIII_5007_bw].voff.patch = @λ (m, v) -> v + m[:OIII_5007].voff
+        job.model[:OIII_5007_bw].fwhm.patch = @λ (m, v) -> v + m[:OIII_5007].fwhm
     end
     if haskey(job.model, :OI_6300)  &&  haskey(job.model, :OI_6364)
         # job.model[:OI_6300].norm.patch = @λ m -> m[:OI_6364].norm / 3
@@ -564,13 +564,13 @@ function add_patch_functs!(::Type{T}, job::JobState) where T <: DefaultRecipe
         haskey(job.model, :Hb_bb)
         job.model[:Hb_bb].norm.high = 1
         job.model[:Hb_bb].norm.val  = 0.5
-        job.model[:Hb_bb].norm.patch = @λ (v,m) -> v * m[:Hb_br].norm / m[:Hb_br].fwhm * m[:Hb_bb].fwhm
+        job.model[:Hb_bb].norm.patch = @λ (m, v) -> v * m[:Hb_br].norm / m[:Hb_br].fwhm * m[:Hb_bb].fwhm
     end
     if  haskey(job.model, :Ha_br)  &&
         haskey(job.model, :Ha_bb)
         job.model[:Ha_bb].norm.high = 1
         job.model[:Ha_bb].norm.val  = 0.5
-        job.model[:Ha_bb].norm.patch = @λ (v,m) -> v * m[:Ha_br].norm / m[:Ha_br].fwhm * m[:Ha_bb].fwhm
+        job.model[:Ha_bb].norm.patch = @λ (m, v) -> v * m[:Ha_br].norm / m[:Ha_br].fwhm * m[:Ha_bb].fwhm
     end
 end
 
