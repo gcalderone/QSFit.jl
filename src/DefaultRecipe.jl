@@ -620,8 +620,10 @@ function add_unknown_lines!(::Type{T}, job::JobState) where T <: DefaultRecipe
         cname = Symbol(:unk, length(λunk))
         job.model[cname].norm.val = 1.
         job.model[cname].center.val  = λ[iadd]
-        job.model[cname].center.low  = λ[iadd] - λ[iadd]/10. # allow to shift 10%
-        job.model[cname].center.high = λ[iadd] + λ[iadd]/10.
+
+        # Allow to shift by a quantity equal to resolution
+        job.model[cname].center.low  = λ[iadd] * (1 - job.pspec.resolution / 3e5)
+        job.model[cname].center.high = λ[iadd] * (1 + job.pspec.resolution / 3e5)
 
         thaw!(job.model, cname)
         fitres = fit!(job)
