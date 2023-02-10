@@ -46,7 +46,8 @@ function Options(::Type{DefaultRecipe})
     out[:iron_broadening] = true
 
     out[:n_unk] = 10
-    out[:unk_avoid] = [4863 .+ [-1,1] .* 50, 6565 .+ [-1,1] .* 150]
+    out[:unk_avoid] = [4863 .+ [-1,1] .* 50, 6565 .+ [-1,1] .* 150]  # Angstrom
+    out[:unk_maxoffset_from_guess] = 1e3  # km/s
 
     lines = OrderedDict{Symbol, EmLineDescription}()
     out[:lines] = lines
@@ -621,9 +622,21 @@ function add_unknown_lines!(::Type{T}, job::JobState) where T <: DefaultRecipe
         job.model[cname].norm.val = 1.
         job.model[cname].center.val  = λ[iadd]
 
-        # Allow to shift by a quantity equal to resolution
-        job.model[cname].center.low  = λ[iadd] * (1 - job.pspec.resolution / 3e5)
-        job.model[cname].center.high = λ[iadd] * (1 + job.pspec.resolution / 3e5)
+        # Allow to shift by a quantity equal to ...
+        @assert job.options[:unk_maxoffset_from_guess] > 0
+        job.model[cname].center.low  = λ[iadd] * (1 - job.options[:unk_maxoffset_from_guess] / 3e5)
+        job.model[cname].center.high = λ[iadd] * (1 + job.options[:unk_maxoffset_from_guess] / 3e5)
+
+        # In any case, we must stay out of avoidance regions
+        for rr in job.options[:unk_avoid]
+            @assert !(rr[1] .< λ[iadd] .< rr[2])
+            if rr[1] .>= λ[iadd]
+                job.model[cname].center.high = min(job.model[cname].center.high, rr[1])
+            end
+            if rr[2] .<= λ[iadd]
+                job.model[cname].center.low  = max(job.model[cname].center.low, rr[2])
+            end
+        end
 
         thaw!(job.model, cname)
         fitres = fit!(job)
