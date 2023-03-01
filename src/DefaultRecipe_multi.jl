@@ -4,7 +4,7 @@ function qsfit_multi(source::QSO{TRecipe}; ref_id=1) where TRecipe <: DefaultRec
     @assert 1 <= ref_id <= length(source.specs)
     pspecs = [PreparedSpectrum(source, id=id) for id in 1:length(source.specs)]
 
-    multi = MultiModel()
+    multi = Vector{Model}()
     println(logio(source), "\nFit continuum components...")
     for id in 1:length(pspecs)
         pspec = pspecs[id]
@@ -23,7 +23,7 @@ function qsfit_multi(source::QSO{TRecipe}; ref_id=1) where TRecipe <: DefaultRec
             @try_patch! multi[id][:galaxy].norm = multi[ref_id][:galaxy].norm
         end
     end
-    fitres = fit!(source, multi, pspecs)
+    fit!(source, multi, pspecs)
 
     for id in 1:length(pspecs)
         model = multi[id]
@@ -32,7 +32,7 @@ function qsfit_multi(source::QSO{TRecipe}; ref_id=1) where TRecipe <: DefaultRec
         freeze!(model, :qso_cont)
         haskey(model, :galaxy)  &&  freeze!(model, :galaxy)
         haskey(model, :balmer)  &&  freeze!(model, :balmer)
-        evaluate!(model)
+        GFit.update!(model)
     end
     evaluate!(multi)
 
@@ -46,12 +46,12 @@ function qsfit_multi(source::QSO{TRecipe}; ref_id=1) where TRecipe <: DefaultRec
         QSFit.add_iron_opt!(source, pspec, model)
 
         if length(model[:Iron].list) > 0
-            fitres = fit!(source, model, pspec)
+            fit!(source, model, pspec)
             haskey(model, :ironuv   )  &&  freeze!(model, :ironuv)
             haskey(model, :ironoptbr)  &&  freeze!(model, :ironoptbr)
             haskey(model, :ironoptna)  &&  freeze!(model, :ironoptna)
         end
-        evaluate!(model)
+        GFit.update!(model)
     end
     evaluate!(multi)
 
@@ -66,7 +66,7 @@ function qsfit_multi(source::QSO{TRecipe}; ref_id=1) where TRecipe <: DefaultRec
             @patch! multi[id][:OIII_5007].norm = multi[ref_id][:OIII_5007].norm
         end
     end
-    fitres = fit!(source, multi, pspecs)
+    fit!(source, multi, pspecs)
     for id in 1:length(pspecs)
         model = multi[id]
         pspec = pspecs[id]
@@ -106,22 +106,22 @@ function qsfit_multi(source::QSO{TRecipe}; ref_id=1) where TRecipe <: DefaultRec
             end
         end
     end
-    fitres = fit!(source, multi, pspecs)
+    bestfit, fitstats = fit!(source, multi, pspecs)
 
     rerun = false
     for id in 1:length(pspecs)
         model = multi[id]
         pspec = pspecs[id]
-        rerun = rerun || QSFit.neglect_weak_features!(source, pspec, model, fitres)
+        rerun = rerun || QSFit.neglect_weak_features!(source, pspec, model, bestfit, fitstats)
     end
     if rerun
         println(logio(source), "\nRe-run fit...")
-        fitres = fit!(source, multi, pspecs)
+        bestfit, fitstats = fit!(source, multi, pspecs)
     end
     println(logio(source))
-    show(logio(source), fitres)
+    show(logio(source), fitstats)
 
-    out = QSFit.QSFitMultiResults(source, pspecs, multi, fitres)
+    out = QSFit.QSFitMultiResults(source, pspecs, multi, bestfit, fitstats)
     elapsed = time() - elapsed
     println(logio(source), "\nElapsed time: $elapsed s")
     close_logio(source)

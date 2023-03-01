@@ -34,6 +34,7 @@ function Options(::Type{DefaultRecipe})
                                        :ironopt => 0.3)
 
     out[:host_template] = Dict(:library=>"swire", :template=>"Ell5")
+    out[:host_template_ref_wavelength] = 5500. # A
     out[:use_host_template] = true
     out[:host_template_range] = [4000., 7000.]
 
@@ -297,12 +298,12 @@ end
 
 function fit!(::Type{T}, job::JobState) where T <: DefaultRecipe
     mzer = minimizer(job)
-    fitres = fit!(job.model, job.pspec.data, minimizer=mzer)
+    bestfit, fitres = fit(job.model, job.pspec.data, minimizer=mzer)
     # show(job.logio, job.model)
     show(job.logio, fitres)
     # @gp :QSFit job.pspec.data model
     # printstyled(color=:blink, "Press ENTER to continue..."); readline()
-    return fitres
+    return bestfit, fitres
 end
 
 
@@ -332,7 +333,7 @@ function add_qso_continuum!(::Type{T}, job::JobState) where T <: DefaultRecipe
 
     job.model[:qso_cont] = comp
     push!(job.model[:Continuum].list, :qso_cont)
-    evaluate(job.model)
+    GFit.update!(job.model)
 end
 
 
@@ -341,16 +342,20 @@ function add_host_galaxy!(::Type{T}, job::JobState) where T <: DefaultRecipe
     if job.options[:use_host_template]  &&
         (job.options[:host_template_range][1] .< maximum(λ))  &&
         (job.options[:host_template_range][2] .> minimum(λ))
-        job.model[:galaxy] = QSFit.hostgalaxy(job.options[:host_template])
+        job.model[:galaxy] = QSFit.hostgalaxy(job.options[:host_template][:template],
+                                              library=job.options[:host_template][:library],
+                                              refwl=job.options[:host_template_ref_wavelength])
         push!(job.model[:Continuum].list, :galaxy)
 
         # Split total flux between continuum and host galaxy
-        vv = Dierckx.Spline1D(λ, values(job.pspec.data), k=1, bc="extrapolate")(5500.)
-        @assert vv > 0 "Predicted L_λ at 5500A is negative"
+        refwl = job.options[:host_template_ref_wavelength]
+        vv = Dierckx.Spline1D(λ, values(job.pspec.data), k=1, bc="extrapolate")(refwl)
+        @assert !isnan(vv) "Predicted L_λ at $(refwl)A is NaN"
+        @assert vv > 0 "Predicted L_λ at $(refwl)A is negative"
         # (vv <= 0)  &&  (vv = .1 * median(values(job.pspec.data)))
         job.model[:galaxy].norm.val    = 1/2 * vv
-        job.model[:qso_cont].norm.val *= 1/2 * vv / Dierckx.Spline1D(λ, job.model(:qso_cont), k=1, bc="extrapolate")(5500.)
-        evaluate(job.model)
+        job.model[:qso_cont].norm.val *= 1/2 * vv / Dierckx.Spline1D(λ, job.model(:qso_cont), k=1, bc="extrapolate")(refwl)
+        GFit.update!(job.model)
     end
 end
 
@@ -368,7 +373,7 @@ function add_balmer_cont!(::Type{T}, job::JobState) where T <: DefaultRecipe
         c.ratio.low  = 0.1
         c.ratio.high = 1
         job.model[:balmer].norm.patch = @λ (m, v) -> v * m[:qso_cont].norm
-        evaluate(job.model)
+        GFit.update!(job.model)
     end
 end
 
@@ -385,13 +390,13 @@ function renorm_cont!(::Type{T}, job::JobState) where T <: DefaultRecipe
             (ratio > 0.9)  &&  break
             (c.norm.val < (initialnorm / 5))  &&  break # give up
             c.norm.val *= 0.99
-            evaluate(job.model)
+            GFit.update!(job.model)
         end
         println(job.logio, "Cont. norm. (after) : ", c.norm.val)
     else
         println(job.logio, "Skipping cont. renormalization")
     end
-    evaluate(job.model)
+    GFit.update!(job.model)
     # @gp (domain(job.model), job.pspec.data) job.model
     # printstyled(color=:blink, "Press ENTER to continue..."); readline()
 end
@@ -434,9 +439,9 @@ function add_iron_uv!(::Type{T}, job::JobState) where T <: DefaultRecipe
             job.model[:ironuv] = comp
             job.model[:ironuv].norm.val = 1.
             push!(job.model[:Iron].list, :ironuv)
-            evaluate(job.model)
+            GFit.update!(job.model)
             QSFit.guess_norm_factor!(job, :ironuv)
-            evaluate(job.model)
+            GFit.update!(job.model)
         else
             println(job.logio, "Ignoring ironuv component (threshold: $threshold)")
         end
@@ -467,9 +472,9 @@ function add_iron_opt!(::Type{T}, job::JobState) where T <: DefaultRecipe
             job.model[:ironoptna].norm.fixed = false
             push!(job.model[:Iron].list, :ironoptbr)
             push!(job.model[:Iron].list, :ironoptna)
-            evaluate(job.model)
+            GFit.update!(job.model)
             QSFit.guess_norm_factor!(job, :ironoptbr)
-            evaluate(job.model)
+            GFit.update!(job.model)
         else
             println(job.logio, "Ignoring ironopt component (threshold: $threshold)")
         end
@@ -505,7 +510,7 @@ function add_emission_lines!(::Type{T}, job::JobState) where T <: DefaultRecipe
         job.model[group] = SumReducer(lnames)
         push!(job.model[:main].list, group)
     end
-    evaluate(job.model)
+    GFit.update!(job.model)
 
     # Guess normalizations
     for group in [:BroadLines, :NarrowLines, :VeryBroadLines]  # Note: order is important
@@ -585,11 +590,11 @@ function add_unknown_lines!(::Type{T}, job::JobState) where T <: DefaultRecipe
     end
     job.model[:UnkLines] = SumReducer([Symbol(:unk, i) for i in 1:job.options[:n_unk]])
     push!(job.model[:main].list, :UnkLines)
-    evaluate(job.model)
+    GFit.update!(job.model)
     for j in 1:job.options[:n_unk]
         freeze!(job.model, Symbol(:unk, j))
     end
-    evaluate(job.model)
+    GFit.update!(job.model)
 
     # Set "unknown" line center wavelength where there is a maximum in
     # the fit residuals, and re-run a fit.
@@ -597,7 +602,7 @@ function add_unknown_lines!(::Type{T}, job::JobState) where T <: DefaultRecipe
     λunk = Vector{Float64}()
     while true
         (length(λunk) >= job.options[:n_unk])  &&  break
-        evaluate(job.model)
+        GFit.update!(job.model)
         Δ = (values(job.pspec.data) - job.model()) ./ uncerts(job.pspec.data)
 
         # Avoid considering again the same region (within 1A) TODO: within resolution
@@ -639,10 +644,10 @@ function add_unknown_lines!(::Type{T}, job::JobState) where T <: DefaultRecipe
         end
 
         thaw!(job.model, cname)
-        fitres = fit!(job)
+        fit!(job)
         freeze!(job.model, cname)
     end
-    evaluate(job.model)
+    GFit.update!(job.model)
 end
 
 

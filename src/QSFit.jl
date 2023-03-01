@@ -3,7 +3,7 @@ module QSFit
 export add_spec!, close_log
 
 import GFit: Domain, CompEval,
-    Parameter, AbstractComponent, prepare!, evaluate!, fit!
+    Parameter, AbstractComponent, prepare!, evaluate!
 
 using CMPFit, GFit, SortMerge
 using Pkg, Pkg.Artifacts
@@ -116,12 +116,12 @@ abstract type JobMultiState{T <: AbstractRecipe} <: Job{T} end
 struct       cJobMultiState{T <: AbstractRecipe} <: JobMultiState{T}
     @copy_fields(cJob)
     pspecs::Vector{StdSpectrum}
-    models::GFit.MultiModel
+    models::Vector{GFit.Model}
 end
 
 function JobMultiState{T}(source::Source, job::Job{T}) where T <: AbstractRecipe
     pspecs = [StdSpectrum(job, source, id=id) for id in 1:length(source.specs)]
-    cJobMultiState{T}(getfield.(Ref(job), fieldnames(typeof(job)))..., pspecs, MultiModel())
+    cJobMultiState{T}(getfield.(Ref(job), fieldnames(typeof(job)))..., pspecs, Vector{Model}())
 end
 
 
@@ -136,30 +136,32 @@ end
 abstract type JobResults{T <: AbstractRecipe} <: JobState{T} end
 struct       cJobResults{T} <: JobResults{T}
     @copy_fields(cJobState)
-    fitres::GFit.FitResult
+    bestfit::GFit.ModelSnapshot
+    fitres::GFit.FitStats
     elapsed::Float64
     reduced::OrderedDict{Symbol, Any}
 end
 
-JobResults(job::JobState{T}, fitres::GFit.FitResult, elapsed::Float64) where T <: AbstractRecipe =
-    cJobResults{T}(getfield.(Ref(job), fieldnames(typeof(job)))..., fitres, elapsed, OrderedDict{Symbol, Any}())
+JobResults(job::JobState{T}, bestfit::GFit.ModelSnapshot, fitres::GFit.FitStats, elapsed::Float64) where T <: AbstractRecipe =
+    cJobResults{T}(getfield.(Ref(job), fieldnames(typeof(job)))..., bestfit, fitres, elapsed, OrderedDict{Symbol, Any}())
 
 
 abstract type JobMultiResults{T <: AbstractRecipe} <: JobMultiState{T} end
 struct       cJobMultiResults{T} <: JobMultiResults{T}
     @copy_fields(cJobMultiState)
-    fitres::GFit.FitResult
+    bestfit::Vector{GFit.ModelSnapshot}
+    fitres::GFit.FitStats
     elapsed::Float64
     reduced::Vector{OrderedDict{Symbol, Any}}
 end
 
-JobMultiResults(job::JobMultiState{T}, fitres::GFit.FitResult, elapsed::Float64) where T <: AbstractRecipe =
-    cJobMultiResults{T}(getfield.(Ref(job), fieldnames(typeof(job)))..., fitres, elapsed, Vector{OrderedDict{Symbol, Any}}())
+JobMultiResults(job::JobMultiState{T}, bestfit::Vector{GFit.ModelSnapshot}, fitres::GFit.FitStats, elapsed::Float64) where T <: AbstractRecipe =
+    cJobMultiResults{T}(getfield.(Ref(job), fieldnames(typeof(job)))..., bestfit, fitres, elapsed, Vector{OrderedDict{Symbol, Any}}())
 
 
 include("DefaultRecipe.jl")
 include("reduce.jl")
-include("viewer.jl")
+# TODO include("viewer.jl")
 include("gnuplot.jl")
 # TODO include("interactive_guess.jl")
 

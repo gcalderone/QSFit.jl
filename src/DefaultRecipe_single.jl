@@ -11,12 +11,12 @@ function run(job::JobState{T}) where T <: DefaultRecipe
     add_qso_continuum!(job)
     add_host_galaxy!(job)
     add_balmer_cont!(job)
-    fitres = fit!(job)
+    fit!(job)
     renorm_cont!(job)
     freeze!(model, :qso_cont)
     haskey(model, :galaxy)  &&  freeze!(model, :galaxy)
     haskey(model, :balmer)  &&  freeze!(model, :balmer)
-    evaluate(model)
+    GFit.update!(model)
 
     println(job.logio, "\nFit iron templates...")
     model[:Iron] = SumReducer()
@@ -25,18 +25,18 @@ function run(job::JobState{T}) where T <: DefaultRecipe
     add_iron_opt!(job)
 
     if length(model[:Iron].list) > 0
-        fitres = fit!(job)
+        fit!(job)
         haskey(model, :ironuv   )  &&  freeze!(model, :ironuv)
         haskey(model, :ironoptbr)  &&  freeze!(model, :ironoptbr)
         haskey(model, :ironoptna)  &&  freeze!(model, :ironoptna)
     end
-    evaluate(model)
+    GFit.update!(model)
 
     println(job.logio, "\nFit known emission lines...")
     add_emission_lines!(job)
     add_patch_functs!(job)
 
-    fitres = fit!(job)
+    fit!(job)
     for lname in keys(job.pspec.lcs)
         freeze!(model, lname)
     end
@@ -62,20 +62,20 @@ function run(job::JobState{T}) where T <: DefaultRecipe
             freeze!(model, cname)
         end
     end
-    fitres = fit!(job)
+    bestfit, fitstats = fit!(job)
 
     if neglect_weak_features!(job)
         println(job.logio, "\nRe-run fit...")
-        fitres = fit!(job)
+        bestfit, fitstats = fit!(job)
     end
 
     println(job.logio)
-    show(job.logio, fitres)
+    show(job.logio, fitstats)
 
     # Estimate line EWs
     EWs = estimate_line_EWs(job)
 
-    out = JobResults(job, fitres, time() - elapsed)
+    out = JobResults(job, bestfit, fitstats, time() - elapsed)
     out.reduced[:EW] = EWs
 
     println(job.logio, "\nElapsed time: $(out.elapsed) s")

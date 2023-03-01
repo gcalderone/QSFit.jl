@@ -21,14 +21,13 @@ end
 
 mutable struct hostgalaxy <: AbstractComponent
     norm::Parameter
+    refwl::Float64
     library::String
     template::String
     filename::String
     base::Vector{Float64}
 
-    hostgalaxy(d::Dict) = hostgalaxy(d[:template], library=d[:library])
-
-    function hostgalaxy(template::String; library="swire")
+    function hostgalaxy(template::String; library="swire", refwl=5500.)
         if library == "swire"
             filename = template * "_template_norm.sed"
         end
@@ -37,9 +36,10 @@ mutable struct hostgalaxy <: AbstractComponent
         end
         filename = joinpath(qsfit_data(), library, filename)
         @assert isfile(filename) "File $filename do not exists"
-        out = new(Parameter(1), library, template, filename, Vector{Float64}())
+        out = new(Parameter(1), refwl, library, template, filename, Vector{Float64}())
         out.norm.val = 1
         out.norm.low = 0
+        out.refwl = refwl
         return out
     end
 end
@@ -63,7 +63,7 @@ function prepare!(comp::hostgalaxy, domain::Domain{1})
     comp.base = fill(0., length(domain))
     i = findall(minimum(x) .< coords(domain) .< maximum(x))
     comp.base[i] = itp(coords(domain)[i])
-    comp.base ./= itp(5500.)
+    comp.base ./= itp(comp.refwl)
     return fill(NaN, length(domain))
 end
 
