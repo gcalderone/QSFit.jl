@@ -16,7 +16,7 @@ function run(job::JobState{T}) where T <: DefaultRecipe
     freeze!(model, :qso_cont)
     haskey(model, :galaxy)  &&  freeze!(model, :galaxy)
     haskey(model, :balmer)  &&  freeze!(model, :balmer)
-    GFit.update!(model)
+    GModelFit.update!(model)
 
     println(job.logio, "\nFit iron templates...")
     model[:Iron] = SumReducer()
@@ -30,7 +30,7 @@ function run(job::JobState{T}) where T <: DefaultRecipe
         haskey(model, :ironoptbr)  &&  freeze!(model, :ironoptbr)
         haskey(model, :ironoptna)  &&  freeze!(model, :ironoptna)
     end
-    GFit.update!(model)
+    GModelFit.update!(model)
 
     println(job.logio, "\nFit known emission lines...")
     add_emission_lines!(job)

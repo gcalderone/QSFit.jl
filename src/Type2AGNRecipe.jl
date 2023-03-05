@@ -1,4 +1,4 @@
-using CMPFit, GFit, Gnuplot
+using CMPFit, GModelFit, Gnuplot
 using QSFit, DataStructures, Statistics, Dierckx
 
 import QSFit: known_spectral_lines, add_qso_continuum!, LineComponent

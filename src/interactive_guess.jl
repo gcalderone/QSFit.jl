@@ -11,7 +11,7 @@ end
 
 
 function interactive_guess(source::QSO{T}, pspec::PreparedSpectrum, model::Model, cname::Symbol) where T <: DefaultRecipe
-    pnames = collect(keys(GFit.getparams(model[cname])))
+    pnames = collect(keys(GModelFit.getparams(model[cname])))
     choices = [string(p.name) * (p.index > 0 ? string(p.index) : "") for p in pnames]
     menu = RadioMenu(choices, pagesize=20)
     choice = request("Choose a parameter of component $cname:", menu)
@@ -21,10 +21,10 @@ end
 
 
 interactive_guess(source::QSO{T}, pspec::PreparedSpectrum, model::Model, cname::Symbol, pname::Symbol) where T <: DefaultRecipe =
-    interactive_guess(source, pspec, model, cname, GFit.ParamID(pname, 0))
+    interactive_guess(source, pspec, model, cname, GModelFit.ParamID(pname, 0))
 
 
-function interactive_guess(source::QSO{T}, pspec::PreparedSpectrum, model::Model, cname::Symbol, pid::GFit.ParamID) where T <: DefaultRecipe
+function interactive_guess(source::QSO{T}, pspec::PreparedSpectrum, model::Model, cname::Symbol, pid::GModelFit.ParamID) where T <: DefaultRecipe
     if pid.index == 0
         par = getproperty(model[cname], pid.name)
     else

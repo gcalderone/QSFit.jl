@@ -32,7 +32,7 @@ function qsfit_multi(source::QSO{TRecipe}; ref_id=1) where TRecipe <: DefaultRec
         freeze!(model, :qso_cont)
         haskey(model, :galaxy)  &&  freeze!(model, :galaxy)
         haskey(model, :balmer)  &&  freeze!(model, :balmer)
-        GFit.update!(model)
+        GModelFit.update!(model)
     end
     evaluate!(multi)
 
@@ -51,7 +51,7 @@ function qsfit_multi(source::QSO{TRecipe}; ref_id=1) where TRecipe <: DefaultRec
             haskey(model, :ironoptbr)  &&  freeze!(model, :ironoptbr)
             haskey(model, :ironoptna)  &&  freeze!(model, :ironoptna)
         end
-        GFit.update!(model)
+        GModelFit.update!(model)
     end
     evaluate!(multi)
 

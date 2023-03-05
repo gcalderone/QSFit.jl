@@ -290,7 +290,7 @@ end
 
 
 function minimizer(::Type{T}, job::JobState) where T <: DefaultRecipe
-    mzer = GFit.cmpfit()
+    mzer = GModelFit.cmpfit()
     mzer.Δfitstat_threshold = 1.e-5
     return mzer
 end
@@ -333,7 +333,7 @@ function add_qso_continuum!(::Type{T}, job::JobState) where T <: DefaultRecipe
 
     job.model[:qso_cont] = comp
     push!(job.model[:Continuum].list, :qso_cont)
-    GFit.update!(job.model)
+    GModelFit.update!(job.model)
 end
 
 
@@ -355,7 +355,7 @@ function add_host_galaxy!(::Type{T}, job::JobState) where T <: DefaultRecipe
         # (vv <= 0)  &&  (vv = .1 * median(values(job.pspec.data)))
         job.model[:galaxy].norm.val    = 1/2 * vv
         job.model[:qso_cont].norm.val *= 1/2 * vv / Dierckx.Spline1D(λ, job.model(:qso_cont), k=1, bc="extrapolate")(refwl)
-        GFit.update!(job.model)
+        GModelFit.update!(job.model)
     end
 end
 
@@ -373,7 +373,7 @@ function add_balmer_cont!(::Type{T}, job::JobState) where T <: DefaultRecipe
         c.ratio.low  = 0.1
         c.ratio.high = 1
         job.model[:balmer].norm.patch = @λ (m, v) -> v * m[:qso_cont].norm
-        GFit.update!(job.model)
+        GModelFit.update!(job.model)
     end
 end
 
@@ -390,13 +390,13 @@ function renorm_cont!(::Type{T}, job::JobState) where T <: DefaultRecipe
             (ratio > 0.9)  &&  break
             (c.norm.val < (initialnorm / 5))  &&  break # give up
             c.norm.val *= 0.99
-            GFit.update!(job.model)
+            GModelFit.update!(job.model)
         end
         println(job.logio, "Cont. norm. (after) : ", c.norm.val)
     else
         println(job.logio, "Skipping cont. renormalization")
     end
-    GFit.update!(job.model)
+    GModelFit.update!(job.model)
     # @gp (domain(job.model), job.pspec.data) job.model
     # printstyled(color=:blink, "Press ENTER to continue..."); readline()
 end
@@ -439,9 +439,9 @@ function add_iron_uv!(::Type{T}, job::JobState) where T <: DefaultRecipe
             job.model[:ironuv] = comp
             job.model[:ironuv].norm.val = 1.
             push!(job.model[:Iron].list, :ironuv)
-            GFit.update!(job.model)
+            GModelFit.update!(job.model)
             QSFit.guess_norm_factor!(job, :ironuv)
-            GFit.update!(job.model)
+            GModelFit.update!(job.model)
         else
             println(job.logio, "Ignoring ironuv component (threshold: $threshold)")
         end
@@ -472,9 +472,9 @@ function add_iron_opt!(::Type{T}, job::JobState) where T <: DefaultRecipe
             job.model[:ironoptna].norm.fixed = false
             push!(job.model[:Iron].list, :ironoptbr)
             push!(job.model[:Iron].list, :ironoptna)
-            GFit.update!(job.model)
+            GModelFit.update!(job.model)
             QSFit.guess_norm_factor!(job, :ironoptbr)
-            GFit.update!(job.model)
+            GModelFit.update!(job.model)
         else
             println(job.logio, "Ignoring ironopt component (threshold: $threshold)")
         end
@@ -510,7 +510,7 @@ function add_emission_lines!(::Type{T}, job::JobState) where T <: DefaultRecipe
         job.model[group] = SumReducer(lnames)
         push!(job.model[:main].list, group)
     end
-    GFit.update!(job.model)
+    GModelFit.update!(job.model)
 
     # Guess normalizations
     for group in [:BroadLines, :NarrowLines, :VeryBroadLines]  # Note: order is important
@@ -590,11 +590,11 @@ function add_unknown_lines!(::Type{T}, job::JobState) where T <: DefaultRecipe
     end
     job.model[:UnkLines] = SumReducer([Symbol(:unk, i) for i in 1:job.options[:n_unk]])
     push!(job.model[:main].list, :UnkLines)
-    GFit.update!(job.model)
+    GModelFit.update!(job.model)
     for j in 1:job.options[:n_unk]
         freeze!(job.model, Symbol(:unk, j))
     end
-    GFit.update!(job.model)
+    GModelFit.update!(job.model)
 
     # Set "unknown" line center wavelength where there is a maximum in
     # the fit residuals, and re-run a fit.
@@ -602,7 +602,7 @@ function add_unknown_lines!(::Type{T}, job::JobState) where T <: DefaultRecipe
     λunk = Vector{Float64}()
     while true
         (length(λunk) >= job.options[:n_unk])  &&  break
-        GFit.update!(job.model)
+        GModelFit.update!(job.model)
         Δ = (values(job.pspec.data) - job.model()) ./ uncerts(job.pspec.data)
 
         # Avoid considering again the same region (within 1A) TODO: within resolution
@@ -647,7 +647,7 @@ function add_unknown_lines!(::Type{T}, job::JobState) where T <: DefaultRecipe
         fit!(job)
         freeze!(job.model, cname)
     end
-    GFit.update!(job.model)
+    GModelFit.update!(job.model)
 end
 
 

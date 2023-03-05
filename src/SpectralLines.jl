@@ -71,7 +71,7 @@ struct CustomEmLine <: EmLineDescription
     end
 end
 
-# Structure containing the actual GFit component for a single contribution to an emission line
+# Structure containing the actual GModelFit component for a single contribution to an emission line
 struct EmLineComponent{Val}
     suffix::Symbol
     group::Symbol

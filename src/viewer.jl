@@ -1,5 +1,5 @@
-using GFitViewer
-import GFitViewer: ViewerData, viewer
+using GModelFitViewer
+import GModelFitViewer: ViewerData, viewer
 
 function ViewerData(source::Source, res::cJobResults{T}; kw...) where T
     if !haskey(kw, :comps)
@@ -31,31 +31,31 @@ function ViewerData(source::Source, res::cJobResults{T}; kw...) where T
     vd.dict[:data][id][:meta][:label] = source.specs[id].label
 
     m = vd.dict[:extra][id]
-    m[:EW] = GFitViewer.MDict()
+    m[:EW] = GModelFitViewer.MDict()
     m[:EW][:label] = "Em. lines EW"
-    m[:EW][:fields] = GFitViewer.MDict()
-    m[:EW][:fields][:Label] = GFitViewer.MDict()
-    m[:EW][:fields][:Label][:meta] = GFitViewer.MDict()
+    m[:EW][:fields] = GModelFitViewer.MDict()
+    m[:EW][:fields][:Label] = GModelFitViewer.MDict()
+    m[:EW][:fields][:Label][:meta] = GModelFitViewer.MDict()
     m[:EW][:fields][:Label][:meta][:desc] = "Em. line"
     m[:EW][:fields][:Label][:data] = collect(keys(res.reduced[:EW]))
-    m[:EW][:fields][:Value] = GFitViewer.MDict()
-    m[:EW][:fields][:Value][:meta] = GFitViewer.MDict()
+    m[:EW][:fields][:Value] = GModelFitViewer.MDict()
+    m[:EW][:fields][:Value][:meta] = GModelFitViewer.MDict()
     m[:EW][:fields][:Label][:meta][:desc] = "EW [A]"
     m[:EW][:fields][:Value][:data] = collect(values(res.reduced[:EW]))
 
     #=
-    m[:extratab_2] = GFitViewer.MDict()
+    m[:extratab_2] = GModelFitViewer.MDict()
     m[:extratab_2][:label] = "Second extra table"
-    m[:extratab_2][:fields] = GFitViewer.MDict()
-    m[:extratab_2][:fields][:fname_1] = GFitViewer.MDict()
-    m[:extratab_2][:fields][:fname_1][:meta] = GFitViewer.MDict()
+    m[:extratab_2][:fields] = GModelFitViewer.MDict()
+    m[:extratab_2][:fields][:fname_1] = GModelFitViewer.MDict()
+    m[:extratab_2][:fields][:fname_1][:meta] = GModelFitViewer.MDict()
     m[:extratab_2][:fields][:fname_1][:meta][:desc] = "Optional. In case we want to add metedata."
     m[:extratab_2][:fields][:fname_1][:data] = [102, 203, 304]
-    m[:extratab_2][:fields][:fname_2] = GFitViewer.MDict()
-    m[:extratab_2][:fields][:fname_2][:meta] = GFitViewer.MDict()
+    m[:extratab_2][:fields][:fname_2] = GModelFitViewer.MDict()
+    m[:extratab_2][:fields][:fname_2][:meta] = GModelFitViewer.MDict()
     m[:extratab_2][:fields][:fname_2][:data] = [10.2, 20.3, 30.4]
-    m[:extratab_2][:fields][:fname_3] = GFitViewer.MDict()
-    m[:extratab_2][:fields][:fname_3][:meta] = GFitViewer.MDict()
+    m[:extratab_2][:fields][:fname_3] = GModelFitViewer.MDict()
+    m[:extratab_2][:fields][:fname_3][:meta] = GModelFitViewer.MDict()
     m[:extratab_2][:fields][:fname_3][:data] = ["String_1", "String_2", "String_3"]
     =#
     return vd
@@ -91,30 +91,30 @@ function ViewerData(res::QSFitMultiResults{T}; kw...) where T
         vd.dict[:data][id][:meta][:label] = res.source.specs[id].label
 
         m = vd.dict[:extra][id]
-        m[:EW] = GFitViewer.MDict()
+        m[:EW] = GModelFitViewer.MDict()
         m[:EW][:label] = "Em. lines EW"
-        m[:EW][:fields] = GFitViewer.MDict()
-        m[:EW][:fields][:Label] = GFitViewer.MDict()
-        m[:EW][:fields][:Label][:meta] = GFitViewer.MDict()
+        m[:EW][:fields] = GModelFitViewer.MDict()
+        m[:EW][:fields][:Label] = GModelFitViewer.MDict()
+        m[:EW][:fields][:Label][:meta] = GModelFitViewer.MDict()
         m[:EW][:fields][:Label][:meta][:desc] = "Em. line"
         m[:EW][:fields][:Label][:data] = collect(keys(res.EW[id]))
-        m[:EW][:fields][:Value] = GFitViewer.MDict()
-        m[:EW][:fields][:Value][:meta] = GFitViewer.MDict()
+        m[:EW][:fields][:Value] = GModelFitViewer.MDict()
+        m[:EW][:fields][:Value][:meta] = GModelFitViewer.MDict()
         m[:EW][:fields][:Label][:meta][:desc] = "EW [A]"
         m[:EW][:fields][:Value][:data] = collect(values(res.EW[id]))
 
-        m[:extratab_2] = GFitViewer.MDict()
+        m[:extratab_2] = GModelFitViewer.MDict()
         m[:extratab_2][:label] = "Second extra table"
-        m[:extratab_2][:fields] = GFitViewer.MDict()
-        m[:extratab_2][:fields][:fname_1] = GFitViewer.MDict()
-        m[:extratab_2][:fields][:fname_1][:meta] = GFitViewer.MDict()
+        m[:extratab_2][:fields] = GModelFitViewer.MDict()
+        m[:extratab_2][:fields][:fname_1] = GModelFitViewer.MDict()
+        m[:extratab_2][:fields][:fname_1][:meta] = GModelFitViewer.MDict()
         m[:extratab_2][:fields][:fname_1][:meta][:desc] = "Optional. In case we want to add metedata."
         m[:extratab_2][:fields][:fname_1][:data] = [102, 203, 304]
-        m[:extratab_2][:fields][:fname_2] = GFitViewer.MDict()
-        m[:extratab_2][:fields][:fname_2][:meta] = GFitViewer.MDict()
+        m[:extratab_2][:fields][:fname_2] = GModelFitViewer.MDict()
+        m[:extratab_2][:fields][:fname_2][:meta] = GModelFitViewer.MDict()
         m[:extratab_2][:fields][:fname_2][:data] = [10.2, 20.3, 30.4]
-        m[:extratab_2][:fields][:fname_3] = GFitViewer.MDict()
-        m[:extratab_2][:fields][:fname_3][:meta] = GFitViewer.MDict()
+        m[:extratab_2][:fields][:fname_3] = GModelFitViewer.MDict()
+        m[:extratab_2][:fields][:fname_3][:meta] = GModelFitViewer.MDict()
         m[:extratab_2][:fields][:fname_3][:data] = ["String_1", "String_2", "String_3"]
     end
     return vd

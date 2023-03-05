@@ -2,10 +2,10 @@ module QSFit
 
 export add_spec!, close_log
 
-import GFit: Domain, CompEval,
+import GModelFit: Domain, CompEval,
     Parameter, AbstractComponent, prepare!, evaluate!
 
-using CMPFit, GFit, SortMerge
+using CMPFit, GModelFit, SortMerge
 using Pkg, Pkg.Artifacts
 using Statistics, DelimitedFiles, Printf, DataStructures
 using Unitful, UnitfulAstro
@@ -67,7 +67,7 @@ end
 
 function Job{T}(; logfile=nothing) where T <: AbstractRecipe
     if isnothing(logfile)
-        GFit.showsettings.plain = false
+        GModelFit.showsettings.plain = false
         logio = stdout
     else
         if isfile(logfile)
@@ -75,7 +75,7 @@ function Job{T}(; logfile=nothing) where T <: AbstractRecipe
         end
         logio = open(logfile, "w")
         println(logio, "Timestamp: ", now())
-        GFit.showsettings.plain = true
+        GModelFit.showsettings.plain = true
     end
     return cJob{T}(Options(T), logfile, logio)
 end
@@ -84,7 +84,7 @@ end
 function close_log(job::Job{T}) where T <: AbstractRecipe
     if !isnothing(job.logfile)
         close(job.logio)
-        GFit.showsettings.plain = false
+        GModelFit.showsettings.plain = false
     end
     nothing
 end
@@ -92,8 +92,8 @@ end
 
 struct StdSpectrum{T <: AbstractRecipe}
     resolution::Float64
-    domain::GFit.Domain{1}
-    data::GFit.Measures{1}
+    domain::GModelFit.Domain{1}
+    data::GModelFit.Measures{1}
     lcs::OrderedDict{Symbol, EmLineComponent}
     flux2lum::Float64
 end
@@ -103,7 +103,7 @@ abstract type JobState{T <: AbstractRecipe} <: Job{T} end
 struct       cJobState{T <: AbstractRecipe} <: JobState{T}
     @copy_fields(cJob)
     pspec::StdSpectrum
-    model::GFit.Model
+    model::GModelFit.Model
 end
 
 function JobState{T}(source::Source, job::Job{T}; id=1) where T <: AbstractRecipe
@@ -116,7 +116,7 @@ abstract type JobMultiState{T <: AbstractRecipe} <: Job{T} end
 struct       cJobMultiState{T <: AbstractRecipe} <: JobMultiState{T}
     @copy_fields(cJob)
     pspecs::Vector{StdSpectrum}
-    models::Vector{GFit.Model}
+    models::Vector{GModelFit.Model}
 end
 
 function JobMultiState{T}(source::Source, job::Job{T}) where T <: AbstractRecipe
@@ -136,26 +136,26 @@ end
 abstract type JobResults{T <: AbstractRecipe} <: JobState{T} end
 struct       cJobResults{T} <: JobResults{T}
     @copy_fields(cJobState)
-    bestfit::GFit.ModelSnapshot
-    fitres::GFit.FitStats
+    bestfit::GModelFit.ModelSnapshot
+    fitres::GModelFit.FitStats
     elapsed::Float64
     reduced::OrderedDict{Symbol, Any}
 end
 
-JobResults(job::JobState{T}, bestfit::GFit.ModelSnapshot, fitres::GFit.FitStats, elapsed::Float64) where T <: AbstractRecipe =
+JobResults(job::JobState{T}, bestfit::GModelFit.ModelSnapshot, fitres::GModelFit.FitStats, elapsed::Float64) where T <: AbstractRecipe =
     cJobResults{T}(getfield.(Ref(job), fieldnames(typeof(job)))..., bestfit, fitres, elapsed, OrderedDict{Symbol, Any}())
 
 
 abstract type JobMultiResults{T <: AbstractRecipe} <: JobMultiState{T} end
 struct       cJobMultiResults{T} <: JobMultiResults{T}
     @copy_fields(cJobMultiState)
-    bestfit::Vector{GFit.ModelSnapshot}
-    fitres::GFit.FitStats
+    bestfit::Vector{GModelFit.ModelSnapshot}
+    fitres::GModelFit.FitStats
     elapsed::Float64
     reduced::Vector{OrderedDict{Symbol, Any}}
 end
 
-JobMultiResults(job::JobMultiState{T}, bestfit::Vector{GFit.ModelSnapshot}, fitres::GFit.FitStats, elapsed::Float64) where T <: AbstractRecipe =
+JobMultiResults(job::JobMultiState{T}, bestfit::Vector{GModelFit.ModelSnapshot}, fitres::GModelFit.FitStats, elapsed::Float64) where T <: AbstractRecipe =
     cJobMultiResults{T}(getfield.(Ref(job), fieldnames(typeof(job)))..., bestfit, fitres, elapsed, Vector{OrderedDict{Symbol, Any}}())
 
 
