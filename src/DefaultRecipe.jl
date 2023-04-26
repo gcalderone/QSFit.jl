@@ -298,25 +298,25 @@ end
 
 function fit!(::Type{T}, job::JobState) where T <: DefaultRecipe
     mzer = minimizer(job)
-    bestfit, fitres = fit(job.model, job.pspec.data, minimizer=mzer)
+    bestfit, fitstats = fit(job.model, job.pspec.data, minimizer=mzer)
     # show(job.logio, job.model)
-    show(job.logio, fitres)
+    show(job.logio, fitstats)
     # @gp :QSFit job.pspec.data model
     # printstyled(color=:blink, "Press ENTER to continue..."); readline()
-    return bestfit, fitres
+    return bestfit, fitstats
 end
 
 
 # TODO function fit!(job::JobStateMulti{T}) where T <: DefaultRecipe
 # TODO     mzer = minimizer(job)
-# TODO     fitres = fit!(job.models, getfield.(job.pspecs, :data), minimizer=mzer)
+# TODO     fitstats = fit!(job.models, getfield.(job.pspecs, :data), minimizer=mzer)
 # TODO     show(job.logio, job.model)
-# TODO     show(job.logio, fitres)
+# TODO     show(job.logio, fitstats)
 # TODO     # for id in 1:length(job.model)
 # TODO     #     @gp Symbol("QSFit$(id)") job.pspecs[id].data job.model[id]
 # TODO     # end
 # TODO     # printstyled(color=:blink, "Press ENTER to continue..."); readline()
-# TODO     return fitres
+# TODO     return fitstats
 # TODO end
 
 

@@ -6,8 +6,8 @@ function ViewerData(source::Source, res::cJobResults{T}; kw...) where T
         # Avoid showing line components
         kw = (:comps=>(cname, ctype) -> !(ctype in [SpecLineGauss, SpecLineLorentz, SpecLineVoigt]), kw...)
     end
-    vd = ViewerData(res.model, res.pspec.data, res.fitres; kw...)
-    vd.dict[:meta][:banner] = "QSFit (v0.1)<br />Date: " * string(trunc(res.fitres.timestamp, Second))
+    vd = ViewerData(res.model, res.pspec.data, res.fitstats; kw...)
+    vd.dict[:meta][:banner] = "QSFit (v0.1)<br />Date: " * string(trunc(res.fitstats.timestamp, Second))
 
     id = 1
     m = vd.dict[:models][id][:meta]
@@ -66,8 +66,8 @@ viewer(res::cJobResults{T}; filename=nothing, offline=false, kw...) where T =
 
 #= TODO
 function ViewerData(res::QSFitMultiResults{T}; kw...) where T
-    vd = ViewerData(res.multi, [res.pspecs[id].data for id in 1:length(res.pspecs)], res.fitres; kw...)
-    vd.dict[:meta][:banner] = "QSFit (v0.1)<br />Date: " * string(trunc(res.fitres.timestamp, Second))
+    vd = ViewerData(res.multi, [res.pspecs[id].data for id in 1:length(res.pspecs)], res.fitstats; kw...)
+    vd.dict[:meta][:banner] = "QSFit (v0.1)<br />Date: " * string(trunc(res.fitstats.timestamp, Second))
 
     for id in 1:length(res.multi)
         m = vd.dict[:models][id][:meta]

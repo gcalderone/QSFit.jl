@@ -137,26 +137,26 @@ abstract type JobResults{T <: AbstractRecipe} <: JobState{T} end
 struct       cJobResults{T} <: JobResults{T}
     @copy_fields(cJobState)
     bestfit::GModelFit.ModelSnapshot
-    fitres::GModelFit.FitStats
+    fitstats::GModelFit.FitStats
     elapsed::Float64
     reduced::OrderedDict{Symbol, Any}
 end
 
-JobResults(job::JobState{T}, bestfit::GModelFit.ModelSnapshot, fitres::GModelFit.FitStats, elapsed::Float64) where T <: AbstractRecipe =
-    cJobResults{T}(getfield.(Ref(job), fieldnames(typeof(job)))..., bestfit, fitres, elapsed, OrderedDict{Symbol, Any}())
+JobResults(job::JobState{T}, bestfit::GModelFit.ModelSnapshot, fitstats::GModelFit.FitStats, elapsed::Float64) where T <: AbstractRecipe =
+    cJobResults{T}(getfield.(Ref(job), fieldnames(typeof(job)))..., bestfit, fitstats, elapsed, OrderedDict{Symbol, Any}())
 
 
 abstract type JobMultiResults{T <: AbstractRecipe} <: JobMultiState{T} end
 struct       cJobMultiResults{T} <: JobMultiResults{T}
     @copy_fields(cJobMultiState)
     bestfit::Vector{GModelFit.ModelSnapshot}
-    fitres::GModelFit.FitStats
+    fitstats::GModelFit.FitStats
     elapsed::Float64
     reduced::Vector{OrderedDict{Symbol, Any}}
 end
 
-JobMultiResults(job::JobMultiState{T}, bestfit::Vector{GModelFit.ModelSnapshot}, fitres::GModelFit.FitStats, elapsed::Float64) where T <: AbstractRecipe =
-    cJobMultiResults{T}(getfield.(Ref(job), fieldnames(typeof(job)))..., bestfit, fitres, elapsed, Vector{OrderedDict{Symbol, Any}}())
+JobMultiResults(job::JobMultiState{T}, bestfit::Vector{GModelFit.ModelSnapshot}, fitstats::GModelFit.FitStats, elapsed::Float64) where T <: AbstractRecipe =
+    cJobMultiResults{T}(getfield.(Ref(job), fieldnames(typeof(job)))..., bestfit, fitstats, elapsed, Vector{OrderedDict{Symbol, Any}}())
 
 
 include("DefaultRecipe.jl")
