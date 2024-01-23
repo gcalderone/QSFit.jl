@@ -21,6 +21,5 @@ source = QSFit.Source("My SDSS source", 0.3806, ebv=0.)
 add_spec!(source, Spectrum(Val(:SDSS_DR10), "/home/gcalderone/my/work/software/qsfit/data/spec-0752-52251-0323.fits"))
 job = QSFit.Job{DefaultRecipe}()
 res = QSFit.run(source, job)
-
-viewer(source, res, filename="test_qsfit.html")
+viewer(res.bestfit, res.fitstats, res.pspec.data)
 ```
