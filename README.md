@@ -8,8 +8,8 @@ Quasar Spectral FITting package - http://qsfit.inaf.it/
 ## Install
 ```julia
 using Pkg
-Pkg.add(url="https://github.com/gcalderone/GModelFit.jl", rev="master")
-Pkg.add(url="https://github.com/lnicastro/GModelFitViewer.jl", rev="master")
+Pkg.add(url="https://github.com/gcalderone/GModelFit.jl")
+Pkg.add(url="https://github.com/lnicastro/GModelFitViewer.jl")
 Pkg.add(url="https://github.com/gcalderone/QSFit.jl", rev="master")
 ```
 
