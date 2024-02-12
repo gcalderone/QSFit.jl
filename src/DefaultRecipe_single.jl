@@ -1,60 +1,60 @@
-function run(job::JobState{T}) where T <: DefaultRecipe
-    elapsed = time()
-    model = job.model
+
+function analyze(recipe::RRef{T}, state::State) where T <: DefaultRecipe
+    model = state.model
 
     model[:Continuum] = SumReducer()
     model[:main] = SumReducer()
     push!(model[:main].list, :Continuum)
     select_maincomp!(model, :main)
 
-    println(job.logio, "\nFit continuum components...")
-    add_qso_continuum!(job)
-    add_host_galaxy!(job)
-    add_balmer_cont!(job)
-    fit!(job)
-    renorm_cont!(job)
+    println(state.logio, "\nFit continuum components...")
+    add_qso_continuum!(recipe, state)
+    add_host_galaxy!(recipe, state)
+    add_balmer_cont!(recipe, state)
+    fit!(recipe, state)
+    renorm_cont!(recipe, state)
     freeze!(model, :qso_cont)
     haskey(model, :galaxy)  &&  freeze!(model, :galaxy)
     haskey(model, :balmer)  &&  freeze!(model, :balmer)
     GModelFit.update!(model)
 
-    println(job.logio, "\nFit iron templates...")
+    println(state.logio, "\nFit iron templates...")
     model[:Iron] = SumReducer()
     push!(model[:main].list, :Iron)
-    add_iron_uv!( job)
-    add_iron_opt!(job)
+    add_iron_uv!(recipe, state)
+    add_iron_opt!(recipe, state)
 
     if length(model[:Iron].list) > 0
-        fit!(job)
+        fit!(recipe, state)
         haskey(model, :ironuv   )  &&  freeze!(model, :ironuv)
         haskey(model, :ironoptbr)  &&  freeze!(model, :ironoptbr)
         haskey(model, :ironoptna)  &&  freeze!(model, :ironoptna)
     end
     GModelFit.update!(model)
 
-    println(job.logio, "\nFit known emission lines...")
-    add_emission_lines!(job)
-    add_patch_functs!(job)
+    println(state.logio, "\nFit known emission lines...")
+    add_emission_lines!(recipe,state)
+    add_patch_functs!(recipe, state)
 
-    fit!(job)
-    for lname in keys(job.pspec.lcs)
+    fit!(recipe, state)
+    for lname in keys(state.pspec.lcs)
         freeze!(model, lname)
     end
 
-    println(job.logio, "\nFit unknown emission lines...")
-    add_unknown_lines!(job)
+    println(state.logio, "\nFit unknown emission lines...")
+    add_unknown_lines!(recipe, state)
 
-    println(job.logio, "\nLast run with all parameters free...")
+    println(state.logio, "\nLast run with all parameters free...")
     thaw!(model, :qso_cont)
     haskey(model, :galaxy   )  &&  thaw!(model, :galaxy)
     haskey(model, :balmer   )  &&  thaw!(model, :balmer)
     haskey(model, :ironuv   )  &&  thaw!(model, :ironuv)
     haskey(model, :ironoptbr)  &&  thaw!(model, :ironoptbr)
     haskey(model, :ironoptna)  &&  thaw!(model, :ironoptna)
-    for lname in keys(job.pspec.lcs)
+    for lname in keys(state.pspec.lcs)
         thaw!(model, lname)
     end
-    for j in 1:job.options[:n_unk]
+    for j in 1:recipe.options[:n_unk]
         cname = Symbol(:unk, j)
         if model[cname].norm.val > 0
             thaw!(model, cname)
@@ -62,23 +62,15 @@ function run(job::JobState{T}) where T <: DefaultRecipe
             freeze!(model, cname)
         end
     end
-    bestfit, fitstats = fit!(job)
+    bestfit, fitstats = fit!(recipe, state)
 
-    if neglect_weak_features!(job)
-        println(job.logio, "\nRe-run fit...")
-        bestfit, fitstats = fit!(job)
+    if neglect_weak_features!(recipe, state)
+        println(state.logio, "\nRe-run fit...")
+        bestfit, fitstats = fit!(recipe, state)
     end
 
-    println(job.logio)
-    show(job.logio, fitstats)
+    println(state.logio)
+    show(state.logio, fitstats)
 
-    # Estimate line EWs
-    EWs = estimate_line_EWs(job)
-
-    out = JobResults(job, bestfit, fitstats, time() - elapsed)
-    out.reduced[:EW] = EWs
-
-    println(job.logio, "\nElapsed time: $(out.elapsed) s")
-    close_log(job)
-    return out
+    return bestfit, fitstats
 end

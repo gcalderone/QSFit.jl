@@ -57,40 +57,23 @@ add_spec!(source::Source, spec::Spectrum) =
 
 abstract type AbstractRecipe end
 
-
-abstract type Job{T <: AbstractRecipe} end
-struct       cJob{T <: AbstractRecipe} <: Job{T}
+struct RRef{T <: AbstractRecipe}
     options::OrderedDict{Symbol, Any}
-    logfile::Union{Nothing, String}
-    logio::Union{IOStream, Base.TTY}
 end
 
-function Job{T}(; logfile=nothing) where T <: AbstractRecipe
-    if isnothing(logfile)
-        GModelFit.showsettings.plain = false
-        logio = stdout
-    else
-        if isfile(logfile)
-            @warn "Logfile: $logfile already exists, overwriting..."
-        end
-        logio = open(logfile, "w")
-        println(logio, "Timestamp: ", now())
-        GModelFit.showsettings.plain = true
+function RRef(::Type{T}; kws...) where T <: AbstractRecipe
+    out = RRef{T}(OrderedDict{Symbol, Any}())
+    set_default_options!(out)
+    for (k, v) in kws
+        out.options[Symbol(k)] = v
     end
-    return cJob{T}(Options(T), logfile, logio)
+    return out
 end
 
 
-function close_log(job::Job{T}) where T <: AbstractRecipe
-    if !isnothing(job.logfile)
-        close(job.logio)
-        GModelFit.showsettings.plain = false
-    end
-    nothing
-end
 
 
-struct StdSpectrum{T <: AbstractRecipe}
+struct StdSpectrum
     resolution::Float64
     domain::GModelFit.Domain{1}
     data::GModelFit.Measures{1}
@@ -99,70 +82,74 @@ struct StdSpectrum{T <: AbstractRecipe}
 end
 
 
-abstract type JobState{T <: AbstractRecipe} <: Job{T} end
-struct       cJobState{T <: AbstractRecipe} <: JobState{T}
-    @copy_fields(cJob)
-    pspec::StdSpectrum
-    model::GModelFit.Model
-end
-
-function JobState{T}(source::Source, job::Job{T}; id=1) where T <: AbstractRecipe
-    pspec = StdSpectrum(job, source, id=id)
-    cJobState{T}(getfield.(Ref(job), fieldnames(typeof(job)))..., pspec, Model(pspec.domain))
+mutable struct State
+    starttime::Float64
+    endtime::Float64
+    logfile::Union{Nothing, String}
+    logio::Union{IOStream, Base.TTY}
+    pspec::Union{Nothing, StdSpectrum}
+    model::Union{Nothing, GModelFit.Model}
 end
 
 
-abstract type JobMultiState{T <: AbstractRecipe} <: Job{T} end
-struct       cJobMultiState{T <: AbstractRecipe} <: JobMultiState{T}
-    @copy_fields(cJob)
-    pspecs::Vector{StdSpectrum}
-    models::Vector{GModelFit.Model}
-end
-
-function JobMultiState{T}(source::Source, job::Job{T}) where T <: AbstractRecipe
-    pspecs = [StdSpectrum(job, source, id=id) for id in 1:length(source.specs)]
-    cJobMultiState{T}(getfield.(Ref(job), fieldnames(typeof(job)))..., pspecs, Vector{Model}())
-end
-
-
-function run(source::Source, job::Job{T}) where T <: AbstractRecipe
-    if length(source.specs) == 1
-        return run(JobState{T}(source, job))
+function analyze(recipe::RRef{T}, source::Source; logfile=nothing, overwrite=false) where T <: AbstractRecipe
+    starttime = time()
+    if isnothing(logfile)
+        GModelFit.showsettings.plain = false
+        logio = stdout
+    else
+        if isfile(logfile)  &&  !overwrite
+            error("Logfile: $logfile already exists.")
+        end
+        logio = open(logfile, "w")
+        println(logio, "Timestamp: ", now())
+        GModelFit.showsettings.plain = true
     end
-    return run(JobMultiState{T}(source, job))
+
+    state = State(starttime, NaN, logfile, logio, nothing, nothing)
+    state.pspec = StdSpectrum(recipe, state, source, id=1)
+    state.model = Model(state.pspec.domain)
+    bestfit, fitstats = analyze(recipe, state)
+    reduced = reduce(recipe, state)
+
+    state.endtime = time()
+    println(state.logio, "\nTotal elapsed time: $(state.endtime - state.starttime) s")
+    
+    if !isnothing(logfile)
+        close(logio)
+        GModelFit.showsettings.plain = false
+    end
+
+    out = Results(state.starttime, state.endtime, state.logfile, state.pspec, state.model,
+                  bestfit, fitstats, reduced)
+    return out
 end
 
 
-abstract type JobResults{T <: AbstractRecipe} <: JobState{T} end
-struct       cJobResults{T} <: JobResults{T}
-    @copy_fields(cJobState)
+struct Results
+    starttime::Float64
+    endtime::Float64
+    logfile::Union{Nothing, String}
+    pspec::Union{Nothing, StdSpectrum}
+    model::Union{Nothing, GModelFit.Model}
     bestfit::GModelFit.ModelSnapshot
     fitstats::GModelFit.FitStats
-    elapsed::Float64
     reduced::OrderedDict{Symbol, Any}
 end
 
-JobResults(job::JobState{T}, bestfit::GModelFit.ModelSnapshot, fitstats::GModelFit.FitStats, elapsed::Float64) where T <: AbstractRecipe =
-    cJobResults{T}(getfield.(Ref(job), fieldnames(typeof(job)))..., bestfit, fitstats, elapsed, OrderedDict{Symbol, Any}())
+Results(state::State, bestfit::GModelFit.ModelSnapshot, fitstats::GModelFit.FitStats) =
+    Results(getfield.(Ref(state), fieldnames(typeof(state)))..., bestfit, fitstats, OrderedDict{Symbol, Any}())
 
-
-abstract type JobMultiResults{T <: AbstractRecipe} <: JobMultiState{T} end
-struct       cJobMultiResults{T} <: JobMultiResults{T}
-    @copy_fields(cJobMultiState)
-    bestfit::Vector{GModelFit.ModelSnapshot}
-    fitstats::GModelFit.FitStats
-    elapsed::Float64
-    reduced::Vector{OrderedDict{Symbol, Any}}
-end
-
-JobMultiResults(job::JobMultiState{T}, bestfit::Vector{GModelFit.ModelSnapshot}, fitstats::GModelFit.FitStats, elapsed::Float64) where T <: AbstractRecipe =
-    cJobMultiResults{T}(getfield.(Ref(job), fieldnames(typeof(job)))..., bestfit, fitstats, elapsed, Vector{OrderedDict{Symbol, Any}}())
 
 
 include("DefaultRecipe.jl")
-include("reduce.jl")
+
+# Use DefaultRecipe when no explicit recipe is provided
+analyze(source::Source; kws...) = analyze(RRef(DefaultRecipe), source; kws...)
+
+
 # TODO include("viewer.jl")
-include("gnuplot.jl")
+# TODO include("gnuplot.jl")
 # TODO include("interactive_guess.jl")
 
 end  # module

@@ -1,16 +1,16 @@
-function estimate_line_EWs(job::JobState{T}) where T <: AbstractRecipe
+function reduce(recipe::RRef{T}, state::State) where T <: AbstractRecipe
     EW = OrderedDict{Symbol, Float64}()
 
-    cont = deepcopy(job.model())
-    for (lname, lc) in job.pspec.lcs
-        haskey(job.model, lname) || continue
-        cont .-= job.model(lname)
+    cont = deepcopy(state.model())
+    for (lname, lc) in state.pspec.lcs
+        haskey(state.model, lname) || continue
+        cont .-= state.model(lname)
     end
     @assert all(cont .> 0) "Continuum model is zero or negative"
-    for (lname, lc) in job.pspec.lcs
-        haskey(job.model, lname) || continue
-        EW[lname] = int_tabulated(coords(domain(job.model)),
-                                  job.model(lname) ./ cont)[1]
+    for (lname, lc) in state.pspec.lcs
+        haskey(state.model, lname) || continue
+        EW[lname] = int_tabulated(coords(domain(state.model)),
+                                  state.model(lname) ./ cont)[1]
     end
-    return EW
+    return OrderedDict{Symbol, Any}(:EW => EW)
 end
