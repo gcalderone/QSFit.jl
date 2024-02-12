@@ -57,6 +57,10 @@ struct Spectrum
 end
 
 
+function show(io::IO, spec::Spectrum)
+    println(io, "Spectrum: $(spec.label), resolution=$(spec.resolution) km/s")
+end
+
 Spectrum(λ::Vector{T1}, flux::Vector{T2}; kw...) where {T1 <: Quantity, T2 <: Quantity} = Spectrum(λ, flux, flux[[]]; kw...)
 function Spectrum(λ::Vector{T1}, flux::Vector{T2}, err::Vector{T2}; kw...) where {T1 <: Quantity, T2 <: Quantity}
     Spectrum(getproperty.(uconvert.(Ref(unit_λ())           , λ   ), :val) ./ scale_λ(),

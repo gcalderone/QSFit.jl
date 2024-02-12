@@ -69,8 +69,5 @@ function analyze(recipe::RRef{T}, state::State) where T <: DefaultRecipe
         bestfit, fitstats = fit!(recipe, state)
     end
 
-    println(state.logio)
-    show(state.logio, fitstats)
-
     return bestfit, fitstats
 end
