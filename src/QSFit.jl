@@ -154,7 +154,7 @@ analyze(source::Source; kws...) = analyze(RRef(DefaultRecipe), source; kws...)
 
 
 # TODO include("viewer.jl")
-# TODO include("gnuplot.jl")
+include("gnuplot.jl")
 # TODO include("interactive_guess.jl")
 
 end  # module
