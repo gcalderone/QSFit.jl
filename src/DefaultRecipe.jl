@@ -189,7 +189,7 @@ function collect_linecomps(recipe::RRef{T}, state::State) where T <: DefaultReci
 end
 
 
-function StdSpectrum(recipe::RRef{T}, state::State, source::Source; id=1) where T <: DefaultRecipe
+function PreparedSpectrum(recipe::RRef{T}, state::State, source::Source; id=1) where T <: DefaultRecipe
     data = deepcopy(source.specs[id])
     println(state.logio, "Spectrum: " * data.label)
     goodfraction = count(data.good) / length(data.good)
@@ -267,7 +267,7 @@ function StdSpectrum(recipe::RRef{T}, state::State, source::Source; id=1) where 
     lum = Measures(dom,
                    data.flux[ii] .* dered[ii] .* flux2lum .* (1 + source.z),
                    data.err[ ii] .* dered[ii] .* flux2lum .* (1 + source.z))
-    return StdSpectrum(data.resolution, dom, lum, lcs, flux2lum)
+    return PreparedSpectrum(data.resolution, dom, lum, lcs, flux2lum)
 end
 
 

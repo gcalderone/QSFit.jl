@@ -38,7 +38,6 @@ include("Spectrum.jl")
 include("SpectralLines.jl")
 
 
-version() = v"0.1.0"
 qsfit_data() = artifact"qsfit_data"
 
 
@@ -82,7 +81,7 @@ function RRef(::Type{T}; kws...) where T <: AbstractRecipe
 end
 
 
-struct StdSpectrum
+struct PreparedSpectrum
     resolution::Float64
     domain::GModelFit.Domain{1}
     data::GModelFit.Measures{1}
@@ -94,7 +93,7 @@ end
 mutable struct State
     logfile::Union{Nothing, String}
     logio::Union{IOStream, Base.TTY}
-    pspec::Union{Nothing, StdSpectrum}
+    pspec::Union{Nothing, PreparedSpectrum}
     model::Union{Nothing, GModelFit.Model}
 end
 
@@ -102,7 +101,7 @@ end
 struct Results
     elapsed::Float64
     logfile::Union{Nothing, String}
-    pspec::Union{Nothing, StdSpectrum}
+    pspec::Union{Nothing, PreparedSpectrum}
     model::Union{Nothing, GModelFit.Model}
     bestfit::GModelFit.ModelSnapshot
     fitstats::GModelFit.FitStats
@@ -131,7 +130,7 @@ function analyze(recipe::RRef{T}, source::Source; logfile=nothing, overwrite=fal
     end
 
     state = State(logfile, logio, nothing, nothing)
-    state.pspec = StdSpectrum(recipe, state, source, id=1)
+    state.pspec = PreparedSpectrum(recipe, state, source, id=1)
     state.model = Model(state.pspec.domain)
     bestfit, fitstats = analyze(recipe, state)
     reduced = reduce(recipe, state)
