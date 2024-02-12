@@ -71,8 +71,6 @@ function RRef(::Type{T}; kws...) where T <: AbstractRecipe
 end
 
 
-
-
 struct StdSpectrum
     resolution::Float64
     domain::GModelFit.Domain{1}
@@ -89,6 +87,18 @@ mutable struct State
     logio::Union{IOStream, Base.TTY}
     pspec::Union{Nothing, StdSpectrum}
     model::Union{Nothing, GModelFit.Model}
+end
+
+
+struct Results
+    starttime::Float64
+    endtime::Float64
+    logfile::Union{Nothing, String}
+    pspec::Union{Nothing, StdSpectrum}
+    model::Union{Nothing, GModelFit.Model}
+    bestfit::GModelFit.ModelSnapshot
+    fitstats::GModelFit.FitStats
+    reduced::OrderedDict{Symbol, Any}
 end
 
 
@@ -124,22 +134,6 @@ function analyze(recipe::RRef{T}, source::Source; logfile=nothing, overwrite=fal
                   bestfit, fitstats, reduced)
     return out
 end
-
-
-struct Results
-    starttime::Float64
-    endtime::Float64
-    logfile::Union{Nothing, String}
-    pspec::Union{Nothing, StdSpectrum}
-    model::Union{Nothing, GModelFit.Model}
-    bestfit::GModelFit.ModelSnapshot
-    fitstats::GModelFit.FitStats
-    reduced::OrderedDict{Symbol, Any}
-end
-
-Results(state::State, bestfit::GModelFit.ModelSnapshot, fitstats::GModelFit.FitStats) =
-    Results(getfield.(Ref(state), fieldnames(typeof(state)))..., bestfit, fitstats, OrderedDict{Symbol, Any}())
-
 
 
 include("DefaultRecipe.jl")
