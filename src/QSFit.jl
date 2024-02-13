@@ -134,14 +134,16 @@ function analyze(recipe::RRef{T}, source::Source; logfile=nothing, overwrite=fal
     bestfit, fitstats = analyze(recipe, state)
     reduced = reduce(recipe, state)
     
+    out = Results(time() - starttime,
+                  source, state.pspec,
+                  bestfit, fitstats, reduced)
+
+    println(logio, "\nTotal elapsed time: $(out.elapsed) s")
     if !isnothing(logfile)
         close(logio)
         GModelFit.showsettings.plain = false
     end
 
-    out = Results(time() - starttime,
-                  source, state.pspec,
-                  bestfit, fitstats, reduced)
     return out
 end
 

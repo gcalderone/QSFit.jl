@@ -41,8 +41,8 @@ function analyze(recipe::RRef{T}, state::State) where T <: DefaultRecipe
         freeze!(model, lname)
     end
 
-    println(state.logio, "\nFit unknown emission lines...")
-    add_unknown_lines!(recipe, state)
+    println(state.logio, "\nFit nuisance emission lines...")
+    add_nuisance_lines!(recipe, state)
 
     println(state.logio, "\nLast run with all parameters free...")
     thaw!(model, :qso_cont)
@@ -54,8 +54,8 @@ function analyze(recipe::RRef{T}, state::State) where T <: DefaultRecipe
     for lname in keys(state.pspec.lcs)
         thaw!(model, lname)
     end
-    for j in 1:recipe.options[:n_unk]
-        cname = Symbol(:unk, j)
+    for j in 1:recipe.options[:n_nuisance]
+        cname = Symbol(:nuisance, j)
         if model[cname].norm.val > 0
             thaw!(model, cname)
         else

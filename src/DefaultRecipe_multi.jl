@@ -76,11 +76,11 @@ function qsfit_multi(source::QSO{TRecipe}; ref_id=1) where TRecipe <: DefaultRec
     end
     evaluate!(multi)
 
-    println(logio(source), "\nFit unknown emission lines...")
+    println(logio(source), "\nFit nuisance emission lines...")
     for id in 1:length(pspecs)
         model = multi[id]
         pspec = pspecs[id]
-        QSFit.add_unknown_lines!(source, pspec, model)
+        QSFit.add_nuisance_lines!(source, pspec, model)
     end
     evaluate!(multi)
 
@@ -97,8 +97,8 @@ function qsfit_multi(source::QSO{TRecipe}; ref_id=1) where TRecipe <: DefaultRec
         for lname in keys(pspec.lcs)
             thaw!(model, lname)
         end
-        for j in 1:source.options[:n_unk]
-            cname = Symbol(:unk, j)
+        for j in 1:source.options[:n_nuisance]
+            cname = Symbol(:nuisance, j)
             if model[cname].norm.val > 0
                 thaw!(model, cname)
             else

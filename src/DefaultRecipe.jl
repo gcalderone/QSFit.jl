@@ -23,9 +23,9 @@ function set_default_options!(recipe::RRef{T}) where {T <: DefaultRecipe}
     out[:line_broadening] = true
     out[:iron_broadening] = true
 
-    out[:n_unk] = 10
-    out[:unk_avoid] = [4863 .+ [-1,1] .* 50, 6565 .+ [-1,1] .* 150]  # Angstrom
-    out[:unk_maxoffset_from_guess] = 1e3  # km/s
+    out[:n_nuisance] = 10
+    out[:nuisance_avoid] = [4863 .+ [-1,1] .* 50, 6565 .+ [-1,1] .* 150]  # Angstrom
+    out[:nuisance_maxoffset_from_guess] = 1e3  # km/s
 
     lines = OrderedDict{Symbol, EmLineDescription}()
     out[:lines] = lines
@@ -126,7 +126,7 @@ function EmLineComponent(recipe::RRef{T}, state::State, λ::Float64, ::Val{:very
 end
 
 
-function EmLineComponent(recipe::RRef{T}, state::State, λ::Float64, ::Val{:unknown}) where T <: DefaultRecipe
+function EmLineComponent(recipe::RRef{T}, state::State, λ::Float64, ::Val{:nuisance}) where T <: DefaultRecipe
     comp = EmLineComponent(recipe, state, λ)
     comp.norm.val = 0.
     comp.center.fixed = false
@@ -136,7 +136,7 @@ function EmLineComponent(recipe::RRef{T}, state::State, λ::Float64, ::Val{:unkn
     comp.fwhm.low  = 600
     comp.fwhm.high = 1e4
     comp.voff.fixed = true
-    return EmLineComponent{Val{:unknown}}(Symbol(""), :Unknown, comp)
+    return EmLineComponent{Val{:nuisance}}(Symbol(""), :Nuisance, comp)
 end
 
 
@@ -558,37 +558,37 @@ function add_patch_functs!(recipe::RRef{T}, state::State) where T <: DefaultReci
 end
 
 
-function add_unknown_lines!(recipe::RRef{T}, state::State) where T <: DefaultRecipe
-    (recipe.options[:n_unk] > 0)  ||  (return nothing)
+function add_nuisance_lines!(recipe::RRef{T}, state::State) where T <: DefaultRecipe
+    (recipe.options[:n_nuisance] > 0)  ||  (return nothing)
 
-    # Prepare unknown line components
-    for i in 1:recipe.options[:n_unk]
-        state.model[Symbol(:unk, i)] = EmLineComponent(recipe, state, 3000., Val(:unknown)).comp
+    # Prepare nuisance line components
+    for i in 1:recipe.options[:n_nuisance]
+        state.model[Symbol(:nuisance, i)] = EmLineComponent(recipe, state, 3000., Val(:nuisance)).comp
     end
-    state.model[:UnkLines] = SumReducer([Symbol(:unk, i) for i in 1:recipe.options[:n_unk]])
-    push!(state.model[:main].list, :UnkLines)
+    state.model[:NuisanceLines] = SumReducer([Symbol(:nuisance, i) for i in 1:recipe.options[:n_nuisance]])
+    push!(state.model[:main].list, :NuisanceLines)
     GModelFit.update!(state.model)
-    for j in 1:recipe.options[:n_unk]
-        freeze!(state.model, Symbol(:unk, j))
+    for j in 1:recipe.options[:n_nuisance]
+        freeze!(state.model, Symbol(:nuisance, j))
     end
     GModelFit.update!(state.model)
 
-    # Set "unknown" line center wavelength where there is a maximum in
+    # Set "nuisance" line center wavelength where there is a maximum in
     # the fit residuals, and re-run a fit.
     λ = coords(domain(state.model))
-    λunk = Vector{Float64}()
+    λnuisance = Vector{Float64}()
     while true
-        (length(λunk) >= recipe.options[:n_unk])  &&  break
+        (length(λnuisance) >= recipe.options[:n_nuisance])  &&  break
         GModelFit.update!(state.model)
         Δ = (values(state.pspec.data) - state.model()) ./ uncerts(state.pspec.data)
 
         # Avoid considering again the same region (within 1A) TODO: within resolution
-        for l in λunk
+        for l in λnuisance
             Δ[findall(abs.(l .- λ) .< 1)] .= 0.
         end
 
         # Avoidance regions
-        for rr in recipe.options[:unk_avoid]
+        for rr in recipe.options[:nuisance_avoid]
             Δ[findall(rr[1] .< λ .< rr[2])] .= 0.
         end
 
@@ -598,19 +598,19 @@ function add_unknown_lines!(recipe::RRef{T}, state::State) where T <: DefaultRec
                   (λ .> maximum(λ)*0.98))] .= 0.
         iadd = argmax(Δ)
         (Δ[iadd] <= 0)  &&  break  # No residual is greater than 0, skip further residuals....
-        push!(λunk, λ[iadd])
+        push!(λnuisance, λ[iadd])
 
-        cname = Symbol(:unk, length(λunk))
+        cname = Symbol(:nuisance, length(λnuisance))
         state.model[cname].norm.val = 1.
         state.model[cname].center.val  = λ[iadd]
 
         # Allow to shift by a quantity equal to ...
-        @assert recipe.options[:unk_maxoffset_from_guess] > 0
-        state.model[cname].center.low  = λ[iadd] * (1 - recipe.options[:unk_maxoffset_from_guess] / 3e5)
-        state.model[cname].center.high = λ[iadd] * (1 + recipe.options[:unk_maxoffset_from_guess] / 3e5)
+        @assert recipe.options[:nuisance_maxoffset_from_guess] > 0
+        state.model[cname].center.low  = λ[iadd] * (1 - recipe.options[:nuisance_maxoffset_from_guess] / 3e5)
+        state.model[cname].center.high = λ[iadd] * (1 + recipe.options[:nuisance_maxoffset_from_guess] / 3e5)
 
         # In any case, we must stay out of avoidance regions
-        for rr in recipe.options[:unk_avoid]
+        for rr in recipe.options[:nuisance_avoid]
             @assert !(rr[1] .< λ[iadd] .< rr[2])
             if rr[1] .>= λ[iadd]
                 state.model[cname].center.high = min(state.model[cname].center.high, rr[1])
@@ -629,11 +629,11 @@ end
 
 
 function neglect_weak_features!(recipe::RRef{T}, state::State) where T <: DefaultRecipe
-    # Disable "unknown" lines whose normalization uncertainty is larger
+    # Disable "nuisance" lines whose normalization uncertainty is larger
     # than X times the normalization
     needs_fitting = false
-    for ii in 1:recipe.options[:n_unk]
-        cname = Symbol(:unk, ii)
+    for ii in 1:recipe.options[:n_nuisance]
+        cname = Symbol(:nuisance, ii)
         isfreezed(state.model, cname)  &&  continue
         if state.model[cname].norm.val == 0.
             freeze!(state.model, cname)

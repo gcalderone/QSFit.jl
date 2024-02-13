@@ -51,7 +51,7 @@ function LineComponent(source::QSO{T}, line::NarrowLine, multicomp::Bool) where 
     return lc
 end
 
-function default_unk_line(source::QSO{T}) where T <: T2Recipe
+function default_nuisance_line(source::QSO{T}) where T <: T2Recipe
     comp = SpecLineGauss(5e3)
     comp.norm.val = 0.
     comp.center.fixed = false

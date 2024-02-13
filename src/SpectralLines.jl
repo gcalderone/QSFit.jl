@@ -1,4 +1,4 @@
-export StdEmLine, broad, narrow, verybroad, unknown
+export StdEmLine, broad, narrow, verybroad, nuisance
 
 struct SpectralTransition
     id::Symbol
@@ -45,7 +45,7 @@ function transitions(tid::Symbol)
         end
     end
 
-    @assert haskey(known_transitions, tid) "Unknown transition identifier: $tid"
+    @assert haskey(known_transitions, tid) "Nuisance transition identifier: $tid"
     return known_transitions[tid]
 end
 
