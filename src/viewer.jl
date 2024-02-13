@@ -1,125 +1,17 @@
 using GModelFitViewer
-import GModelFitViewer: ViewerData, viewer
+import GModelFitViewer: viewer
 
-function ViewerData(source::Source, res::cJobResults{T}; kw...) where T
-    if !haskey(kw, :comps)
-        # Avoid showing line components
-        kw = (:comps=>(cname, ctype) -> !(ctype in [SpecLineGauss, SpecLineLorentz, SpecLineVoigt]), kw...)
-    end
-    vd = ViewerData(res.model, res.pspec.data, res.fitstats; kw...)
-    vd.dict[:meta][:banner] = "QSFit (v0.1)<br />Date: " * string(trunc(res.fitstats.timestamp, Second))
-
-    id = 1
-    m = vd.dict[:models][id][:meta]
-    m[:label] = source.name * ", z=" * string(source.z) * ", E(B-V)=" * string(source.mw_ebv)
-    m[:label_x] = "Rest frame wavelength"
-    m[:unit_x]  = string(QSFit.unit_λ())
-    m[:log10scale_x] = 0
-    m[:label_y] = "Lum. density"
-
-    if "UNITFUL_FANCY_EXPONENTS" in keys(ENV)
-        orig = ENV["UNITFUL_FANCY_EXPONENTS"]
-        ENV["UNITFUL_FANCY_EXPONENTS"] = true
-        m[:unit_y]  = string(QSFit.unit_lum_density())
-        ENV["UNITFUL_FANCY_EXPONENTS"] = orig
-    else
-        ENV["UNITFUL_FANCY_EXPONENTS"] = true
-        m[:unit_y]  = string(QSFit.unit_lum_density())
-        delete!(ENV, "UNITFUL_FANCY_EXPONENTS")
-    end
-    m[:log10scale_y] = QSFit.log10_scale_lum()
-    vd.dict[:data][id][:meta][:label] = source.specs[id].label
-
-    m = vd.dict[:extra][id]
-    m[:EW] = GModelFitViewer.MDict()
-    m[:EW][:label] = "Em. lines EW"
-    m[:EW][:fields] = GModelFitViewer.MDict()
-    m[:EW][:fields][:Label] = GModelFitViewer.MDict()
-    m[:EW][:fields][:Label][:meta] = GModelFitViewer.MDict()
-    m[:EW][:fields][:Label][:meta][:desc] = "Em. line"
-    m[:EW][:fields][:Label][:data] = collect(keys(res.reduced[:EW]))
-    m[:EW][:fields][:Value] = GModelFitViewer.MDict()
-    m[:EW][:fields][:Value][:meta] = GModelFitViewer.MDict()
-    m[:EW][:fields][:Label][:meta][:desc] = "EW [A]"
-    m[:EW][:fields][:Value][:data] = collect(values(res.reduced[:EW]))
-
-    #=
-    m[:extratab_2] = GModelFitViewer.MDict()
-    m[:extratab_2][:label] = "Second extra table"
-    m[:extratab_2][:fields] = GModelFitViewer.MDict()
-    m[:extratab_2][:fields][:fname_1] = GModelFitViewer.MDict()
-    m[:extratab_2][:fields][:fname_1][:meta] = GModelFitViewer.MDict()
-    m[:extratab_2][:fields][:fname_1][:meta][:desc] = "Optional. In case we want to add metedata."
-    m[:extratab_2][:fields][:fname_1][:data] = [102, 203, 304]
-    m[:extratab_2][:fields][:fname_2] = GModelFitViewer.MDict()
-    m[:extratab_2][:fields][:fname_2][:meta] = GModelFitViewer.MDict()
-    m[:extratab_2][:fields][:fname_2][:data] = [10.2, 20.3, 30.4]
-    m[:extratab_2][:fields][:fname_3] = GModelFitViewer.MDict()
-    m[:extratab_2][:fields][:fname_3][:meta] = GModelFitViewer.MDict()
-    m[:extratab_2][:fields][:fname_3][:data] = ["String_1", "String_2", "String_3"]
-    =#
-    return vd
+function viewer(res::Results; kws...)
+    ctypes = [comptype(res.bestfit, cname) for cname in keys(res.bestfit)]
+    i = findall(isnothing.(match.(r"SpecLine", ctypes)))
+    keep = string.(keys(res.bestfit))[i]
+    meta = GModelFitViewer.Meta(; title=res.source.name * ", z=" * string(res.source.z) * ", E(B-V)=" * string(res.source.mw_ebv),
+                                xlabel="Rest frame wavelength",
+                                xunit=string(QSFit.unit_λ()),
+                                xscale=10. ^ QSFit.log10_scale_λ(),
+                                ylabel="Lum. density",
+                                yunit=string(QSFit.unit_lum_density()),
+                                yscale=10. ^ QSFit.log10_scale_lum(),
+                                keep=keep, kws...)
+    return viewer(res.bestfit, res.fitstats, res.pspec.data, meta=meta)
 end
-
-viewer(res::cJobResults{T}; filename=nothing, offline=false, kw...) where T =
-    viewer(ViewerData(res; kw...); filename=filename, offline=offline)
-
-#= TODO
-function ViewerData(res::QSFitMultiResults{T}; kw...) where T
-    vd = ViewerData(res.multi, [res.pspecs[id].data for id in 1:length(res.pspecs)], res.fitstats; kw...)
-    vd.dict[:meta][:banner] = "QSFit (v0.1)<br />Date: " * string(trunc(res.fitstats.timestamp, Second))
-
-    for id in 1:length(res.multi)
-        m = vd.dict[:models][id][:meta]
-        m[:label] = res.source.name * ", z=" * string(res.source.z) * ", E(B-V)=" * string(res.source.mw_ebv)
-        m[:label_x] = "Rest frame wavelength"
-        m[:unit_x]  = string(QSFit.unit_λ())
-        m[:log10scale_x] = 0
-        m[:label_y] = "Lum. density"
-
-        if "UNITFUL_FANCY_EXPONENTS" in keys(ENV)
-            orig = ENV["UNITFUL_FANCY_EXPONENTS"]
-            ENV["UNITFUL_FANCY_EXPONENTS"] = true
-            m[:unit_y]  = string(QSFit.unit_lum_density())
-            ENV["UNITFUL_FANCY_EXPONENTS"] = orig
-        else
-            ENV["UNITFUL_FANCY_EXPONENTS"] = true
-            m[:unit_y]  = string(QSFit.unit_lum_density())
-            delete!(ENV, "UNITFUL_FANCY_EXPONENTS")
-        end
-        m[:log10scale_y] = QSFit.log10_scale_lum()
-        vd.dict[:data][id][:meta][:label] = res.source.specs[id].label
-
-        m = vd.dict[:extra][id]
-        m[:EW] = GModelFitViewer.MDict()
-        m[:EW][:label] = "Em. lines EW"
-        m[:EW][:fields] = GModelFitViewer.MDict()
-        m[:EW][:fields][:Label] = GModelFitViewer.MDict()
-        m[:EW][:fields][:Label][:meta] = GModelFitViewer.MDict()
-        m[:EW][:fields][:Label][:meta][:desc] = "Em. line"
-        m[:EW][:fields][:Label][:data] = collect(keys(res.EW[id]))
-        m[:EW][:fields][:Value] = GModelFitViewer.MDict()
-        m[:EW][:fields][:Value][:meta] = GModelFitViewer.MDict()
-        m[:EW][:fields][:Label][:meta][:desc] = "EW [A]"
-        m[:EW][:fields][:Value][:data] = collect(values(res.EW[id]))
-
-        m[:extratab_2] = GModelFitViewer.MDict()
-        m[:extratab_2][:label] = "Second extra table"
-        m[:extratab_2][:fields] = GModelFitViewer.MDict()
-        m[:extratab_2][:fields][:fname_1] = GModelFitViewer.MDict()
-        m[:extratab_2][:fields][:fname_1][:meta] = GModelFitViewer.MDict()
-        m[:extratab_2][:fields][:fname_1][:meta][:desc] = "Optional. In case we want to add metedata."
-        m[:extratab_2][:fields][:fname_1][:data] = [102, 203, 304]
-        m[:extratab_2][:fields][:fname_2] = GModelFitViewer.MDict()
-        m[:extratab_2][:fields][:fname_2][:meta] = GModelFitViewer.MDict()
-        m[:extratab_2][:fields][:fname_2][:data] = [10.2, 20.3, 30.4]
-        m[:extratab_2][:fields][:fname_3] = GModelFitViewer.MDict()
-        m[:extratab_2][:fields][:fname_3][:meta] = GModelFitViewer.MDict()
-        m[:extratab_2][:fields][:fname_3][:data] = ["String_1", "String_2", "String_3"]
-    end
-    return vd
-end
-
-viewer(res::QSFitMultiResults{T}; filename=nothing, offline=false, kw...) where T =
-    viewer(ViewerData(res; kw...); filename=filename, offline=offline)
-=#

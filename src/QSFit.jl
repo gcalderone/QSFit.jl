@@ -100,9 +100,8 @@ end
 
 struct Results
     elapsed::Float64
-    logfile::Union{Nothing, String}
+    source::Source
     pspec::Union{Nothing, PreparedSpectrum}
-    model::Union{Nothing, GModelFit.Model}
     bestfit::GModelFit.ModelSnapshot
     fitstats::GModelFit.FitStats
     reduced::OrderedDict{Symbol, Any}
@@ -140,7 +139,8 @@ function analyze(recipe::RRef{T}, source::Source; logfile=nothing, overwrite=fal
         GModelFit.showsettings.plain = false
     end
 
-    out = Results(time() - starttime, state.logfile, state.pspec, state.model,
+    out = Results(time() - starttime,
+                  source, state.pspec,
                   bestfit, fitstats, reduced)
     return out
 end
@@ -152,7 +152,7 @@ include("DefaultRecipe.jl")
 analyze(source::Source; kws...) = analyze(RRef(DefaultRecipe), source; kws...)
 
 
-# TODO include("viewer.jl")
+include("viewer.jl")
 include("gnuplot.jl")
 # TODO include("interactive_guess.jl")
 

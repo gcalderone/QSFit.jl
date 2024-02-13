@@ -21,5 +21,5 @@ source = QSFit.Source("My SDSS source", 0.3806, ebv=0.)
 add_spec!(source, Spectrum(Val(:SDSS_DR10), "/home/gcalderone/my/work/software/qsfit/data/spec-0752-52251-0323.fits"))
 recipe = QSFit.RRef(DefaultRecipe)
 res = QSFit.analyze(recipe, source)
-viewer(res.bestfit, res.fitstats, res.pspec.data)
+viewer(res)
 ```
