@@ -99,6 +99,7 @@ end
 
 
 struct Results
+    timestamp::DateTime
     elapsed::Float64
     source::Source
     pspec::Union{Nothing, PreparedSpectrum}
@@ -115,6 +116,7 @@ end
 
 
 function analyze(recipe::RRef{T}, source::Source; logfile=nothing, overwrite=false) where T <: AbstractRecipe
+    timestamp = now()
     starttime = time()
     if isnothing(logfile)
         GModelFit.showsettings.plain = false
@@ -134,7 +136,8 @@ function analyze(recipe::RRef{T}, source::Source; logfile=nothing, overwrite=fal
     bestfit, fitstats = analyze(recipe, state)
     reduced = reduce(recipe, state)
     
-    out = Results(time() - starttime,
+    out = Results(timestamp,
+                  time() - starttime,
                   source, state.pspec,
                   bestfit, fitstats, reduced)
 

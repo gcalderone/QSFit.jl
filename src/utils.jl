@@ -1,16 +1,3 @@
-# The following macro is taken from ReusePatterns.jl
-macro copy_fields(T)
-    out = Expr(:block)
-    for name in fieldnames(__module__.eval(T))
-        e = Expr(Symbol("::"))
-        push!(e.args, name)
-        push!(e.args, fieldtype(__module__.eval(T), name))
-        push!(out.args, e)
-    end
-    return esc(out)
-end
-
-
 gauss(x, μ, σ) = exp.(-0.5 .* ((x .- μ) ./ σ).^2) ./ sqrt(2pi) ./ σ
 
 
