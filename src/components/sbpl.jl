@@ -24,7 +24,7 @@ mutable struct sbpl <: AbstractComponent
     end
 end
 
-function evaluate!(buffer, comp::sbpl, x::Domain{1},
+function evaluate!(buffer::Vector{Float64}, comp::sbpl, x::Domain{1},
                    norm, x0, alpha1, alpha2, delta)
     xx = coords(x) ./ x0
 

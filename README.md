@@ -25,4 +25,33 @@ viewer(res)
 
 using Gnuplot
 @gp res
+
+
+abstract type MyRecipe <: DefaultRecipe end
+import QSFit.add_qso_continuum!
+function add_qso_continuum!(recipe::QSFit.RRef{T}, state::QSFit.State) where T <: MyRecipe
+	@invoke add_qso_continuum!(recipe::QSFit.RRef{<: supertype(T)}, state)
+    state.model[:QSOcont].alpha.fixed = true
+end
+
+
+using GModelFit, Statistics
+function add_qso_continuum!(recipe::QSFit.RRef{T}, state::QSFit.State) where T <: MyRecipe
+    λ = coords(domain(state.model))
+    comp = QSFit.sbpl(3000)
+    comp.x0.val = median(λ)
+    comp.norm.val = median(values(state.pspec.data))
+    comp.norm.low = comp.norm.val / 1000.  # ensure contiuum remains positive (needed to estimate EWs)
+    state.model[:QSOcont] = comp
+    push!(state.model[:Continuum].list, :QSOcont)
+    GModelFit.update!(state.model)
+end
+
+
+myrecipe = QSFit.RRef(MyRecipe)
+res = QSFit.analyze(myrecipe, source)
+viewer(res)
+
+
+
 ```
