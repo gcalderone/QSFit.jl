@@ -13,5 +13,24 @@ function viewer(res::Results; kws...)
                                 yunit=string(QSFit.unit_lum_density()),
                                 yscale=10. ^ QSFit.log10_scale_lum(),
                                 keep=keep, kws...)
-    return viewer(res.bestfit, res.fitstats, res.pspec.data, meta=meta)
+
+    d = GModelFitViewer.DictsWithMeta(res.bestfit, res.fitstats, res.pspec.data, meta=meta)
+
+    # Add further content
+    m = OrderedDict{Symbol, Any}()
+    m[:EW] = OrderedDict{Symbol, Any}()
+    m[:EW][:label] = "Em. lines EW"
+    m[:EW][:fields] = OrderedDict{Symbol, Any}()
+    m[:EW][:fields][:Label] = OrderedDict{Symbol, Any}()
+    m[:EW][:fields][:Label][:meta] = OrderedDict{Symbol, Any}()
+    m[:EW][:fields][:Label][:meta][:desc] = "Em. line"
+    m[:EW][:fields][:Label][:data] = collect(keys(res.reduced[:EW]))
+    m[:EW][:fields][:Value] = OrderedDict{Symbol, Any}()
+    m[:EW][:fields][:Value][:meta] = OrderedDict{Symbol, Any}()
+    m[:EW][:fields][:Value][:meta][:desc] = "EW [A]"
+    m[:EW][:fields][:Value][:data] = collect(values(res.reduced[:EW]))
+    d.data[1]["extra"] = [m]
+
+    # println(GModelFitViewer.serialize_json(d))
+    return viewer(d)
 end
