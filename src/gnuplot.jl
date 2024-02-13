@@ -10,7 +10,10 @@ end
 
 
 function Gnuplot.recipe(res::Results)
-    out = [Gnuplot.recipe(res.pspec.data)..., Gnuplot.recipe(res.bestfit)...]
+    ctypes = [comptype(res.bestfit, cname) for cname in keys(res.bestfit)]
+    i = findall(isnothing.(match.(r"SpecLine", ctypes)))
+    keep = keys(res.bestfit)[i]
+    out = [Gnuplot.recipe(res.pspec.data)..., Gnuplot.recipe(res.bestfit, keep=keep)...]
     return reverse(out)
 end
 

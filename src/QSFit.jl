@@ -111,7 +111,7 @@ end
 
 function show(io::IO, res::Results)
     show(io, res.fitstats)
-    println(io, "\nTotal elapsed time: $(res.elapsed) s")
+    println(io)
 end
 
 
@@ -126,16 +126,20 @@ function analyze(recipe::RRef{T}, source::Source; logfile=nothing, overwrite=fal
             error("Logfile: $logfile already exists.")
         end
         logio = open(logfile, "w")
-        println(logio, "Timestamp: ", now())
         GModelFit.showsettings.plain = true
     end
+    println(logio, "Timestamp: ", now())
+    println(logio, "Using $T recipe with options:")
+    show(logio, "text/plain", recipe.options)
+    println(logio)
+    println(logio)
 
     state = State(logfile, logio, nothing, nothing)
     state.pspec = PreparedSpectrum(recipe, state, source, id=1)
     state.model = Model(state.pspec.domain)
     bestfit, fitstats = analyze(recipe, state)
     reduced = reduce(recipe, state)
-    
+
     out = Results(timestamp,
                   time() - starttime,
                   source, state.pspec,
