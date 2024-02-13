@@ -13,9 +13,9 @@ function analyze(recipe::RRef{T}, state::State) where T <: DefaultRecipe
     add_balmer_cont!(recipe, state)
     fit!(recipe, state)
     renorm_cont!(recipe, state)
-    freeze!(model, :qso_cont)
-    haskey(model, :galaxy)  &&  freeze!(model, :galaxy)
-    haskey(model, :balmer)  &&  freeze!(model, :balmer)
+    freeze!(model, :QSOcont)
+    haskey(model, :Galaxy)  &&  freeze!(model, :Galaxy)
+    haskey(model, :Balmer)  &&  freeze!(model, :Balmer)
     GModelFit.update!(model)
 
     println(state.logio, "\nFit iron templates...")
@@ -26,9 +26,9 @@ function analyze(recipe::RRef{T}, state::State) where T <: DefaultRecipe
 
     if length(model[:Iron].list) > 0
         fit!(recipe, state)
-        haskey(model, :ironuv   )  &&  freeze!(model, :ironuv)
-        haskey(model, :ironoptbr)  &&  freeze!(model, :ironoptbr)
-        haskey(model, :ironoptna)  &&  freeze!(model, :ironoptna)
+        haskey(model, :Ironuv   )  &&  freeze!(model, :Ironuv)
+        haskey(model, :Ironoptbr)  &&  freeze!(model, :Ironoptbr)
+        haskey(model, :Ironoptna)  &&  freeze!(model, :Ironoptna)
     end
     GModelFit.update!(model)
 
@@ -45,12 +45,12 @@ function analyze(recipe::RRef{T}, state::State) where T <: DefaultRecipe
     add_nuisance_lines!(recipe, state)
 
     println(state.logio, "\nLast run with all parameters free...")
-    thaw!(model, :qso_cont)
-    haskey(model, :galaxy   )  &&  thaw!(model, :galaxy)
-    haskey(model, :balmer   )  &&  thaw!(model, :balmer)
-    haskey(model, :ironuv   )  &&  thaw!(model, :ironuv)
-    haskey(model, :ironoptbr)  &&  thaw!(model, :ironoptbr)
-    haskey(model, :ironoptna)  &&  thaw!(model, :ironoptna)
+    thaw!(model, :QSOcont)
+    haskey(model, :Galaxy   )  &&  thaw!(model, :Galaxy)
+    haskey(model, :Balmer   )  &&  thaw!(model, :Balmer)
+    haskey(model, :Ironuv   )  &&  thaw!(model, :Ironuv)
+    haskey(model, :Ironoptbr)  &&  thaw!(model, :Ironoptbr)
+    haskey(model, :Ironoptna)  &&  thaw!(model, :Ironoptna)
     for lname in keys(state.pspec.lcs)
         thaw!(model, lname)
     end

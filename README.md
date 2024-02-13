@@ -15,7 +15,7 @@ Pkg.add(url="https://github.com/gcalderone/QSFit.jl", rev="master")
 
 ## Example
 ```julia
-using QSFit, GModelFitViewer
+using QSFit, GModelFit, GModelFitViewer
 
 source = QSFit.Source("My SDSS source", 0.3806, ebv=0.)
 add_spec!(source, Spectrum(Val(:SDSS_DR10), "/home/gcalderone/my/work/software/qsfit/data/spec-0752-52251-0323.fits"))

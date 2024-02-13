@@ -7,8 +7,8 @@ function set_default_options!(recipe::RRef{T}) where {T <: DefaultRecipe}
     out = OrderedDict{Symbol, Any}()
     out[:wavelength_range] = [1215, 7.3e3]
     out[:min_spectral_coverage] = Dict(:default => 0.6,
-                                       :ironuv  => 0.3,
-                                       :ironopt => 0.3)
+                                       :Ironuv  => 0.3,
+                                       :Ironopt => 0.3)
 
     out[:host_template] = Dict(:library=>"swire", :template=>"Ell5")
     out[:host_template_ref_wavelength] = 5500. # A
@@ -16,12 +16,12 @@ function set_default_options!(recipe::RRef{T}) where {T <: DefaultRecipe}
     out[:host_template_range] = [4000., 7000.]
 
     out[:use_balmer] = true
-    out[:use_ironuv] = true;      out[:ironuv_fwhm]    = 3000.
-    out[:use_ironopt] = true;     out[:ironoptbr_fwhm] = 3000.;  out[:ironoptna_fwhm] =  500.
+    out[:use_ironuv] = true;      out[:Ironuv_fwhm]    = 3000.
+    out[:use_ironopt] = true;     out[:Ironoptbr_fwhm] = 3000.;  out[:Ironoptna_fwhm] =  500.
 
     out[:line_profiles] = :gauss
     out[:line_broadening] = true
-    out[:iron_broadening] = true
+    out[:Iron_broadening] = true
 
     out[:n_nuisance] = 10
     out[:nuisance_avoid] = [4863 .+ [-1,1] .* 50, 6565 .+ [-1,1] .* 150]  # Angstrom
@@ -308,8 +308,8 @@ function add_qso_continuum!(recipe::RRef{T}, state::State) where T <: DefaultRec
     comp.alpha.low  = -3
     comp.alpha.high =  1
 
-    state.model[:qso_cont] = comp
-    push!(state.model[:Continuum].list, :qso_cont)
+    state.model[:QSOcont] = comp
+    push!(state.model[:Continuum].list, :QSOcont)
     GModelFit.update!(state.model)
 end
 
@@ -319,10 +319,10 @@ function add_host_galaxy!(recipe::RRef{T}, state::State) where T <: DefaultRecip
     if recipe.options[:use_host_template]  &&
         (recipe.options[:host_template_range][1] .< maximum(λ))  &&
         (recipe.options[:host_template_range][2] .> minimum(λ))
-        state.model[:galaxy] = QSFit.hostgalaxy(recipe.options[:host_template][:template],
+        state.model[:Galaxy] = QSFit.hostgalaxy(recipe.options[:host_template][:template],
                                                 library=recipe.options[:host_template][:library],
                                                 refwl=recipe.options[:host_template_ref_wavelength])
-        push!(state.model[:Continuum].list, :galaxy)
+        push!(state.model[:Continuum].list, :Galaxy)
 
         # Split total flux between continuum and host galaxy
         refwl = recipe.options[:host_template_ref_wavelength]
@@ -330,8 +330,8 @@ function add_host_galaxy!(recipe::RRef{T}, state::State) where T <: DefaultRecip
         @assert !isnan(vv) "Predicted L_λ at $(refwl)A is NaN"
         @assert vv > 0 "Predicted L_λ at $(refwl)A is negative"
         # (vv <= 0)  &&  (vv = .1 * median(values(state.pspec.data)))
-        state.model[:galaxy].norm.val    = 1/2 * vv
-        state.model[:qso_cont].norm.val *= 1/2 * vv / Dierckx.Spline1D(λ, state.model(:qso_cont), k=1, bc="extrapolate")(refwl)
+        state.model[:Galaxy].norm.val    = 1/2 * vv
+        state.model[:QSOcont].norm.val *= 1/2 * vv / Dierckx.Spline1D(λ, state.model(:QSOcont), k=1, bc="extrapolate")(refwl)
         GModelFit.update!(state.model)
     end
 end
@@ -339,9 +339,9 @@ end
 
 function add_balmer_cont!(recipe::RRef{T}, state::State) where T <: DefaultRecipe
     if recipe.options[:use_balmer]
-        state.model[:balmer] = QSFit.balmercont(0.1, 0.5)
-        push!(state.model[:Continuum].list, :balmer)
-        c = state.model[:balmer]
+        state.model[:Balmer] = QSFit.balmercont(0.1, 0.5)
+        push!(state.model[:Continuum].list, :Balmer)
+        c = state.model[:Balmer]
         c.norm.val  = 0.1
         c.norm.fixed = false
         c.norm.high = 0.5
@@ -349,15 +349,15 @@ function add_balmer_cont!(recipe::RRef{T}, state::State) where T <: DefaultRecip
         c.ratio.fixed = false
         c.ratio.low  = 0.1
         c.ratio.high = 1
-        state.model[:balmer].norm.patch = @λ (m, v) -> v * m[:qso_cont].norm
+        state.model[:Balmer].norm.patch = @λ (m, v) -> v * m[:QSOcont].norm
         GModelFit.update!(state.model)
     end
 end
 
 
 function renorm_cont!(recipe::RRef{T}, state::State) where T <: DefaultRecipe
-    freeze!(state.model, :qso_cont)
-    c = state.model[:qso_cont]
+    freeze!(state.model, :QSOcont)
+    c = state.model[:QSOcont]
     initialnorm = c.norm.val
     if c.norm.val > 0
         println(state.logio, "Cont. norm. (before): ", c.norm.val)
@@ -405,19 +405,19 @@ function add_iron_uv!(recipe::RRef{T}, state::State) where T <: DefaultRecipe
     λ = coords(domain(state.model))
     resolution = state.pspec.resolution
     if recipe.options[:use_ironuv]
-        fwhm = recipe.options[:ironuv_fwhm]
-        if recipe.options[:iron_broadening]
+        fwhm = recipe.options[:Ironuv_fwhm]
+        if recipe.options[:Iron_broadening]
             fwhm = sqrt(fwhm^2 + resolution^2)
         end
         comp = QSFit.ironuv(fwhm)
         (_1, _2, coverage) = spectral_coverage(λ, resolution, comp)
-        threshold = get(recipe.options[:min_spectral_coverage], :ironuv, recipe.options[:min_spectral_coverage][:default])
+        threshold = get(recipe.options[:min_spectral_coverage], :Ironuv, recipe.options[:min_spectral_coverage][:default])
         if coverage >= threshold
-            state.model[:ironuv] = comp
-            state.model[:ironuv].norm.val = 1.
-            push!(state.model[:Iron].list, :ironuv)
+            state.model[:Ironuv] = comp
+            state.model[:Ironuv].norm.val = 1.
+            push!(state.model[:Iron].list, :Ironuv)
             GModelFit.update!(state.model)
-            QSFit.guess_norm_factor!(recipe, state, :ironuv)
+            QSFit.guess_norm_factor!(recipe, state, :Ironuv)
             GModelFit.update!(state.model)
         else
             println(state.logio, "Ignoring ironuv component (threshold: $threshold)")
@@ -430,27 +430,27 @@ function add_iron_opt!(recipe::RRef{T}, state::State) where T <: DefaultRecipe
     λ = coords(domain(state.model))
     resolution = state.pspec.resolution
     if recipe.options[:use_ironopt]
-        fwhm = recipe.options[:ironoptbr_fwhm]
-        if recipe.options[:iron_broadening]
+        fwhm = recipe.options[:Ironoptbr_fwhm]
+        if recipe.options[:Iron_broadening]
             fwhm = sqrt(fwhm^2 + resolution^2)
         end
         comp = QSFit.ironopt_broad(fwhm)
         (_1, _2, coverage) = spectral_coverage(λ, resolution, comp)
-        threshold = get(recipe.options[:min_spectral_coverage], :ironopt, recipe.options[:min_spectral_coverage][:default])
+        threshold = get(recipe.options[:min_spectral_coverage], :Ironopt, recipe.options[:min_spectral_coverage][:default])
         if coverage >= threshold
-            state.model[:ironoptbr] = comp
-            state.model[:ironoptbr].norm.val = 1 # TODO: guess a sensible value
-            fwhm = recipe.options[:ironoptna_fwhm]
-            if recipe.options[:iron_broadening]
+            state.model[:Ironoptbr] = comp
+            state.model[:Ironoptbr].norm.val = 1 # TODO: guess a sensible value
+            fwhm = recipe.options[:Ironoptna_fwhm]
+            if recipe.options[:Iron_broadening]
                 fwhm = sqrt(fwhm^2 + resolution^2)
             end
-            state.model[:ironoptna] = QSFit.ironopt_narrow(fwhm)
-            state.model[:ironoptna].norm.val = 1 # TODO: guess a sensible value
-            state.model[:ironoptna].norm.fixed = false
-            push!(state.model[:Iron].list, :ironoptbr)
-            push!(state.model[:Iron].list, :ironoptna)
+            state.model[:Ironoptna] = QSFit.ironopt_narrow(fwhm)
+            state.model[:Ironoptna].norm.val = 1 # TODO: guess a sensible value
+            state.model[:Ironoptna].norm.fixed = false
+            push!(state.model[:Iron].list, :Ironoptbr)
+            push!(state.model[:Iron].list, :Ironoptna)
             GModelFit.update!(state.model)
-            QSFit.guess_norm_factor!(recipe, state, :ironoptbr)
+            QSFit.guess_norm_factor!(recipe, state, :Ironoptbr)
             GModelFit.update!(state.model)
         else
             println(state.logio, "Ignoring ironopt component (threshold: $threshold)")
