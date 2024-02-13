@@ -14,12 +14,12 @@ function Gnuplot.recipe(res::Results)
     i = findall(isnothing.(match.(r"SpecLine", ctypes)))
     keep = keys(res.bestfit)[i]
     out = [Gnuplot.recipe(res.pspec.data)..., Gnuplot.recipe(res.bestfit, keep=keep)...]
-    return reverse(out)
+    return out
 end
 
 
 function residuals(res::Results)
-    resid = (values(res.pspec.data) .- res.model()) ./ uncerts(res.pspec.data)
+    resid = (values(res.pspec.data) .- res.bestfit()) ./ uncerts(res.pspec.data)
     return Gnuplot.parseSpecs(
         "set grid", "set key outside horizontal",
         coords(res.pspec.data.domain), resid, "with p t 'Residuals' lc rgb 'red'",
