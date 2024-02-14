@@ -1,7 +1,7 @@
 using GModelFitViewer
-import GModelFitViewer: viewer
+import GModelFitViewer: DictsWithMeta
 
-function viewer(res::Results; kws...)
+function DictsWithMeta(res::Results; kws...)
     ctypes = [comptype(res.bestfit, cname) for cname in keys(res.bestfit)]
     i = findall(isnothing.(match.(r"SpecLine", ctypes)))
     keep = string.(keys(res.bestfit))[i]
@@ -31,6 +31,5 @@ function viewer(res::Results; kws...)
     m[:EW][:fields][:Value][:data] = collect(values(res.reduced[:EW]))
     d.data[1]["extra"] = [m]
 
-    # println(GModelFitViewer.serialize_json(d))
-    return viewer(d)
+    return d
 end
