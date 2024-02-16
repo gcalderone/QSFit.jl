@@ -1,7 +1,7 @@
 using GModelFitViewer
-import GModelFitViewer: DictsWithMeta
+import GModelFitViewer: ViewerData
 
-function DictsWithMeta(res::Results; kws...)
+function ViewerData(res::Results; kws...)
     ctypes = [comptype(res.bestfit, cname) for cname in keys(res.bestfit)]
     i = findall(isnothing.(match.(r"SpecLine", ctypes)))
     keep = string.(keys(res.bestfit))[i]
@@ -14,7 +14,7 @@ function DictsWithMeta(res::Results; kws...)
                                 yscale=10. ^ QSFit.log10_scale_lum(),
                                 keep=keep, kws...)
 
-    d = GModelFitViewer.DictsWithMeta(res.bestfit, res.fitstats, res.pspec.data, meta=meta)
+    d = GModelFitViewer.ViewerData(res.bestfit, res.fitstats, res.pspec.data, meta=meta)
 
     # Add further content
     m = OrderedDict{Symbol, Any}()
