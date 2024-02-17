@@ -1,7 +1,7 @@
 # ____________________________________________________________________
 # SpecLineVoigt
 #
-mutable struct SpecLineVoigt <: AbstractComponent
+mutable struct SpecLineVoigt <: AbstractSpecLineComp
     norm::Parameter
     center::Parameter
     fwhm::Parameter

@@ -2,86 +2,25 @@ export DefaultRecipe
 
 abstract type DefaultRecipe <: AbstractRecipe end
 
+line_profile(recipe::RRef{<: DefaultRecipe}, ::Type{<: AbstractLine}, id::Val) = recipe.options[:line_profiles]
+line_profile(recipe::RRef{<: DefaultRecipe}, ::Type{<: AbstractLine})          = recipe.options[:line_profiles]
 
-get_cosmology(recipe::RRef{T}, state::State) where T <: DefaultRecipe =
-    cosmology(h=0.70, OmegaM=0.3)   #S11
-
-
-line_suffix(recipe::RRef{T}, ::Type{<: AbstractLine})  where T <: DefaultRecipe  = ""
-line_suffix(recipe::RRef{T}, ::Type{<: NarrowLine})    where T <: DefaultRecipe  = "_na"
-line_suffix(recipe::RRef{T}, ::Type{<: BroadLine})     where T <: DefaultRecipe  = "_br"
-line_suffix(recipe::RRef{T}, ::Type{<: VeryBroadLine}) where T <: DefaultRecipe  = "_bb"
-
-line_group( recipe::RRef{T}, ::Type{<: ForbiddenLine}) where T <: DefaultRecipe  = :NarrowLines
-line_group( recipe::RRef{T}, ::Type{<: NarrowLine})    where T <: DefaultRecipe  = :NarrowLines
-line_group( recipe::RRef{T}, ::Type{<: BroadLine})     where T <: DefaultRecipe  = :BroadLines
-line_group( recipe::RRef{T}, ::Type{<: VeryBroadLine}) where T <: DefaultRecipe  = :VeryBroadLines
-
-line_descriptors(recipe::RRef{T}) where T <: DefaultRecipe = recipe.options[:lines]
-
-line_component(::RRef{T}, ::Val{:gauss}  , λ::Float64) where T <: DefaultRecipe = SpecLineGauss(λ)
-line_component(::RRef{T}, ::Val{:lorentz}, λ::Float64) where T <: DefaultRecipe = SpecLineLorentz(λ)
-line_component(::RRef{T}, ::Val{:voigt}  , λ::Float64) where T <: DefaultRecipe = SpecLineVoigt(λ)
-
-line_component(recipe::RRef{T}, λ::Float64) where T <: DefaultRecipe =
-    line_component(recipe, Val(recipe.options[:line_profiles]), λ)
-
-function line_component(recipe::RRef{T}, ::Type{ForbiddenLine}, λ::Float64) where T <: DefaultRecipe
-    comp = line_component(recipe, λ)
-    comp.fwhm.low, comp.fwhm.val, comp.fwhm.high = 100, 5e2, 2e3
-    comp.voff.low, comp.voff.val, comp.voff.high = -1e3, 0, 1e3
-    return comp
-end
-
-function line_component(recipe::RRef{T}, ::Type{NarrowLine}, λ::Float64) where T <: DefaultRecipe
-    comp = line_component(recipe, λ)
-    comp.fwhm.low, comp.fwhm.val, comp.fwhm.high = 100, 5e2, 1e3 # avoid confusion with the broad component
-    comp.voff.low, comp.voff.val, comp.voff.high = -1e3, 0, 1e3
-    return comp
-end
-
-function line_component(recipe::RRef{T}, ::Type{BroadLine}, λ::Float64) where T <: DefaultRecipe
-    comp = line_component(recipe, λ)
-    comp.fwhm.low, comp.fwhm.val, comp.fwhm.high = 900, 5e3, 1.5e4
-    comp.voff.low, comp.voff.val, comp.voff.high = -3e3, 0, 3e3
-    return comp
-end
-
-function line_component(recipe::RRef{T}, ::Type{VeryBroadLine}, λ::Float64) where T <: DefaultRecipe
-    comp = line_component(recipe, λ)
-    comp.fwhm.low, comp.fwhm.val, comp.fwhm.high = 1e4, 2e4, 3e4
-    comp.voff.fixed = true
-    return comp
-end
-
-function line_component(recipe::RRef{T}, ::Type{NuisanceLine}, λ::Float64) where T <: DefaultRecipe
-    comp = line_component(recipe, λ)
-    comp.norm.val = 0.
-    comp.center.fixed = false;  comp.voff.fixed = true
-    comp.fwhm.low, comp.fwhm.val, comp.fwhm.high = 600, 5e3, 1e4
-    return comp
-end
-
-# Special cases
+# Special cases for emission lines
 abstract type MgIIBroadLine <: BroadLine end
-function line_component(recipe::RRef{T}, ::Type{MgIIBroadLine}, λ::Float64) where T <: DefaultRecipe
-    comp = line_component(recipe, supertype(MgIIBroadLine), λ)
+function set_constraints!(recipe::RRef{<: DefaultRecipe}, ::Type{MgIIBroadLine}, comp::AbstractComponent)
     comp.voff.low, comp.voff.val, comp.voff.high = -1e3, 0, 1e3
-    return comp
 end
 
 
 abstract type OIIIBlueWing  <: NarrowLine end
-function line_component(recipe::RRef{T}, ::Type{OIIIBlueWing}, λ::Float64) where T <: DefaultRecipe
-    comp = line_component(recipe, supertype(OIIIBlueWing), λ)
+line_suffix(recipe::RRef{<: DefaultRecipe}, ::Type{OIIIBlueWing}) = :_bw
+function set_constraints!(recipe::RRef{<: DefaultRecipe}, ::Type{OIIIBlueWing}, comp::AbstractComponent)
     comp.voff.low, comp.voff.val, comp.voff.high = 0, 0, 2e3
-    return comp
 end
-line_suffix(recipe::RRef{T}, ::Type{OIIIBlueWing}) where T <: DefaultRecipe = :_bw
 
 
-function set_default_options!(recipe::RRef{T}) where {T <: DefaultRecipe}
-    out = OrderedDict{Symbol, Any}()
+function default_options(::Type{T}) where T <: DefaultRecipe
+    out = default_options(supertype(T))
     out[:wavelength_range] = [1215, 7.3e3]
     out[:min_spectral_coverage] = Dict(:default => 0.6,
                                        :Ironuv  => 0.3,
@@ -124,7 +63,7 @@ function set_default_options!(recipe::RRef{T}) where {T <: DefaultRecipe}
         LineDescriptor(:NeV_3345   , ForbiddenLine),
         LineDescriptor(:NeV_3426   , ForbiddenLine),
         LineDescriptor(:OII_3727   , ForbiddenLine),
-        LineDescriptor(:NeIII_3869, ForbiddenLine),
+        LineDescriptor(:NeIII_3869 , ForbiddenLine),
         LineDescriptor(:Hd         , BroadLine),
         LineDescriptor(:Hg         , BroadLine),
         LineDescriptor(:OIII_4363  , ForbiddenLine),
@@ -141,27 +80,36 @@ function set_default_options!(recipe::RRef{T}) where {T <: DefaultRecipe}
         LineDescriptor(:SII_6716   , ForbiddenLine),
         LineDescriptor(:SII_6731   , ForbiddenLine)
     ]
-    empty!(recipe.options)
-    for (k, v) in out
-        recipe.options[k] = v
-    end
-    nothing
+    return out
 end
 
 
-function PreparedSpectrum(recipe::RRef{T}, state::State, source::Source; id=1) where T <: DefaultRecipe
-    data = deepcopy(source.specs[id])
-    println(state.logio, "Spectrum: " * data.label)
-    goodfraction = count(data.good) / length(data.good)
-    println(state.logio, "  good fraction:: ", goodfraction)
-    if goodfraction < 0.5
-        error("Good fraction < 0.5")
-    end
-    println(state.logio, "  resolution: ", @sprintf("%.4g", data.resolution), " km / s (FWHM)")
+struct LineInstance{T}
+    id::T
+    type::DataType
+    group::Symbol
+    comp::AbstractComponent
+end
 
-    λ = data.λ ./ (1 + source.z)
-    data.good[findall(λ .< recipe.options[:wavelength_range][1])] .= false
-    data.good[findall(λ .> recipe.options[:wavelength_range][2])] .= false
+
+function dict_line_instances(recipe::RRef{<: DefaultRecipe}, linedescrs::Vector{LineDescriptor})
+    out = OrderedDict{Symbol, LineInstance}()
+    for ld in linedescrs
+        for T in ld.types
+            cname = line_cname(recipe, T, ld.id)
+            @assert !(cname in keys(out)) "Duplicate component name: $cname"
+            out[cname] = LineInstance(ld.id, T, line_group(recipe, T), line_component(recipe, T, ld.id))
+        end
+    end
+    return out
+end
+
+
+function select_samples!(recipe::RRef{<: DefaultRecipe}, state::State)
+    λ = coords(state.pspec.domain)
+    good = fill(true, length(λ))
+    good[findall(λ .< recipe.options[:wavelength_range][1])] .= false
+    good[findall(λ .> recipe.options[:wavelength_range][2])] .= false
 
     #= Emission line are localized features whose parameter can be
     reliably estimated only if there are sufficient samples to
@@ -169,69 +117,44 @@ function PreparedSpectrum(recipe::RRef{T}, state::State, source::Source; id=1) w
     not sufficient the component should not be added to the model,
     and corresponding spectral samples should be ignored to avoid
     worsening the fit due to missing model components. =#
-    println(state.logio, "Good samples before line coverage filter: ", count(data.good))
+    println(state.logio, "Good samples before line coverage filter: ", count(good))
 
-    # Collect line components (neglectiing the ones with insufficent coverage)
-    lcs = line_components(recipe)
-    good = deepcopy(data.good)
-    for (cname, line) in lcs
-        # Line coverage test
-        threshold = get(recipe.options[:min_spectral_coverage], cname, recipe.options[:min_spectral_coverage][:default])
-        (λmin, λmax, coverage) = spectral_coverage(λ[findall(data.good)], data.resolution, line.comp)
-
-        print(state.logio, @sprintf("Line %-15s coverage: %5.3f on range %10.5g < λ < %10.5g", cname, coverage, λmin, λmax))
-        if coverage < threshold
+    # Collect line components (neglecting the ones with insufficent coverage)
+    lcs = dict_line_instances(recipe, recipe.options[:lines])
+    for loop in 1:2
+        # The second pass is required to neglect lines whose coverage
+        # has been affected by the neglected spectral samples.
+        for (cname, line) in lcs
+            threshold = get(recipe.options[:min_spectral_coverage], cname, recipe.options[:min_spectral_coverage][:default])
+            (λmin, λmax, coverage) = spectral_coverage(λ[findall(good)], state.pspec.resolution, line.comp)
+            print(state.logio, @sprintf("Line %-15s coverage: %5.3f on range %10.5g < λ < %10.5g", cname, coverage, λmin, λmax))
+            if coverage < threshold
             print(state.logio, @sprintf(", threshold is < %5.3f, neglecting...", threshold))
-            good[λmin .<= λ .< λmax] .= false
-            delete!(lcs, cname)
+                good[λmin .<= λ .< λmax] .= false
+                delete!(lcs, cname)
+            end
+            println(state.logio)
         end
-        println(state.logio)
-    end
-    data.good .= good
-
-    # Second pass to neglect lines whose coverage has been affected by
-    # the neglected spectral samples.
-    for (cname, line) in lcs
-        threshold = get(recipe.options[:min_spectral_coverage], cname, recipe.options[:min_spectral_coverage][:default])
-        (λmin, λmax, coverage) = spectral_coverage(λ[findall(data.good)], data.resolution, line.comp)
-        if coverage < threshold
-            print(state.logio, @sprintf("Line %-15s updated coverage: %5.3f on range %10.5g < λ < %10.5g", cname, coverage, λmin, λmax))
-            println(state.logio, @sprintf(", threshold is < %5.3f, neglecting...", threshold))
-            delete!(lcs, cname)
-            data.good[λmin .<= λ .< λmax] .= false
+        if loop == 2
+            println(state.logio)
+            println(state.logio, "Updated coverage:")
         end
     end
-    println(state.logio, "Good samples after line coverage filter: ", count(data.good))
+    println(state.logio, "Good samples after line coverage filter: ", count(good))
 
     # Sort lines according to center wavelength
     kk = collect(keys(lcs))
     vv = collect(values(lcs))
     ii = sortperm(getfield.(getfield.(getfield.(vv, :comp), :center), :val))
     lcs = OrderedDict(Pair.(kk[ii], vv[ii]))
+    state.user[:lcs] = lcs
 
-    # De-reddening
-    dered = ccm_unred([1450, 3000, 5100.], source.mw_ebv)
-    println(state.logio, "Dereddening factors @ 1450, 3000, 5100 AA: ", dered)
-    dered = ccm_unred(data.λ, source.mw_ebv)
-
-    ld = uconvert(u"cm", luminosity_dist(get_cosmology(recipe, state), source.z))
-    if source.z == 0
-        flux2lum = 1  # Input spectrum is already given in proper units, no need to multiply
-    else
-        flux2lum = 4pi * ld^2 * (scale_flux() * unit_flux()) / (scale_lum() * unit_lum())
-        println(state.logio, "Using flux-to-lum. conversion factor: ", flux2lum)
-    end
-
-    ii = findall(data.good)
-    dom = Domain(data.λ[ii] ./ (1 + source.z))
-    lum = Measures(dom,
-                   data.flux[ii] .* dered[ii] .* flux2lum .* (1 + source.z),
-                   data.err[ ii] .* dered[ii] .* flux2lum .* (1 + source.z))
-    return PreparedSpectrum(data.resolution, dom, lum, lcs, flux2lum)
+    # Modify Domain and Measure objects
+    select_good!(state, good)
 end
 
 
-function fit!(recipe::RRef{T}, state::State) where T <: DefaultRecipe
+function fit!(recipe::RRef{<: DefaultRecipe}, state::State)
     mzer = GModelFit.cmpfit()
     mzer.Δfitstat_threshold = 1.e-5
 
@@ -244,20 +167,7 @@ function fit!(recipe::RRef{T}, state::State) where T <: DefaultRecipe
 end
 
 
-# TODO function fit!(state::StateMulti{T}) where T <: DefaultRecipe
-# TODO     mzer = minimizer(state)
-# TODO     fitstats = fit!(state.models, getfield.(state.pspecs, :data), minimizer=mzer)
-# TODO     show(state.logio, state.model)
-# TODO     show(state.logio, fitstats)
-# TODO     # for id in 1:length(state.model)
-# TODO     #     @gp Symbol("QSFit$(id)") state.pspecs[id].data state.model[id]
-# TODO     # end
-# TODO     # printstyled(color=:blink, "Press ENTER to continue..."); readline()
-# TODO     return fitstats
-# TODO end
-
-
-function add_qso_continuum!(recipe::RRef{T}, state::State) where T <: DefaultRecipe
+function add_qso_continuum!(recipe::RRef{<: DefaultRecipe}, state::State)
     λ = coords(domain(state.model))
 
     comp = QSFit.powerlaw(3000)
@@ -274,7 +184,7 @@ function add_qso_continuum!(recipe::RRef{T}, state::State) where T <: DefaultRec
 end
 
 
-function add_host_galaxy!(recipe::RRef{T}, state::State) where T <: DefaultRecipe
+function add_host_galaxy!(recipe::RRef{<: DefaultRecipe}, state::State)
     λ = coords(domain(state.model))
     if recipe.options[:use_host_template]  &&
         (recipe.options[:host_template_range][1] .< maximum(λ))  &&
@@ -297,7 +207,7 @@ function add_host_galaxy!(recipe::RRef{T}, state::State) where T <: DefaultRecip
 end
 
 
-function add_balmer_cont!(recipe::RRef{T}, state::State) where T <: DefaultRecipe
+function add_balmer_cont!(recipe::RRef{<: DefaultRecipe}, state::State)
     if recipe.options[:use_balmer]
         state.model[:Balmer] = QSFit.balmercont(0.1, 0.5)
         push!(state.model[:Continuum].list, :Balmer)
@@ -315,7 +225,7 @@ function add_balmer_cont!(recipe::RRef{T}, state::State) where T <: DefaultRecip
 end
 
 
-function renorm_cont!(recipe::RRef{T}, state::State) where T <: DefaultRecipe
+function renorm_cont!(recipe::RRef{<: DefaultRecipe}, state::State)
     freeze!(state.model, :QSOcont)
     c = state.model[:QSOcont]
     initialnorm = c.norm.val
@@ -339,7 +249,7 @@ function renorm_cont!(recipe::RRef{T}, state::State) where T <: DefaultRecipe
 end
 
 
-function guess_norm_factor!(recipe::RRef{T}, state::State, name::Symbol; quantile=0.95) where T <: DefaultRecipe
+function guess_norm_factor!(recipe::RRef{<: DefaultRecipe}, state::State, name::Symbol; quantile=0.95)
     @assert state.model[name].norm.val != 0
     m = state.model(name)
     c = cumsum(m)
@@ -361,7 +271,7 @@ function guess_norm_factor!(recipe::RRef{T}, state::State, name::Symbol; quantil
 end
 
 
-function add_iron_uv!(recipe::RRef{T}, state::State) where T <: DefaultRecipe
+function add_iron_uv!(recipe::RRef{<: DefaultRecipe}, state::State)
     λ = coords(domain(state.model))
     resolution = state.pspec.resolution
     if recipe.options[:use_ironuv]
@@ -386,7 +296,7 @@ function add_iron_uv!(recipe::RRef{T}, state::State) where T <: DefaultRecipe
 end
 
 
-function add_iron_opt!(recipe::RRef{T}, state::State) where T <: DefaultRecipe
+function add_iron_opt!(recipe::RRef{<: DefaultRecipe}, state::State)
     λ = coords(domain(state.model))
     resolution = state.pspec.resolution
     if recipe.options[:use_ironopt]
@@ -419,11 +329,11 @@ function add_iron_opt!(recipe::RRef{T}, state::State) where T <: DefaultRecipe
 end
 
 
-function add_emission_lines!(recipe::RRef{T}, state::State) where T <: DefaultRecipe
+function add_emission_lines!(recipe::RRef{<: DefaultRecipe}, state::State)
     groups = OrderedDict{Symbol, Vector{Symbol}}()
 
     # Create model components
-    for (cname, line) in state.pspec.lcs
+    for (cname, line) in state.user[:lcs]
         # All QSFit line profiles take spectral resolution into
         # account.  This is significantly faster than convolving the
         # whole model with an instrument response but has some
@@ -459,7 +369,7 @@ function add_emission_lines!(recipe::RRef{T}, state::State) where T <: DefaultRe
     end
 end
 
-function add_patch_functs!(recipe::RRef{T}, state::State) where T <: DefaultRecipe
+function add_patch_functs!(recipe::RRef{<: DefaultRecipe}, state::State)
     # Patch parameters
     if haskey(state.model, :OIII_4959)  &&  haskey(state.model, :OIII_5007)
         # state.model[:OIII_4959].norm.patch = @λ m -> m[:OIII_5007].norm / 3
@@ -518,15 +428,15 @@ function add_patch_functs!(recipe::RRef{T}, state::State) where T <: DefaultReci
 end
 
 
-function add_nuisance_lines!(recipe::RRef{T}, state::State) where T <: DefaultRecipe
+function add_nuisance_lines!(recipe::RRef{<: DefaultRecipe}, state::State)
     (recipe.options[:n_nuisance] > 0)  ||  (return nothing)
 
     # Prepare nuisance line components
     for i in 1:recipe.options[:n_nuisance]
         state.model[Symbol(:nuisance, i)] = line_component(recipe, NuisanceLine, 3000.)
     end
-    state.model[:NuisanceLines] = SumReducer([Symbol(:nuisance, i) for i in 1:recipe.options[:n_nuisance]])
-    push!(state.model[:main].list, :NuisanceLines)
+    state.model[line_group(recipe, NuisanceLine)] = SumReducer([Symbol(:nuisance, i) for i in 1:recipe.options[:n_nuisance]])
+    push!(state.model[:main].list, line_group(recipe, NuisanceLine))
     GModelFit.update!(state.model)
     for j in 1:recipe.options[:n_nuisance]
         freeze!(state.model, Symbol(:nuisance, j))
@@ -588,7 +498,7 @@ function add_nuisance_lines!(recipe::RRef{T}, state::State) where T <: DefaultRe
 end
 
 
-function neglect_weak_features!(recipe::RRef{T}, state::State) where T <: DefaultRecipe
+function neglect_weak_features!(recipe::RRef{<: DefaultRecipe}, state::State)
     # Disable "nuisance" lines whose normalization uncertainty is larger
     # than X times the normalization
     needs_fitting = false
@@ -610,16 +520,16 @@ function neglect_weak_features!(recipe::RRef{T}, state::State) where T <: Defaul
 end
 
 
-function reduce(recipe::RRef{T}, state::State) where T <: AbstractRecipe
+function reduce(recipe::RRef{<: DefaultRecipe}, state::State)
     EW = OrderedDict{Symbol, Float64}()
 
     cont = deepcopy(state.model())
-    for cname in keys(state.pspec.lcs)
+    for cname in keys(state.user[:lcs])
         haskey(state.model, cname) || continue
         cont .-= state.model(cname)
     end
     @assert all(cont .> 0) "Continuum model is zero or negative"
-    for cname in keys(state.pspec.lcs)
+    for cname in keys(state.user[:lcs])
         haskey(state.model, cname) || continue
         EW[cname] = int_tabulated(coords(domain(state.model)),
                                   state.model(cname) ./ cont)[1]

@@ -21,7 +21,6 @@ function planck(λ, T)
 end
 
 
-
 function estimate_fwhm(λ, f; plot=false)
     imax = argmax(f)
     half_max = f[imax] / 2
@@ -51,42 +50,67 @@ function estimate_fwhm(λ, f; plot=false)
 end
 
 
-# Wavelength span is assumed to be equal to the initial FWHM plus the
-# spectral resolution (in quadrature)
-spectral_coverage(spec_λ, resolution, line::Union{SpecLineGauss, SpecLineLorentz, SpecLineVoigt}; kw...) =
-    spectral_coverage(spec_λ, resolution, line.center.val, line.center.val * sqrt(line.fwhm.val^2 + resolution^2) / 3.e5; kw...)
-
-function spectral_coverage(spec_λ, resolution, comp::ironuv; kw...)
-    rr = extrema(ironuv_read()[1])
-    return spectral_coverage(spec_λ, resolution, mean(rr), rr[2]-rr[1]; kw...)
+# Enlarge a wavelength range to account for the instrumental resolution
+function broaden_range(λmin, λmax, resolution_kms)
+    λcenter = (λmin + λmax) / 2
+    λspan   =  λmax - λmin
+    span_kms = λspan * 3e5 / λcenter
+    span_kms = sqrt(span_kms^2 + resolution_kms^2) # instrumental resolution added in quadrature
+    λspan = λcenter * span_kms / 3.e5
+    λmin = λcenter - λspan / 2
+    λmax = λcenter + λspan / 2
+    return (λmin, λmax)
 end
 
-function spectral_coverage(spec_λ, resolution, comp::ironopt; kw...)
-    rr = extrema(QSFit.ironopt_read(comp.file)[:wavelength])
-    return spectral_coverage(spec_λ, resolution, mean(rr), rr[2]-rr[1]; kw...)
-end
+
+# Wavelength range spanned by components
+wavelength_span(line::Union{SpecLineGauss, SpecLineLorentz, SpecLineVoigt}) = (line.center.val * (1 + line.fwhm.val / 3.e5 / 2),
+                                                                               line.center.val * (1 - line.fwhm.val / 3.e5 / 2))
+
+wavelength_span(comp::ironuv)  = extrema(ironuv_read()[1])
+wavelength_span(comp::ironopt) = extrema(ironopt_read(comp.file)[:wavelength])
+
 
 
 function spectral_coverage(spec_λ::Vector{Float64}, resolution::Float64,
-                           center_λ::Float64, span_λ::Float64; min_steps::Int=5)
+                           comp::AbstractComponent; comp_Npoints::Int=5)
+    # Get wavelength range spanned by the component and enlarge it to
+    # account for the instrumental resolution
+    comp_λmin, comp_λmax = wavelength_span(comp)
+    comp_λmin, comp_λmax = broaden_range(comp_λmin, comp_λmax, resolution)
 
-    # Identify min/max wavelengths
-    λmin = center_λ - span_λ / 2.
-    λmax = center_λ + span_λ / 2.
+    # # Calculate step corresponding to the spectral resolution
+    # Δλ = resolution / 3e5 * (comp_λmin + comp_λmax) / 2
+    # res_Npoints = Int(ceil((comp_λmax - comp_λmin) / Δλ))
 
-    # Calculate step corresponding to the spectral resolution
-    δ = resolution / 3e5 * center_λ
-
-    # How many steps should be considered?
-    steps = Int(ceil((λmax - λmin) / δ))
-    (steps < min_steps)  &&  (steps = min_steps)
-    bin_edges = range(λmin, λmax, length=steps+1)
-
-    # How many intervals are sampled?
-    good = 0
-    for i in 1:steps
-        good += sign(count(bin_edges[i] .<= spec_λ .< bin_edges[i+1]))
+    # Calculate Npoints within the component range at given instrument resolution
+    #=
+    (l1 - l0) / ((l1 + l0) / 2) = resolution / 3e5
+    (l1 - l0) = ((l1 + l0) / 2) * resolution / 3e5
+    l1 - l1/2 * resolution / 3e5 = l0 + l0/2 * resolution / 3e5
+    l1 * (1 - 1/2 * resolution / 3e5) = l0 * (1 + 1/2 * resolution / 3e5)
+    l1 = l0 * (1 + 1/2 * resolution / 3e5) / (1 - 1/2 * resolution / 3e5)
+    =#
+    res_Npoints = 0
+    l = comp_λmin
+    while l <= comp_λmax
+        l *= (1 + 1/2 * resolution / 3e5) / (1 - 1/2 * resolution / 3e5)
+        res_Npoints += 1
     end
 
-    return (λmin, λmax, good / steps)
+    # Consider Npoints as the largest among res_Npoints and com_Npoints
+    Npoints = max(res_Npoints, comp_Npoints)
+
+    # Calculate the grid of potentially sampled intervals
+    grid = 10. .^range(log10(comp_λmin), log10(comp_λmax), length=Npoints+1)
+
+    # How many intervals are actually sampled in the spectrum?
+    good = 0
+    for i in 1:Npoints
+        good += sign(count(grid[i] .<= spec_λ .< grid[i+1]))
+    end
+
+    return (comp_λmin, comp_λmax, good / Npoints)
 end
+
+

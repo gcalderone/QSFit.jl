@@ -1,13 +1,14 @@
 
-function analyze(recipe::RRef{T}, state::State) where T <: DefaultRecipe
-    model = state.model
+function analyze(recipe::RRef{<: DefaultRecipe}, state::State)
+    select_samples!(recipe, state)
 
-    model[:Continuum] = SumReducer()
+    model = state.model
     model[:main] = SumReducer()
-    push!(model[:main].list, :Continuum)
     select_maincomp!(model, :main)
 
     println(state.logio, "\nFit continuum components...")
+    model[:Continuum] = SumReducer()
+    push!(model[:main].list, :Continuum)
     add_qso_continuum!(recipe, state)
     add_host_galaxy!(recipe, state)
     add_balmer_cont!(recipe, state)
@@ -37,7 +38,7 @@ function analyze(recipe::RRef{T}, state::State) where T <: DefaultRecipe
     add_patch_functs!(recipe, state)
 
     fit!(recipe, state)
-    for cname in keys(state.pspec.lcs)
+    for cname in keys(state.user[:lcs])
         freeze!(model, cname)
     end
 
@@ -51,7 +52,7 @@ function analyze(recipe::RRef{T}, state::State) where T <: DefaultRecipe
     haskey(model, :Ironuv   )  &&  thaw!(model, :Ironuv)
     haskey(model, :Ironoptbr)  &&  thaw!(model, :Ironoptbr)
     haskey(model, :Ironoptna)  &&  thaw!(model, :Ironoptna)
-    for cname in keys(state.pspec.lcs)
+    for cname in keys(state.user[:lcs])
         thaw!(model, cname)
     end
     for j in 1:recipe.options[:n_nuisance]
