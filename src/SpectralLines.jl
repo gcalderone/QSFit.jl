@@ -1,6 +1,6 @@
 export StdEmLine, broad, narrow, verybroad, nuisance
 
-struct SpectralLine
+struct SpectralTransition
     id::Symbol
     label::String
     λ::Float64  # vacuum wavelength in Angstrom
@@ -13,7 +13,13 @@ struct SpectralLine
     notes::String
 end
 
-const known_transitions = OrderedDict{Symbol, Vector{SpectralLine}}()
+
+struct Multiplet
+    list::Vector{SpectralTransition}
+end
+
+
+const known_transitions = OrderedDict{Symbol, Vector{SpectralTransition}}()
 function transitions(tid::Symbol)
     global known_transitions
 
@@ -24,14 +30,14 @@ function transitions(tid::Symbol)
             d[i] .= strip.(d[i])
         end
 
-        db = Vector{SpectralLine}()
+        db = Vector{SpectralTransition}()
         for i in 1:length(d[1])
             ll = split(d[9][i], '-')
-            tt = SpectralLine(Symbol(d[1][i]),
-                              d[2][i], d[3][i], d[4][i],
-                              d[5][i], d[6][i], d[7][i], d[8][i],
-                              (Meta.parse(ll[1]), Meta.parse(ll[2])),
-                              d[10][i])
+            tt = SpectralTransition(Symbol(d[1][i]),
+                                    d[2][i], d[3][i], d[4][i],
+                                    d[5][i], d[6][i], d[7][i], d[8][i],
+                                    (Meta.parse(ll[1]), Meta.parse(ll[2])),
+                                    d[10][i])
             push!(db, tt)
         end
         db = db[sortperm(getfield.(db, :λ))]
@@ -45,11 +51,23 @@ function transitions(tid::Symbol)
         end
     end
 
-    @assert haskey(known_transitions, tid) "Nuisance transition identifier: $tid"
-    return known_transitions[tid]
+    @assert haskey(known_transitions, tid) "Unknown transition identifier: $tid"
+    out = known_transitions[tid]
+
+    if length(out) == 1
+        return out[1]
+    end
+    @warn "$tid is a multiplet"
+    return Multiplet(out)
 end
 
 
+vacuum_wavelength(t::SpectralTransition) = t.λ
+vacuum_wavelength(t::Multiplet) = mean(vacuum_wavelength.(t.list))
+vacuum_wavelength(tid::Symbol) = vacuum_wavelength(transitions(tid))
+
+
+# ====================================================================
 abstract type AbstractLine end
 abstract type ForbiddenLine <: AbstractLine  end
 abstract type PermittedLine <: AbstractLine  end
@@ -100,15 +118,7 @@ function line_components(recipe::RRef)
     lcs = OrderedDict{Symbol, LineComponent}()
     for line in line_descriptors(recipe)
         if isa(line, LineDescriptor{Symbol})
-            tt = transitions(line.id)
-            λ = getfield.(tt, :λ)
-            if length(λ) > 1
-                # TODO: take spectral resolution into account
-                @warn "Considering average wavelength for the $(line.id) multiplet: " * string(mean(λ)) * "Å"
-                λ = mean(λ)  # average lambda of multiplets
-            else
-                λ = λ[1]
-            end
+            λ = vacuum_wavelength(line.id)
             id = line.id
         else
             @assert isa(line, LineDescriptor{Float64})

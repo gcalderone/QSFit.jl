@@ -171,7 +171,7 @@ function PreparedSpectrum(recipe::RRef{T}, state::State, source::Source; id=1) w
     worsening the fit due to missing model components. =#
     println(state.logio, "Good samples before line coverage filter: ", count(data.good))
 
-    # Collect line components (neglectiing the ones with insufficent coverage)
+    # Collect line components (neglecting the ones with insufficent coverage)
     lcs = line_components(recipe)
     good = deepcopy(data.good)
     for (cname, line) in lcs

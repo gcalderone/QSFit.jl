@@ -2,12 +2,12 @@
 function analyze(recipe::RRef{T}, state::State) where T <: DefaultRecipe
     model = state.model
 
-    model[:Continuum] = SumReducer()
     model[:main] = SumReducer()
-    push!(model[:main].list, :Continuum)
     select_maincomp!(model, :main)
 
     println(state.logio, "\nFit continuum components...")
+    model[:Continuum] = SumReducer()
+    push!(model[:main].list, :Continuum)
     add_qso_continuum!(recipe, state)
     add_host_galaxy!(recipe, state)
     add_balmer_cont!(recipe, state)
