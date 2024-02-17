@@ -37,8 +37,8 @@ function analyze(recipe::RRef{T}, state::State) where T <: DefaultRecipe
     add_patch_functs!(recipe, state)
 
     fit!(recipe, state)
-    for lname in keys(state.pspec.lcs)
-        freeze!(model, lname)
+    for cname in keys(state.pspec.lcs)
+        freeze!(model, cname)
     end
 
     println(state.logio, "\nFit nuisance emission lines...")
@@ -51,8 +51,8 @@ function analyze(recipe::RRef{T}, state::State) where T <: DefaultRecipe
     haskey(model, :Ironuv   )  &&  thaw!(model, :Ironuv)
     haskey(model, :Ironoptbr)  &&  thaw!(model, :Ironoptbr)
     haskey(model, :Ironoptna)  &&  thaw!(model, :Ironoptna)
-    for lname in keys(state.pspec.lcs)
-        thaw!(model, lname)
+    for cname in keys(state.pspec.lcs)
+        thaw!(model, cname)
     end
     for j in 1:recipe.options[:n_nuisance]
         cname = Symbol(:nuisance, j)

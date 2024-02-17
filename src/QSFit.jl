@@ -35,7 +35,6 @@ include("components/SpecLineVoigt.jl")
 include("utils.jl")
 include("convolutions.jl")
 include("Spectrum.jl")
-include("SpectralLines.jl")
 
 
 qsfit_data() = artifact"qsfit_data"
@@ -80,12 +79,13 @@ function RRef(::Type{T}; kws...) where T <: AbstractRecipe
     return out
 end
 
+include("SpectralLines.jl")
 
 struct PreparedSpectrum
     resolution::Float64
     domain::GModelFit.Domain{1}
     data::GModelFit.Measures{1}
-    lcs::OrderedDict{Symbol, EmLineComponent}
+    lcs::OrderedDict{Symbol, LineComponent}
     flux2lum::Float64
 end
 

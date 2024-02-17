@@ -3,6 +3,83 @@ export DefaultRecipe
 abstract type DefaultRecipe <: AbstractRecipe end
 
 
+get_cosmology(recipe::RRef{T}, state::State) where T <: DefaultRecipe =
+    cosmology(h=0.70, OmegaM=0.3)   #S11
+
+
+line_suffix(recipe::RRef{T}, ::Type{<: AbstractLine})  where T <: DefaultRecipe  = ""
+line_suffix(recipe::RRef{T}, ::Type{<: NarrowLine})    where T <: DefaultRecipe  = "_na"
+line_suffix(recipe::RRef{T}, ::Type{<: BroadLine})     where T <: DefaultRecipe  = "_br"
+line_suffix(recipe::RRef{T}, ::Type{<: VeryBroadLine}) where T <: DefaultRecipe  = "_bb"
+
+line_group( recipe::RRef{T}, ::Type{<: ForbiddenLine}) where T <: DefaultRecipe  = :NarrowLines
+line_group( recipe::RRef{T}, ::Type{<: NarrowLine})    where T <: DefaultRecipe  = :NarrowLines
+line_group( recipe::RRef{T}, ::Type{<: BroadLine})     where T <: DefaultRecipe  = :BroadLines
+line_group( recipe::RRef{T}, ::Type{<: VeryBroadLine}) where T <: DefaultRecipe  = :VeryBroadLines
+
+line_descriptors(recipe::RRef{T}) where T <: DefaultRecipe = recipe.options[:lines]
+
+line_component(::RRef{T}, ::Val{:gauss}  , λ::Float64) where T <: DefaultRecipe = SpecLineGauss(λ)
+line_component(::RRef{T}, ::Val{:lorentz}, λ::Float64) where T <: DefaultRecipe = SpecLineLorentz(λ)
+line_component(::RRef{T}, ::Val{:voigt}  , λ::Float64) where T <: DefaultRecipe = SpecLineVoigt(λ)
+
+line_component(recipe::RRef{T}, λ::Float64) where T <: DefaultRecipe =
+    line_component(recipe, Val(recipe.options[:line_profiles]), λ)
+
+function line_component(recipe::RRef{T}, ::Type{ForbiddenLine}, λ::Float64) where T <: DefaultRecipe
+    comp = line_component(recipe, λ)
+    comp.fwhm.low, comp.fwhm.val, comp.fwhm.high = 100, 5e2, 2e3
+    comp.voff.low, comp.voff.val, comp.voff.high = -1e3, 0, 1e3
+    return comp
+end
+
+function line_component(recipe::RRef{T}, ::Type{NarrowLine}, λ::Float64) where T <: DefaultRecipe
+    comp = line_component(recipe, λ)
+    comp.fwhm.low, comp.fwhm.val, comp.fwhm.high = 100, 5e2, 1e3 # avoid confusion with the broad component
+    comp.voff.low, comp.voff.val, comp.voff.high = -1e3, 0, 1e3
+    return comp
+end
+
+function line_component(recipe::RRef{T}, ::Type{BroadLine}, λ::Float64) where T <: DefaultRecipe
+    comp = line_component(recipe, λ)
+    comp.fwhm.low, comp.fwhm.val, comp.fwhm.high = 900, 5e3, 1.5e4
+    comp.voff.low, comp.voff.val, comp.voff.high = -3e3, 0, 3e3
+    return comp
+end
+
+function line_component(recipe::RRef{T}, ::Type{VeryBroadLine}, λ::Float64) where T <: DefaultRecipe
+    comp = line_component(recipe, λ)
+    comp.fwhm.low, comp.fwhm.val, comp.fwhm.high = 1e4, 2e4, 3e4
+    comp.voff.fixed = true
+    return comp
+end
+
+function line_component(recipe::RRef{T}, ::Type{NuisanceLine}, λ::Float64) where T <: DefaultRecipe
+    comp = line_component(recipe, λ)
+    comp.norm.val = 0.
+    comp.center.fixed = false;  comp.voff.fixed = true
+    comp.fwhm.low, comp.fwhm.val, comp.fwhm.high = 600, 5e3, 1e4
+    return comp
+end
+
+# Special cases
+abstract type MgIIBroadLine <: BroadLine end
+function line_component(recipe::RRef{T}, ::Type{MgIIBroadLine}, λ::Float64) where T <: DefaultRecipe
+    comp = line_component(recipe, supertype(MgIIBroadLine), λ)
+    comp.voff.low, comp.voff.val, comp.voff.high = -1e3, 0, 1e3
+    return comp
+end
+
+
+abstract type OIIIBlueWing  <: NarrowLine end
+function line_component(recipe::RRef{T}, ::Type{OIIIBlueWing}, λ::Float64) where T <: DefaultRecipe
+    comp = line_component(recipe, supertype(OIIIBlueWing), λ)
+    comp.voff.low, comp.voff.val, comp.voff.high = 0, 0, 2e3
+    return comp
+end
+line_suffix(recipe::RRef{T}, ::Type{OIIIBlueWing}) where T <: DefaultRecipe = :_bw
+
+
 function set_default_options!(recipe::RRef{T}) where {T <: DefaultRecipe}
     out = OrderedDict{Symbol, Any}()
     out[:wavelength_range] = [1215, 7.3e3]
@@ -27,165 +104,48 @@ function set_default_options!(recipe::RRef{T}) where {T <: DefaultRecipe}
     out[:nuisance_avoid] = [4863 .+ [-1,1] .* 50, 6565 .+ [-1,1] .* 150]  # Angstrom
     out[:nuisance_maxoffset_from_guess] = 1e3  # km/s
 
-    lines = OrderedDict{Symbol, EmLineDescription}()
-    out[:lines] = lines
-
-    lines[:Lyb         ] = StdEmLine(:Lyb       ,  :narrow, :broad)
-    # lines[:OV_1213     ] = CustomEmLine(1213.8  ,  :narrow)  # Ferland+92, Shields+95
-    lines[:Lya         ] = StdEmLine(:Lya       ,  :narrow, :broad)
-    # lines[:OV_1218     ] = CustomEmLine(1218.3  ,  :narrow)  # Ferland+92, Shields+95
-    lines[:NV_1241     ] = StdEmLine(:NV_1241   ,  :narrow )
-    lines[:OI_1306     ] = StdEmLine(:OI_1306   ,  :broad  )
-    lines[:CII_1335    ] = StdEmLine(:CII_1335  ,  :broad  )
-    lines[:SiIV_1400   ] = StdEmLine(:SiIV_1400 ,  :broad  )
-    lines[:CIV_1549    ] = StdEmLine(:CIV_1549  ,  :narrow, :broad)
-    lines[:HeII_1640   ] = StdEmLine(:HeII_1640 ,  :broad  )
-    lines[:OIII_1664   ] = StdEmLine(:OIII_1664 ,  :broad  )
-    lines[:AlIII_1858  ] = StdEmLine(:AlIII_1858,  :broad  )
-    lines[:CIII_1909   ] = StdEmLine(:CIII_1909 ,  :broad  )
-    lines[:CII_2326    ] = StdEmLine(:CII_2326  ,  :broad  )
-    lines[:F2420       ] = CustomEmLine(2420.0  ,  :broad  )
-    lines[:MgII_2798   ] = StdEmLine(:MgII_2798 ,  :narrow, :broad)
-    lines[:NeV_3345    ] = StdEmLine(:NeV_3345  ,  :narrow )
-    lines[:NeV_3426    ] = StdEmLine(:NeV_3426  ,  :narrow )
-    lines[:OII_3727    ] = StdEmLine(:OII_3727  ,  :narrow )
-    lines[:NeIII_3869  ] = StdEmLine(:NeIII_3869,  :narrow )
-    lines[:Hd          ] = StdEmLine(:Hd        ,  :broad  )
-    lines[:Hg          ] = StdEmLine(:Hg        ,  :broad  )
-    lines[:OIII_4363   ] = StdEmLine(:OIII_4363 ,  :narrow )
-    lines[:HeII_4686   ] = StdEmLine(:HeII_4686 ,  :broad  )
-    lines[:Hb          ] = StdEmLine(:Hb        ,  :narrow, :broad)
-    lines[:OIII_4959   ] = StdEmLine(:OIII_4959 ,  :narrow )
-    lines[:OIII_5007   ] = StdEmLine(:OIII_5007 ,  :narrow )
-    lines[:OIII_5007_bw] = StdEmLine(:OIII_5007 ,  :narrow )
-    lines[:HeI_5876    ] = StdEmLine(:HeI_5876  ,  :broad  )
-    lines[:OI_6300     ] = StdEmLine(:OI_6300   ,  :narrow )
-    lines[:OI_6364     ] = StdEmLine(:OI_6364   ,  :narrow )
-    lines[:NII_6549    ] = StdEmLine(:NII_6549  ,  :narrow )
-    lines[:Ha          ] = StdEmLine(:Ha        ,  :narrow, :broad, :verybroad)
-    lines[:NII_6583    ] = StdEmLine(:NII_6583  ,  :narrow )
-    lines[:SII_6716    ] = StdEmLine(:SII_6716  ,  :narrow )
-    lines[:SII_6731    ] = StdEmLine(:SII_6731  ,  :narrow )
-
+    out[:lines] = [
+        LineDescriptor(:Lyb        , NarrowLine, BroadLine),
+        # LineDescriptor(:OV_1213   , ForbiddenLine)  # 1213.8A, Ferland+92, Shields+95,
+        LineDescriptor(:Lya        , NarrowLine, BroadLine),
+        # LineDescriptor(:OV_1218   , ForbiddenLine)  # 1218.3A, Ferland+92, Shields+95,
+        LineDescriptor(:NV_1241    , ForbiddenLine),
+        LineDescriptor(:OI_1306    , BroadLine),
+        LineDescriptor(:CII_1335   , BroadLine),
+        LineDescriptor(:SiIV_1400  , BroadLine),
+        LineDescriptor(:CIV_1549   , NarrowLine, BroadLine),
+        LineDescriptor(:HeII_1640  , BroadLine),
+        LineDescriptor(:OIII_1664  , BroadLine),
+        LineDescriptor(:AlIII_1858 , BroadLine),
+        LineDescriptor(:CIII_1909  , BroadLine),
+        LineDescriptor(:CII_2326   , BroadLine),
+        LineDescriptor(2420.0      , BroadLine),
+        LineDescriptor(:MgII_2798  , NarrowLine, MgIIBroadLine),
+        LineDescriptor(:NeV_3345   , ForbiddenLine),
+        LineDescriptor(:NeV_3426   , ForbiddenLine),
+        LineDescriptor(:OII_3727   , ForbiddenLine),
+        LineDescriptor(:NeIII_3869, ForbiddenLine),
+        LineDescriptor(:Hd         , BroadLine),
+        LineDescriptor(:Hg         , BroadLine),
+        LineDescriptor(:OIII_4363  , ForbiddenLine),
+        LineDescriptor(:HeII_4686  , BroadLine),
+        LineDescriptor(:Hb         , NarrowLine, BroadLine),
+        LineDescriptor(:OIII_4959  , ForbiddenLine),
+        LineDescriptor(:OIII_5007  , ForbiddenLine, OIIIBlueWing),
+        LineDescriptor(:HeI_5876   , BroadLine),
+        LineDescriptor(:OI_6300    , ForbiddenLine),
+        LineDescriptor(:OI_6364    , ForbiddenLine),
+        LineDescriptor(:NII_6549   , ForbiddenLine),
+        LineDescriptor(:Ha         , NarrowLine, BroadLine, VeryBroadLine),
+        LineDescriptor(:NII_6583   , ForbiddenLine),
+        LineDescriptor(:SII_6716   , ForbiddenLine),
+        LineDescriptor(:SII_6731   , ForbiddenLine)
+    ]
     empty!(recipe.options)
     for (k, v) in out
         recipe.options[k] = v
     end
     nothing
-end
-
-
-get_cosmology(recipe::RRef{T}, state::State) where T <: DefaultRecipe =
-    cosmology(h=0.70, OmegaM=0.3)   #S11
-
-
-function EmLineComponent(recipe::RRef{T}, state::State, λ::Float64) where T <: DefaultRecipe
-    @assert recipe.options[:line_profiles] in [:gauss, :lorentz, :voigt]
-    if recipe.options[:line_profiles] == :gauss
-        comp = SpecLineGauss(λ)
-    elseif recipe.options[:line_profiles] == :lorentz
-        comp = SpecLineLorentz(λ)
-    elseif recipe.options[:line_profiles] == :voigt
-        comp = SpecLineVoigt(λ)
-    else
-        error("options[:line_profiles] must be one of: :gauss, :lorentz, :voigt.")
-    end
-    return comp
-end
-
-
-function EmLineComponent(recipe::RRef{T}, state::State, λ::Float64, ::Val{:narrow}) where T <: DefaultRecipe
-    comp = EmLineComponent(recipe, state, λ)
-    comp.fwhm.val  = 5e2
-    comp.fwhm.low  = 100
-    comp.fwhm.high = 2e3
-    comp.voff.low  = -1e3
-    comp.voff.high =  1e3
-    return EmLineComponent{Val{:narrow}}(:_na, :NarrowLines, comp)
-end
-
-
-function EmLineComponent(recipe::RRef{T}, state::State, λ::Float64, ::Val{:broad}) where T <: DefaultRecipe
-    comp = EmLineComponent(recipe, state, λ)
-    comp.fwhm.val  = 5e3
-    comp.fwhm.low  = 900
-    comp.fwhm.high = 1.5e4
-    comp.voff.low  = -3e3
-    comp.voff.high =  3e3
-    return EmLineComponent{Val{:broad}}(:_br, :BroadLines, comp)
-end
-
-
-function EmLineComponent(recipe::RRef{T}, state::State, λ::Float64, ::Val{:verybroad}) where T <: DefaultRecipe
-    comp = EmLineComponent(recipe, state, λ)
-    comp.fwhm.val  = 2e4
-    comp.fwhm.low  = 1e4
-    comp.fwhm.high = 3e4
-    comp.voff.fixed = true
-    return EmLineComponent{Val{:verybroad}}(:_bb, :VeryBroadLines, comp)
-end
-
-
-function EmLineComponent(recipe::RRef{T}, state::State, λ::Float64, ::Val{:nuisance}) where T <: DefaultRecipe
-    comp = EmLineComponent(recipe, state, λ)
-    comp.norm.val = 0.
-    comp.center.fixed = false
-    comp.center.low = 0
-    comp.center.high = Inf
-    comp.fwhm.val  = 5e3
-    comp.fwhm.low  = 600
-    comp.fwhm.high = 1e4
-    comp.voff.fixed = true
-    return EmLineComponent{Val{:nuisance}}(Symbol(""), :Nuisance, comp)
-end
-
-
-function collect_linecomps(recipe::RRef{T}, state::State) where T <: DefaultRecipe
-    lcs = OrderedDict{Symbol, EmLineComponent}()
-    for (name, linedesc) in recipe.options[:lines]
-        if isa(linedesc, StdEmLine)
-            tt = transitions(linedesc.tid)
-            λ = getfield.(tt, :λ)
-            if length(λ) > 1
-                println(state.logio, "Considering average wavelength for the $(linedesc.tid) multiplet: " * string(mean(λ)) * "Å")
-                λ = mean(λ)  # average lambda of multiplets
-            else
-                λ = λ[1]
-            end
-        else
-            @assert isa(linedesc, CustomEmLine)
-            λ = linedesc.λ
-        end
-
-        for ltype in linedesc.types
-            lc = EmLineComponent(recipe, state, λ, ltype)
-
-            if isa(linedesc, StdEmLine)
-                if (ltype == Val(:narrow))  &&  (length(linedesc.types) > 1)
-                    lc.comp.fwhm.high = 1e3
-                end
-                if (ltype == Val(:broad))  &&  (name == :MgII_2798)
-                    lc.comp.voff.low  = -1e3
-                    lc.comp.voff.high =  1e3
-                end
-                if (ltype == Val(:narrow))  &&  (name == :OIII_5007_bw)
-                    lc.comp.fwhm.val  = 500
-                    lc.comp.fwhm.high = 1e3
-                    lc.comp.voff.low  = 0
-                    lc.comp.voff.high = 2e3
-                end
-            end
-
-            if length(linedesc.types) == 1
-                cname = name
-            else
-                cname = Symbol(name, lc.suffix)
-            end
-            @assert !(cname in keys(lcs))
-            lcs[cname] = lc
-        end
-    end
-    return lcs
 end
 
 
@@ -212,12 +172,12 @@ function PreparedSpectrum(recipe::RRef{T}, state::State, source::Source; id=1) w
     println(state.logio, "Good samples before line coverage filter: ", count(data.good))
 
     # Collect line components (neglectiing the ones with insufficent coverage)
-    lcs = collect_linecomps(recipe, state)
+    lcs = line_components(recipe)
     good = deepcopy(data.good)
-    for (cname, lc) in lcs
+    for (cname, line) in lcs
         # Line coverage test
         threshold = get(recipe.options[:min_spectral_coverage], cname, recipe.options[:min_spectral_coverage][:default])
-        (λmin, λmax, coverage) = spectral_coverage(λ[findall(data.good)], data.resolution, lc.comp)
+        (λmin, λmax, coverage) = spectral_coverage(λ[findall(data.good)], data.resolution, line.comp)
 
         print(state.logio, @sprintf("Line %-15s coverage: %5.3f on range %10.5g < λ < %10.5g", cname, coverage, λmin, λmax))
         if coverage < threshold
@@ -231,9 +191,9 @@ function PreparedSpectrum(recipe::RRef{T}, state::State, source::Source; id=1) w
 
     # Second pass to neglect lines whose coverage has been affected by
     # the neglected spectral samples.
-    for (cname, lc) in lcs
+    for (cname, line) in lcs
         threshold = get(recipe.options[:min_spectral_coverage], cname, recipe.options[:min_spectral_coverage][:default])
-        (λmin, λmax, coverage) = spectral_coverage(λ[findall(data.good)], data.resolution, lc.comp)
+        (λmin, λmax, coverage) = spectral_coverage(λ[findall(data.good)], data.resolution, line.comp)
         if coverage < threshold
             print(state.logio, @sprintf("Line %-15s updated coverage: %5.3f on range %10.5g < λ < %10.5g", cname, coverage, λmin, λmax))
             println(state.logio, @sprintf(", threshold is < %5.3f, neglecting...", threshold))
@@ -463,7 +423,7 @@ function add_emission_lines!(recipe::RRef{T}, state::State) where T <: DefaultRe
     groups = OrderedDict{Symbol, Vector{Symbol}}()
 
     # Create model components
-    for (cname, lc) in state.pspec.lcs
+    for (cname, line) in state.pspec.lcs
         # All QSFit line profiles take spectral resolution into
         # account.  This is significantly faster than convolving the
         # whole model with an instrument response but has some
@@ -473,12 +433,12 @@ function add_emission_lines!(recipe::RRef{T}, state::State) where T <: DefaultRe
         # - further narrow components (besides known emission lines)
         #   will not be corrected for instrumental resolution.
         if recipe.options[:line_broadening]
-            lc.comp.resolution = state.pspec.resolution
+            line.comp.resolution = state.pspec.resolution
         end
 
-        state.model[cname] = lc.comp
-        haskey(groups, lc.group)  ||  (groups[lc.group] = Vector{Symbol}())
-        push!(groups[lc.group], cname)
+        state.model[cname] = line.comp
+        haskey(groups, line.group)  ||  (groups[line.group] = Vector{Symbol}())
+        push!(groups[line.group], cname)
     end
 
     # Create reducers for groups
@@ -563,7 +523,7 @@ function add_nuisance_lines!(recipe::RRef{T}, state::State) where T <: DefaultRe
 
     # Prepare nuisance line components
     for i in 1:recipe.options[:n_nuisance]
-        state.model[Symbol(:nuisance, i)] = EmLineComponent(recipe, state, 3000., Val(:nuisance)).comp
+        state.model[Symbol(:nuisance, i)] = line_component(recipe, NuisanceLine, 3000.)
     end
     state.model[:NuisanceLines] = SumReducer([Symbol(:nuisance, i) for i in 1:recipe.options[:n_nuisance]])
     push!(state.model[:main].list, :NuisanceLines)
@@ -654,15 +614,15 @@ function reduce(recipe::RRef{T}, state::State) where T <: AbstractRecipe
     EW = OrderedDict{Symbol, Float64}()
 
     cont = deepcopy(state.model())
-    for (lname, lc) in state.pspec.lcs
-        haskey(state.model, lname) || continue
-        cont .-= state.model(lname)
+    for cname in keys(state.pspec.lcs)
+        haskey(state.model, cname) || continue
+        cont .-= state.model(cname)
     end
     @assert all(cont .> 0) "Continuum model is zero or negative"
-    for (lname, lc) in state.pspec.lcs
-        haskey(state.model, lname) || continue
-        EW[lname] = int_tabulated(coords(domain(state.model)),
-                                  state.model(lname) ./ cont)[1]
+    for cname in keys(state.pspec.lcs)
+        haskey(state.model, cname) || continue
+        EW[cname] = int_tabulated(coords(domain(state.model)),
+                                  state.model(cname) ./ cont)[1]
     end
     return OrderedDict{Symbol, Any}(:EW => EW)
 end
