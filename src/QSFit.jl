@@ -10,6 +10,7 @@ using Pkg, Pkg.Artifacts
 using Statistics, DelimitedFiles, Printf, DataStructures
 using Unitful, UnitfulAstro
 using Dates
+using InteractiveUtils
 using SpecialFunctions
 using Gnuplot
 using TextParse
@@ -70,9 +71,13 @@ struct RRef{T <: AbstractRecipe}
     options::OrderedDict{Symbol, Any}
 end
 
+
+set_default_options!(::RRef) = nothing
+
 function RRef(::Type{T}; kws...) where T <: AbstractRecipe
     out = RRef{T}(OrderedDict{Symbol, Any}())
     set_default_options!(out)
+    # Set options provided as keywords
     for (k, v) in kws
         out.options[Symbol(k)] = v
     end

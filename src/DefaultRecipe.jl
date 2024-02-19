@@ -124,7 +124,7 @@ function set_default_options!(recipe::RRef{T}) where {T <: DefaultRecipe}
         LineDescriptor(:NeV_3345   , ForbiddenLine),
         LineDescriptor(:NeV_3426   , ForbiddenLine),
         LineDescriptor(:OII_3727   , ForbiddenLine),
-        LineDescriptor(:NeIII_3869, ForbiddenLine),
+        LineDescriptor(:NeIII_3869 , ForbiddenLine),
         LineDescriptor(:Hd         , BroadLine),
         LineDescriptor(:Hg         , BroadLine),
         LineDescriptor(:OIII_4363  , ForbiddenLine),
@@ -242,19 +242,6 @@ function fit!(recipe::RRef{T}, state::State) where T <: DefaultRecipe
     # printstyled(color=:blink, "Press ENTER to continue..."); readline()
     return bestfit, fitstats
 end
-
-
-# TODO function fit!(state::StateMulti{T}) where T <: DefaultRecipe
-# TODO     mzer = minimizer(state)
-# TODO     fitstats = fit!(state.models, getfield.(state.pspecs, :data), minimizer=mzer)
-# TODO     show(state.logio, state.model)
-# TODO     show(state.logio, fitstats)
-# TODO     # for id in 1:length(state.model)
-# TODO     #     @gp Symbol("QSFit$(id)") state.pspecs[id].data state.model[id]
-# TODO     # end
-# TODO     # printstyled(color=:blink, "Press ENTER to continue..."); readline()
-# TODO     return fitstats
-# TODO end
 
 
 function add_qso_continuum!(recipe::RRef{T}, state::State) where T <: DefaultRecipe
