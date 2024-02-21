@@ -1,7 +1,7 @@
 # ____________________________________________________________________
 # SpecLineLorentz
 #
-mutable struct SpecLineLorentz <: AbstractComponent
+mutable struct SpecLineLorentz <: AbstractSpecLineComp
     norm::Parameter
     center::Parameter
     fwhm::Parameter

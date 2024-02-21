@@ -1,6 +1,7 @@
 module QSFit
 
-export add_spec!, close_log
+export RRef, AbstractRecipe, analyze
+
 
 import GModelFit: Domain, CompEval,
     Parameter, AbstractComponent, prepare!, evaluate!
@@ -30,9 +31,12 @@ include("components/ironopt.jl")
 include("components/ironuv.jl")
 include("components/balmercont.jl")
 include("components/voigt_profile.jl")
+
+abstract type AbstractSpecLineComp <: AbstractComponent end
 include("components/SpecLineGauss.jl")
 include("components/SpecLineLorentz.jl")
 include("components/SpecLineVoigt.jl")
+
 include("utils.jl")
 include("convolutions.jl")
 include("Spectrum.jl")
@@ -41,65 +45,96 @@ include("Spectrum.jl")
 qsfit_data() = artifact"qsfit_data"
 
 
+# ====================================================================
 struct Source
     name::String
-    z::Float64
-    mw_ebv::Float64
+    z::Union{Nothing, Float64}
+    MW_ebv::Union{Nothing, Float64}
     specs::Vector{Spectrum}
-    function Source(name, z; ebv=0.)
-        @assert z >= 0
-        @assert ebv >= 0
-        return new(string(name), float(z), float(ebv), Vector{Spectrum}())
+    function Source(name, spectra::Vararg{Spectrum, N}; z=nothing, ebv=nothing) where N
+        return new(string(name), z, ebv, Spectrum[spectra...])
     end
 end
 
 function show(io::IO, source::Source)
-    println(io, "Source: ", source.name, ", z=", source.z, ", E(B-V) from Milky Way: ", source.mw_ebv)
+    println(io, "Source: ", source.name, ", z=", source.z, ", E(B-V) from Milky Way: ", source.MW_ebv)
     for i in 1:length(source.specs)
         print(io, "    ")
         show(io, source.specs[i])
     end
 end
 
-add_spec!(source::Source, spec::Spectrum) =
-    push!(source.specs, spec)
+add_spec!(source::Source, spec::Spectrum) = push!(source.specs, spec)
 
 
-abstract type AbstractRecipe end
-
-struct RRef{T <: AbstractRecipe}
-    options::OrderedDict{Symbol, Any}
-end
-
-
-set_default_options!(::RRef) = nothing
-
-function RRef(::Type{T}; kws...) where T <: AbstractRecipe
-    out = RRef{T}(OrderedDict{Symbol, Any}())
-    set_default_options!(out)
-    # Set options provided as keywords
-    for (k, v) in kws
-        out.options[Symbol(k)] = v
-    end
-    return out
-end
-
-include("SpectralLines.jl")
-
+# ====================================================================
 struct PreparedSpectrum
+    origlength::Int
     resolution::Float64
+    flux2lum::Float64
     domain::GModelFit.Domain{1}
     data::GModelFit.Measures{1}
-    lcs::OrderedDict{Symbol, LineComponent}
-    flux2lum::Float64
+end
+
+function PreparedSpectrum(source::Source, logio=stdout;
+                          id=1,
+                          dered::Union{Nothing, Function}=nothing,
+                          cosmology::Union{Nothing, Cosmology.AbstractCosmology}=nothing)
+    data = deepcopy(source.specs[id])
+    println(logio, "Source: " * data.label)
+    println(logio, "  spectrum ID: ", id)
+    goodfraction = count(data.good) / length(data.good)
+    println(logio, "  good fraction:: ", goodfraction)
+    println(logio, "  resolution: ", @sprintf("%.4g", data.resolution), " km / s (FWHM)")
+
+    # De-reddening
+    if !isnothing(source.MW_ebv)  &&  !isnothing(dered)
+        tmp = dered([1450, 3000, 5100.], source.MW_ebv)
+        println(logio, "De-reddening factors @ 1450, 3000, 5100 AA: ", tmp)
+        tmp = dered(data.λ, source.MW_ebv)
+        data.flux .*= tmp
+        data.err  .*= tmp
+    end
+
+    # Compute rest frame spectrum
+    flux2lum = NaN
+    if !isnothing(source.z)  &&  !isnothing(cosmology)
+        ld = uconvert(u"cm", luminosity_dist(cosmology, source.z))
+        flux2lum = 4pi * ld^2 * (scale_flux() * unit_flux()) / (scale_lum() * unit_lum())
+        println(logio, "Using flux-to-lum. conversion factor: ", flux2lum)
+        data.λ    ./= (1 + source.z)
+        data.flux .*= flux2lum * (1 + source.z)
+        data.err  .*= flux2lum * (1 + source.z)
+    end
+
+    ii = findall(data.good)
+    domain = Domain(data.λ[ii])
+    return PreparedSpectrum(length(data.flux), data.resolution, flux2lum,
+                            domain, Measures(domain, data.flux[ii], data.err[ii]))
 end
 
 
+# ====================================================================
 mutable struct State
     logfile::Union{Nothing, String}
     logio::Union{IOStream, Base.TTY}
-    pspec::Union{Nothing, PreparedSpectrum}
-    model::Union{Nothing, GModelFit.Model}
+    pspec::PreparedSpectrum
+    model::GModelFit.Model
+    user::OrderedDict{Symbol, Any}
+end
+
+
+function select_good!(state::State, good::Vector{Bool})
+    i = findall(good)
+    domain = Domain(coords(state.pspec.domain)[i])
+    meas = Measures(domain,
+                    values( state.pspec.data)[i],
+                    uncerts(state.pspec.data)[i])
+    state.pspec = PreparedSpectrum(state.pspec.origlength,
+                                   state.pspec.resolution,
+                                   state.pspec.flux2lum,
+                                   domain, meas)
+    state.model = Model(domain)
 end
 
 
@@ -113,12 +148,33 @@ struct Results
     reduced::OrderedDict{Symbol, Any}
 end
 
-
 function show(io::IO, res::Results)
     show(io, res.fitstats)
     println(io)
 end
 
+
+# ====================================================================
+abstract type AbstractRecipe end
+
+struct RRef{T <: AbstractRecipe}
+    options::OrderedDict{Symbol, Any}
+
+    function RRef(::Type{T}; kws...) where T <: AbstractRecipe
+        out = new{T}(default_options(T))
+        # Set options provided as keywords
+        for (k, v) in kws
+            out.options[Symbol(k)] = v
+        end
+        return out
+    end
+end
+
+default_options(::Type{<: AbstractRecipe}) = OrderedDict{Symbol, Any}()
+get_cosmology(::Type{<: AbstractRecipe}) = cosmology(h=0.70, OmegaM=0.3)   #S11
+get_MW_deredd_function(::Type{<: AbstractRecipe}) = ccm_unred
+
+reduce(recipe::RRef{<: AbstractRecipe}, state::State) = OrderedDict{Symbol, Any}()
 
 function analyze(recipe::RRef{T}, source::Source; logfile=nothing, overwrite=false) where T <: AbstractRecipe
     timestamp = now()
@@ -139,9 +195,15 @@ function analyze(recipe::RRef{T}, source::Source; logfile=nothing, overwrite=fal
     println(logio)
     println(logio)
 
-    state = State(logfile, logio, nothing, nothing)
-    state.pspec = PreparedSpectrum(recipe, state, source, id=1)
-    state.model = Model(state.pspec.domain)
+    pspecs = [PreparedSpectrum(source, logio, id=id,
+                               cosmology=get_cosmology(T),
+                               dered=get_MW_deredd_function(T))
+              for id in 1:length(source.specs)]
+    if length(pspecs) == 1
+        state = State(logfile, logio, pspecs[1], Model(pspecs[1].domain), OrderedDict{Symbol, Any}())
+    else
+        error("Multi spectrum fit is not yet supported")
+    end
     bestfit, fitstats = analyze(recipe, state)
     reduced = reduce(recipe, state)
 
@@ -159,15 +221,10 @@ function analyze(recipe::RRef{T}, source::Source; logfile=nothing, overwrite=fal
     return out
 end
 
-
+include("SpectralLines.jl")
+include("LineFitRecipes.jl")
 include("DefaultRecipe.jl")
-
-# Use DefaultRecipe when no explicit recipe is provided
-analyze(source::Source; kws...) = analyze(RRef(DefaultRecipe), source; kws...)
-
-
 include("viewer.jl")
 include("gnuplot.jl")
-# TODO include("interactive_guess.jl")
 
 end  # module
