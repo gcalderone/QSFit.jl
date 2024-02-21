@@ -1,5 +1,5 @@
 
-function analyze(recipe::RRef{<: DefaultRecipe}, state::State)
+function analyze(recipe::RRef{<: Type1Recipe}, state::QSFit.State)
     select_samples!(recipe, state)
 
     model = state.model

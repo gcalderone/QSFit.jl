@@ -1,3 +1,7 @@
+export AbstractLine, ForbiddenLine, NarrowLine, BroadLine, VeryBroadLine, NuisanceLine, LineDescriptor
+
+export line_group, line_cname, line_component
+
 # ====================================================================
 struct SpectralTransition
     id::Symbol
@@ -74,6 +78,7 @@ abstract type NarrowLine    <: PermittedLine end
 abstract type BroadLine     <: PermittedLine end
 abstract type VeryBroadLine <: BroadLine     end
 abstract type NuisanceLine  <: AbstractLine  end
+
 
 struct LineDescriptor{T}
     id::T

@@ -15,16 +15,22 @@ Pkg.add(url="https://github.com/gcalderone/QSFit.jl", rev="master")
 
 ## Example
 ```julia
-using QSFit, GModelFitViewer
+using QSFit, Gnuplot, GModelFitViewer
 
-source = QSFit.Source("My SDSS source", z=0.3806)
-add_spec!(source, Spectrum(Val(:SDSS_DR10), "/home/gcalderone/my/work/software/qsfit/data/spec-0752-52251-0323.fits"))
-recipe = QSFit.RRef(DefaultRecipe)
-res = QSFit.analyze(recipe, source)
-viewer(res)
+using QSFit.LineFitRecipes
+source = QSFit.Source("My SDSS source", z=0.3806,
+	Spectrum(Val(:SDSS_DR10), "/home/gcalderone/my/work/software/qsfit/data/spec-0752-52251-0323.fits"))
+recipe = RRef(InteractiveLineFitRecipe)
+res = analyze(recipe, source)
+@gp res; viewer(res)
 
-using Gnuplot
-@gp res
+using QSFit.QSORecipes
+source = QSFit.Source("My SDSS source", z=0.3806,
+	Spectrum(Val(:SDSS_DR10), "/home/gcalderone/my/work/software/qsfit/data/spec-0752-52251-0323.fits"))
+recipe = QSFit.RRef(Type1Recipe)
+res = analyze(recipe, source)
+@gp res; viewer(res)
+
 
 
 abstract type MyRecipe <: DefaultRecipe end

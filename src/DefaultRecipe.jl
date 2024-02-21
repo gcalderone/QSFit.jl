@@ -1,25 +1,34 @@
-export DefaultRecipe
+module QSORecipes
 
-abstract type DefaultRecipe <: AbstractRecipe end
+using Printf, DataStructures, Statistics
+using Dierckx
+using ..QSFit, GModelFit
 
-line_profile(recipe::RRef{<: DefaultRecipe}, ::Type{<: AbstractLine}, id::Val) = recipe.options[:line_profiles]
-line_profile(recipe::RRef{<: DefaultRecipe}, ::Type{<: AbstractLine})          = recipe.options[:line_profiles]
+import QSFit: line_profile, line_suffix, set_constraints!,
+    default_options, analyze, reduce
+
+export Type1Recipe
+
+abstract type Type1Recipe <: AbstractRecipe end
+
+line_profile(recipe::RRef{<: Type1Recipe}, ::Type{<: AbstractLine}, id::Val) = recipe.options[:line_profiles]
+line_profile(recipe::RRef{<: Type1Recipe}, ::Type{<: AbstractLine})          = recipe.options[:line_profiles]
 
 # Special cases for emission lines
 abstract type MgIIBroadLine <: BroadLine end
-function set_constraints!(recipe::RRef{<: DefaultRecipe}, ::Type{MgIIBroadLine}, comp::AbstractComponent)
+function set_constraints!(recipe::RRef{<: Type1Recipe}, ::Type{MgIIBroadLine}, comp::GModelFit.AbstractComponent)
     comp.voff.low, comp.voff.val, comp.voff.high = -1e3, 0, 1e3
 end
 
 
 abstract type OIIIBlueWing  <: NarrowLine end
-line_suffix(recipe::RRef{<: DefaultRecipe}, ::Type{OIIIBlueWing}) = :_bw
-function set_constraints!(recipe::RRef{<: DefaultRecipe}, ::Type{OIIIBlueWing}, comp::AbstractComponent)
+line_suffix(recipe::RRef{<: Type1Recipe}, ::Type{OIIIBlueWing}) = :_bw
+function set_constraints!(recipe::RRef{<: Type1Recipe}, ::Type{OIIIBlueWing}, comp::GModelFit.AbstractComponent)
     comp.voff.low, comp.voff.val, comp.voff.high = 0, 0, 2e3
 end
 
 
-function default_options(::Type{T}) where T <: DefaultRecipe
+function default_options(::Type{T}) where T <: Type1Recipe
     out = default_options(supertype(T))
     out[:wavelength_range] = [1215, 7.3e3]
     out[:min_spectral_coverage] = Dict(:default => 0.6,
@@ -88,11 +97,11 @@ struct LineInstance{T}
     id::T
     type::DataType
     group::Symbol
-    comp::AbstractComponent
+    comp::GModelFit.AbstractComponent
 end
 
 
-function dict_line_instances(recipe::RRef{<: DefaultRecipe}, linedescrs::Vector{LineDescriptor})
+function dict_line_instances(recipe::RRef{<: Type1Recipe}, linedescrs::Vector{LineDescriptor})
     out = OrderedDict{Symbol, LineInstance}()
     for ld in linedescrs
         for T in ld.types
@@ -105,7 +114,7 @@ function dict_line_instances(recipe::RRef{<: DefaultRecipe}, linedescrs::Vector{
 end
 
 
-function select_samples!(recipe::RRef{<: DefaultRecipe}, state::State)
+function select_samples!(recipe::RRef{<: Type1Recipe}, state::QSFit.State)
     λ = coords(state.pspec.domain)
     good = fill(true, length(λ))
     good[findall(λ .< recipe.options[:wavelength_range][1])] .= false
@@ -126,7 +135,7 @@ function select_samples!(recipe::RRef{<: DefaultRecipe}, state::State)
         # has been affected by the neglected spectral samples.
         for (cname, line) in lcs
             threshold = get(recipe.options[:min_spectral_coverage], cname, recipe.options[:min_spectral_coverage][:default])
-            (λmin, λmax, coverage) = spectral_coverage(λ[findall(good)], state.pspec.resolution, line.comp)
+            (λmin, λmax, coverage) = QSFit.spectral_coverage(λ[findall(good)], state.pspec.resolution, line.comp)
             print(state.logio, @sprintf("Line %-15s coverage: %5.3f on range %10.5g < λ < %10.5g", cname, coverage, λmin, λmax))
             if coverage < threshold
             print(state.logio, @sprintf(", threshold is < %5.3f, neglecting...", threshold))
@@ -150,11 +159,11 @@ function select_samples!(recipe::RRef{<: DefaultRecipe}, state::State)
     state.user[:lcs] = lcs
 
     # Modify Domain and Measure objects
-    select_good!(state, good)
+    QSFit.select_good!(state, good)
 end
 
 
-function fit!(recipe::RRef{<: DefaultRecipe}, state::State)
+function fit!(recipe::RRef{<: Type1Recipe}, state::QSFit.State)
     mzer = GModelFit.cmpfit()
     mzer.Δfitstat_threshold = 1.e-5
 
@@ -167,7 +176,7 @@ function fit!(recipe::RRef{<: DefaultRecipe}, state::State)
 end
 
 
-function add_qso_continuum!(recipe::RRef{<: DefaultRecipe}, state::State)
+function add_qso_continuum!(recipe::RRef{<: Type1Recipe}, state::QSFit.State)
     λ = coords(domain(state.model))
 
     comp = QSFit.powerlaw(3000)
@@ -184,7 +193,7 @@ function add_qso_continuum!(recipe::RRef{<: DefaultRecipe}, state::State)
 end
 
 
-function add_host_galaxy!(recipe::RRef{<: DefaultRecipe}, state::State)
+function add_host_galaxy!(recipe::RRef{<: Type1Recipe}, state::QSFit.State)
     λ = coords(domain(state.model))
     if recipe.options[:use_host_template]  &&
         (recipe.options[:host_template_range][1] .< maximum(λ))  &&
@@ -207,7 +216,7 @@ function add_host_galaxy!(recipe::RRef{<: DefaultRecipe}, state::State)
 end
 
 
-function add_balmer_cont!(recipe::RRef{<: DefaultRecipe}, state::State)
+function add_balmer_cont!(recipe::RRef{<: Type1Recipe}, state::QSFit.State)
     if recipe.options[:use_balmer]
         state.model[:Balmer] = QSFit.balmercont(0.1, 0.5)
         push!(state.model[:Continuum].list, :Balmer)
@@ -225,7 +234,7 @@ function add_balmer_cont!(recipe::RRef{<: DefaultRecipe}, state::State)
 end
 
 
-function renorm_cont!(recipe::RRef{<: DefaultRecipe}, state::State)
+function renorm_cont!(recipe::RRef{<: Type1Recipe}, state::QSFit.State)
     freeze!(state.model, :QSOcont)
     c = state.model[:QSOcont]
     initialnorm = c.norm.val
@@ -249,7 +258,7 @@ function renorm_cont!(recipe::RRef{<: DefaultRecipe}, state::State)
 end
 
 
-function guess_norm_factor!(recipe::RRef{<: DefaultRecipe}, state::State, name::Symbol; quantile=0.95)
+function guess_norm_factor!(recipe::RRef{<: Type1Recipe}, state::QSFit.State, name::Symbol; quantile=0.95)
     @assert state.model[name].norm.val != 0
     m = state.model(name)
     c = cumsum(m)
@@ -271,7 +280,7 @@ function guess_norm_factor!(recipe::RRef{<: DefaultRecipe}, state::State, name::
 end
 
 
-function add_iron_uv!(recipe::RRef{<: DefaultRecipe}, state::State)
+function add_iron_uv!(recipe::RRef{<: Type1Recipe}, state::QSFit.State)
     λ = coords(domain(state.model))
     resolution = state.pspec.resolution
     if recipe.options[:use_ironuv]
@@ -280,14 +289,14 @@ function add_iron_uv!(recipe::RRef{<: DefaultRecipe}, state::State)
             fwhm = sqrt(fwhm^2 + resolution^2)
         end
         comp = QSFit.ironuv(fwhm)
-        (_1, _2, coverage) = spectral_coverage(λ, resolution, comp)
+        (_1, _2, coverage) = QSFit.spectral_coverage(λ, resolution, comp)
         threshold = get(recipe.options[:min_spectral_coverage], :Ironuv, recipe.options[:min_spectral_coverage][:default])
         if coverage >= threshold
             state.model[:Ironuv] = comp
             state.model[:Ironuv].norm.val = 1.
             push!(state.model[:Iron].list, :Ironuv)
             GModelFit.update!(state.model)
-            QSFit.guess_norm_factor!(recipe, state, :Ironuv)
+            guess_norm_factor!(recipe, state, :Ironuv)
             GModelFit.update!(state.model)
         else
             println(state.logio, "Ignoring ironuv component (threshold: $threshold)")
@@ -296,7 +305,7 @@ function add_iron_uv!(recipe::RRef{<: DefaultRecipe}, state::State)
 end
 
 
-function add_iron_opt!(recipe::RRef{<: DefaultRecipe}, state::State)
+function add_iron_opt!(recipe::RRef{<: Type1Recipe}, state::QSFit.State)
     λ = coords(domain(state.model))
     resolution = state.pspec.resolution
     if recipe.options[:use_ironopt]
@@ -305,7 +314,7 @@ function add_iron_opt!(recipe::RRef{<: DefaultRecipe}, state::State)
             fwhm = sqrt(fwhm^2 + resolution^2)
         end
         comp = QSFit.ironopt_broad(fwhm)
-        (_1, _2, coverage) = spectral_coverage(λ, resolution, comp)
+        (_1, _2, coverage) = QSFit.spectral_coverage(λ, resolution, comp)
         threshold = get(recipe.options[:min_spectral_coverage], :Ironopt, recipe.options[:min_spectral_coverage][:default])
         if coverage >= threshold
             state.model[:Ironoptbr] = comp
@@ -320,7 +329,7 @@ function add_iron_opt!(recipe::RRef{<: DefaultRecipe}, state::State)
             push!(state.model[:Iron].list, :Ironoptbr)
             push!(state.model[:Iron].list, :Ironoptna)
             GModelFit.update!(state.model)
-            QSFit.guess_norm_factor!(recipe, state, :Ironoptbr)
+            guess_norm_factor!(recipe, state, :Ironoptbr)
             GModelFit.update!(state.model)
         else
             println(state.logio, "Ignoring ironopt component (threshold: $threshold)")
@@ -329,7 +338,7 @@ function add_iron_opt!(recipe::RRef{<: DefaultRecipe}, state::State)
 end
 
 
-function add_emission_lines!(recipe::RRef{<: DefaultRecipe}, state::State)
+function add_emission_lines!(recipe::RRef{<: Type1Recipe}, state::QSFit.State)
     groups = OrderedDict{Symbol, Vector{Symbol}}()
 
     # Create model components
@@ -363,13 +372,13 @@ function add_emission_lines!(recipe::RRef{<: DefaultRecipe}, state::State)
     for group in [:BroadLines, :NarrowLines, :VeryBroadLines]  # Note: order is important
         if group in keys(groups)
             for cname in groups[group]
-                QSFit.guess_norm_factor!(recipe, state, cname)
+                guess_norm_factor!(recipe, state, cname)
             end
         end
     end
 end
 
-function add_patch_functs!(recipe::RRef{<: DefaultRecipe}, state::State)
+function add_patch_functs!(recipe::RRef{<: Type1Recipe}, state::QSFit.State)
     # Patch parameters
     if haskey(state.model, :OIII_4959)  &&  haskey(state.model, :OIII_5007)
         # state.model[:OIII_4959].norm.patch = @λ m -> m[:OIII_5007].norm / 3
@@ -428,7 +437,7 @@ function add_patch_functs!(recipe::RRef{<: DefaultRecipe}, state::State)
 end
 
 
-function add_nuisance_lines!(recipe::RRef{<: DefaultRecipe}, state::State)
+function add_nuisance_lines!(recipe::RRef{<: Type1Recipe}, state::QSFit.State)
     (recipe.options[:n_nuisance] > 0)  ||  (return nothing)
 
     # Prepare nuisance line components
@@ -498,7 +507,7 @@ function add_nuisance_lines!(recipe::RRef{<: DefaultRecipe}, state::State)
 end
 
 
-function neglect_weak_features!(recipe::RRef{<: DefaultRecipe}, state::State)
+function neglect_weak_features!(recipe::RRef{<: Type1Recipe}, state::QSFit.State)
     # Disable "nuisance" lines whose normalization uncertainty is larger
     # than X times the normalization
     needs_fitting = false
@@ -520,7 +529,7 @@ function neglect_weak_features!(recipe::RRef{<: DefaultRecipe}, state::State)
 end
 
 
-function reduce(recipe::RRef{<: DefaultRecipe}, state::State)
+function reduce(recipe::RRef{<: Type1Recipe}, state::QSFit.State)
     EW = OrderedDict{Symbol, Float64}()
 
     cont = deepcopy(state.model())
@@ -531,12 +540,13 @@ function reduce(recipe::RRef{<: DefaultRecipe}, state::State)
     @assert all(cont .> 0) "Continuum model is zero or negative"
     for cname in keys(state.user[:lcs])
         haskey(state.model, cname) || continue
-        EW[cname] = int_tabulated(coords(domain(state.model)),
-                                  state.model(cname) ./ cont)[1]
+        EW[cname] = QSFit.int_tabulated(coords(domain(state.model)),
+                                        state.model(cname) ./ cont)[1]
     end
     return OrderedDict{Symbol, Any}(:EW => EW)
 end
 
 
 include("DefaultRecipe_single.jl")
-# TODO include("DefaultRecipe_multi.jl")
+# TODO include("Type1Recipe_multi.jl")
+end

@@ -1,6 +1,7 @@
 module QSFit
 
-export add_spec!, close_log
+export RRef, AbstractRecipe, analyze
+
 
 import GModelFit: Domain, CompEval,
     Parameter, AbstractComponent, prepare!, evaluate!
@@ -50,8 +51,8 @@ struct Source
     z::Union{Nothing, Float64}
     MW_ebv::Union{Nothing, Float64}
     specs::Vector{Spectrum}
-    function Source(name; z=nothing, ebv=nothing)
-        return new(string(name), z, ebv, Vector{Spectrum}())
+    function Source(name, spectra::Vararg{Spectrum, N}; z=nothing, ebv=nothing) where N
+        return new(string(name), z, ebv, Spectrum[spectra...])
     end
 end
 
@@ -221,6 +222,7 @@ function analyze(recipe::RRef{T}, source::Source; logfile=nothing, overwrite=fal
 end
 
 include("SpectralLines.jl")
+include("LineFitRecipes.jl")
 include("DefaultRecipe.jl")
 include("viewer.jl")
 include("gnuplot.jl")
