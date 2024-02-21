@@ -99,11 +99,12 @@ function analyze(recipe::RRef{<: InteractiveLineFitRecipe}, state::QSFit.State)
             end
         end
         println("0: skp this line")
-        print("Insert space separated list of line type(s) for the emission line at ", vars.MOUSE_X, " ", QSFit.unit_λ(), ": ")
+        λ = round(vars.MOUSE_X * 1e2) / 1e2
+        print("Insert space separated list of line type(s) for the emission line at $λ ", QSFit.unit_λ(), ": ")
         i = Int.(Meta.parse.(string.(split(readline()))))
         (0 in i)  &&  continue
         @assert all(1 .<= i .<= length(linetypes))
-        push!(ld, LineDescriptor(vars.MOUSE_X, linetypes[i]...))
+        push!(ld, LineDescriptor(λ, linetypes[i]...))
     end
     println()
     Gnuplot.quit(:LineFit)

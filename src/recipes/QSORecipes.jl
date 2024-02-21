@@ -133,6 +133,10 @@ function select_samples!(recipe::RRef{<: Type1Recipe}, state::QSFit.State)
     for loop in 1:2
         # The second pass is required to neglect lines whose coverage
         # has been affected by the neglected spectral samples.
+        if loop == 2
+            println(state.logio)
+            println(state.logio, "Updated coverage:")
+        end
         for (cname, line) in lcs
             threshold = get(recipe.options[:min_spectral_coverage], cname, recipe.options[:min_spectral_coverage][:default])
             (λmin, λmax, coverage) = QSFit.spectral_coverage(λ[findall(good)], state.pspec.resolution, line.comp)
@@ -143,10 +147,6 @@ function select_samples!(recipe::RRef{<: Type1Recipe}, state::QSFit.State)
                 delete!(lcs, cname)
             end
             println(state.logio)
-        end
-        if loop == 2
-            println(state.logio)
-            println(state.logio, "Updated coverage:")
         end
     end
     println(state.logio, "Good samples after line coverage filter: ", count(good))
@@ -377,6 +377,7 @@ function add_emission_lines!(recipe::RRef{<: Type1Recipe}, state::QSFit.State)
         end
     end
 end
+
 
 function add_patch_functs!(recipe::RRef{<: Type1Recipe}, state::QSFit.State)
     # Patch parameters
