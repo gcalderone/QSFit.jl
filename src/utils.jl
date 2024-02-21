@@ -64,12 +64,11 @@ end
 
 
 # Wavelength range spanned by components
-wavelength_span(line::Union{SpecLineGauss, SpecLineLorentz, SpecLineVoigt}) = (line.center.val * (1 + line.fwhm.val / 3.e5 / 2),
-                                                                               line.center.val * (1 - line.fwhm.val / 3.e5 / 2))
+wavelength_span(line::AbstractSpecLineComp) = (line.center.val * (1 + line.fwhm.val / 3.e5 / 2),
+                                               line.center.val * (1 - line.fwhm.val / 3.e5 / 2))
 
 wavelength_span(comp::ironuv)  = extrema(ironuv_read()[1])
 wavelength_span(comp::ironopt) = extrema(ironopt_read(comp.file)[:wavelength])
-
 
 
 function spectral_coverage(spec_λ::Vector{Float64}, resolution::Float64,

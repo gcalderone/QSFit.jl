@@ -222,8 +222,8 @@ function analyze(recipe::RRef{T}, source::Source; logfile=nothing, overwrite=fal
 end
 
 include("SpectralLines.jl")
-include("LineFitRecipes.jl")
-include("DefaultRecipe.jl")
+include("recipes/LineFitRecipes.jl")
+include("recipes/QSORecipes.jl")
 include("viewer.jl")
 include("gnuplot.jl")
 

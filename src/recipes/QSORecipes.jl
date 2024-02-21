@@ -547,6 +547,6 @@ function reduce(recipe::RRef{<: Type1Recipe}, state::QSFit.State)
 end
 
 
-include("DefaultRecipe_single.jl")
-# TODO include("Type1Recipe_multi.jl")
+include("QSORecipes_single.jl")
+# TODO include("QSORecipes_multi.jl")
 end
