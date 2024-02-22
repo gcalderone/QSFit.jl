@@ -1,7 +1,5 @@
 
 function analyze(recipe::RRef{<: Type1Recipe}, state::QSFit.State)
-    select_samples!(recipe, state)
-
     model = state.model
     model[:main] = SumReducer()
     select_maincomp!(model, :main)

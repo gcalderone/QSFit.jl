@@ -71,8 +71,8 @@ end
 
 function round_unit_scales!(spec::AbstractSpectrum)
     convert_units!(spec,
-                   10^round(log10(ustrip(spec.unit_x))) * unit(spec.unit_x),
-                   10^round(log10(ustrip(spec.unit_y))) * unit(spec.unit_y))
+                   10. ^round(log10(ustrip(spec.unit_x))) * unit(spec.unit_x),
+                   10. ^round(log10(ustrip(spec.unit_y))) * unit(spec.unit_y))
 end
 
 

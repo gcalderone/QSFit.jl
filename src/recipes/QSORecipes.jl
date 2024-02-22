@@ -5,7 +5,7 @@ using Dierckx
 using ..QSFit, GModelFit
 
 import QSFit: line_profile, line_suffix, set_constraints!,
-    default_options, analyze, reduce
+    default_options, prepare_state!, analyze, reduce
 
 export Type1Recipe
 
@@ -114,11 +114,10 @@ function dict_line_instances(recipe::RRef{<: Type1Recipe}, linedescrs::Vector{Li
 end
 
 
-function select_samples!(recipe::RRef{<: Type1Recipe}, state::QSFit.State)
-    λ = coords(state.pspec.domain)
-    good = fill(true, length(λ))
-    good[findall(λ .< recipe.options[:wavelength_range][1])] .= false
-    good[findall(λ .> recipe.options[:wavelength_range][2])] .= false
+function prepare_state!(recipe::RRef{<: Type1Recipe}, state::QSFit.State)
+    @invoke prepare_state!(recipe::RRef{<: AbstractRecipe}, state)
+    state.spec.good[findall(state.spec.x .< recipe.options[:wavelength_range][1])] .= false
+    state.spec.good[findall(state.spec.x .> recipe.options[:wavelength_range][2])] .= false
 
     #= Emission line are localized features whose parameter can be
     reliably estimated only if there are sufficient samples to
@@ -126,7 +125,7 @@ function select_samples!(recipe::RRef{<: Type1Recipe}, state::QSFit.State)
     not sufficient the component should not be added to the model,
     and corresponding spectral samples should be ignored to avoid
     worsening the fit due to missing model components. =#
-    println(state.logio, "Good samples before line coverage filter: ", count(good))
+    println(state.logio, "Good samples before line coverage filter: ", count(state.spec.good) , " / ", length(state.spec.good))
 
     # Collect line components (neglecting the ones with insufficent coverage)
     lcs = dict_line_instances(recipe, recipe.options[:lines])
@@ -139,17 +138,18 @@ function select_samples!(recipe::RRef{<: Type1Recipe}, state::QSFit.State)
         end
         for (cname, line) in lcs
             threshold = get(recipe.options[:min_spectral_coverage], cname, recipe.options[:min_spectral_coverage][:default])
-            (λmin, λmax, coverage) = QSFit.spectral_coverage(λ[findall(good)], state.pspec.resolution, line.comp)
+            (λmin, λmax, coverage) = QSFit.spectral_coverage(state.spec.x[findall(state.spec.good)],
+                                                             state.spec.resolution, line.comp)
             print(state.logio, @sprintf("Line %-15s coverage: %5.3f on range %10.5g < λ < %10.5g", cname, coverage, λmin, λmax))
             if coverage < threshold
             print(state.logio, @sprintf(", threshold is < %5.3f, neglecting...", threshold))
-                good[λmin .<= λ .< λmax] .= false
+                state.spec.good[λmin .<= state.spec.x .< λmax] .= false
                 delete!(lcs, cname)
             end
             println(state.logio)
         end
     end
-    println(state.logio, "Good samples after line coverage filter: ", count(good))
+    println(state.logio, "Good samples after line coverage filter: ", count(state.spec.good) , " / ", length(state.spec.good))
 
     # Sort lines according to center wavelength
     kk = collect(keys(lcs))
@@ -158,8 +158,8 @@ function select_samples!(recipe::RRef{<: Type1Recipe}, state::QSFit.State)
     lcs = OrderedDict(Pair.(kk[ii], vv[ii]))
     state.user[:lcs] = lcs
 
-    # Modify Domain and Measure objects
-    QSFit.select_good!(state, good)
+    # Update Measure and Model objects
+    QSFit.update_data!(state)
 end
 
 
@@ -167,10 +167,10 @@ function fit!(recipe::RRef{<: Type1Recipe}, state::QSFit.State)
     mzer = GModelFit.cmpfit()
     mzer.Δfitstat_threshold = 1.e-5
 
-    bestfit, fitstats = fit(state.model, state.pspec.data, minimizer=mzer)
+    bestfit, fitstats = fit(state.model, state.data, minimizer=mzer)
     # show(state.logio, state.model)
     show(state.logio, fitstats)
-    # @gp :QSFit state.pspec.data model
+    # @gp :QSFit state.data model
     # printstyled(color=:blink, "Press ENTER to continue..."); readline()
     return bestfit, fitstats
 end
@@ -181,7 +181,7 @@ function add_qso_continuum!(recipe::RRef{<: Type1Recipe}, state::QSFit.State)
 
     comp = QSFit.powerlaw(3000)
     comp.x0.val = median(λ)
-    comp.norm.val = median(values(state.pspec.data)) # Can't use Dierckx.Spline1D since it may fail when data is segmented (non-good channels)
+    comp.norm.val = median(values(state.data)) # Can't use Dierckx.Spline1D since it may fail when data is segmented (non-good channels)
     comp.norm.low = comp.norm.val / 1000.  # ensure contiuum remains positive (needed to estimate EWs)
     comp.alpha.val  = -1.5
     comp.alpha.low  = -3
@@ -205,10 +205,10 @@ function add_host_galaxy!(recipe::RRef{<: Type1Recipe}, state::QSFit.State)
 
         # Split total flux between continuum and host galaxy
         refwl = recipe.options[:host_template_ref_wavelength]
-        vv = Dierckx.Spline1D(λ, values(state.pspec.data), k=1, bc="extrapolate")(refwl)
+        vv = Dierckx.Spline1D(λ, values(state.data), k=1, bc="extrapolate")(refwl)
         @assert !isnan(vv) "Predicted L_λ at $(refwl)A is NaN"
         @assert vv > 0 "Predicted L_λ at $(refwl)A is negative"
-        # (vv <= 0)  &&  (vv = .1 * median(values(state.pspec.data)))
+        # (vv <= 0)  &&  (vv = .1 * median(values(state.data)))
         state.model[:Galaxy].norm.val    = 1/2 * vv
         state.model[:QSOcont].norm.val *= 1/2 * vv / Dierckx.Spline1D(λ, state.model(:QSOcont), k=1, bc="extrapolate")(refwl)
         GModelFit.update!(state.model)
@@ -241,7 +241,7 @@ function renorm_cont!(recipe::RRef{<: Type1Recipe}, state::QSFit.State)
     if c.norm.val > 0
         println(state.logio, "Cont. norm. (before): ", c.norm.val)
         while true
-            residuals = (state.model() - values(state.pspec.data)) ./ uncerts(state.pspec.data)
+            residuals = (state.model() - values(state.data)) ./ uncerts(state.data)
             ratio = count(residuals .< 0) / length(residuals)
             (ratio > 0.9)  &&  break
             (c.norm.val < (initialnorm / 5))  &&  break # give up
@@ -253,7 +253,7 @@ function renorm_cont!(recipe::RRef{<: Type1Recipe}, state::QSFit.State)
         println(state.logio, "Skipping cont. renormalization")
     end
     GModelFit.update!(state.model)
-    # @gp (domain(state.model), state.pspec.data) state.model
+    # @gp (domain(state.model), state.data) state.model
     # printstyled(color=:blink, "Press ENTER to continue..."); readline()
 end
 
@@ -269,7 +269,7 @@ function guess_norm_factor!(recipe::RRef{<: Type1Recipe}, state::QSFit.State, na
     if i1 >= i2
         return #Can't calculate normalization for component
     end
-    resid = values(state.pspec.data) - state.model()
+    resid = values(state.data) - state.model()
     ratio = state.model[name].norm.val / sum(m[i1:i2])
     off = sum(resid[i1:i2]) * ratio
     state.model[name].norm.val += off
@@ -282,7 +282,7 @@ end
 
 function add_iron_uv!(recipe::RRef{<: Type1Recipe}, state::QSFit.State)
     λ = coords(domain(state.model))
-    resolution = state.pspec.resolution
+    resolution = state.spec.resolution
     if recipe.options[:use_ironuv]
         fwhm = recipe.options[:Ironuv_fwhm]
         if recipe.options[:Iron_broadening]
@@ -307,7 +307,7 @@ end
 
 function add_iron_opt!(recipe::RRef{<: Type1Recipe}, state::QSFit.State)
     λ = coords(domain(state.model))
-    resolution = state.pspec.resolution
+    resolution = state.spec.resolution
     if recipe.options[:use_ironopt]
         fwhm = recipe.options[:Ironoptbr_fwhm]
         if recipe.options[:Iron_broadening]
@@ -352,7 +352,7 @@ function add_emission_lines!(recipe::RRef{<: Type1Recipe}, state::QSFit.State)
         # - further narrow components (besides known emission lines)
         #   will not be corrected for instrumental resolution.
         if recipe.options[:line_broadening]
-            line.comp.resolution = state.pspec.resolution
+            line.comp.resolution = state.spec.resolution
         end
 
         state.model[cname] = line.comp
@@ -460,7 +460,7 @@ function add_nuisance_lines!(recipe::RRef{<: Type1Recipe}, state::QSFit.State)
     while true
         (length(λnuisance) >= recipe.options[:n_nuisance])  &&  break
         GModelFit.update!(state.model)
-        Δ = (values(state.pspec.data) - state.model()) ./ uncerts(state.pspec.data)
+        Δ = (values(state.data) - state.model()) ./ uncerts(state.data)
 
         # Avoid considering again the same region (within 1A) TODO: within resolution
         for l in λnuisance

@@ -105,7 +105,7 @@ get_dered_function(::RRef{<: AbstractRecipe}) = ccm_unred
 convert_units!(::RRef{<: AbstractRecipe}, spec::Spectrum)          = convert_units!(spec, 1. * u"angstrom", 1e-17 * u"erg" / u"s" / u"cm"^2 / u"angstrom")
 convert_units!(::RRef{<: AbstractRecipe}, spec::RestFrameSpectrum) = convert_units!(spec, 1. * u"angstrom", 1e42  * u"erg" / u"s"           / u"angstrom")
 
-function prepare_state!(recipe::RRef{T}, state::State) where T <: AbstractRecipe
+function prepare_state!(recipe::RRef{<: AbstractRecipe}, state::State)
     if !isnothing(state.spec.ebv)
         dered = get_dered_function(recipe)
         tmp = dered([1450, 3000, 5100.], state.spec.ebv)
@@ -116,6 +116,7 @@ function prepare_state!(recipe::RRef{T}, state::State) where T <: AbstractRecipe
         state.spec = RestFrameSpectrum(state.spec, get_cosmology(recipe))
     end
     convert_units!(recipe, state.spec)
+    round_unit_scales!(state.spec)
     show(state.logio, state.spec)
     update_data!(state)
     return state
