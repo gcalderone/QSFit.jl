@@ -3,9 +3,18 @@ import Gnuplot.recipe
 
 function Gnuplot.recipe(spec::Spectrum)
     i = findall(spec.good)
-    return Gnuplot.parseSpecs("set bars 0", title=spec.label,
-                              spec.λ   , spec.flux   , spec.err   , "with yerr notit pt 0 lc rgb 'gray'",
-                              spec.λ[i], spec.flux[i], spec.err[i], "with yerr notit pt 0 lc rgb 'black'")
+    return Gnuplot.parseSpecs("set bars 0", title=spec.label * (isnothing(spec.z) ? "" : ", z=$(spec.z)"),
+                              xlabel="[x" * string(spec.unit_x) * "]", ylabel="[x" * string(spec.unit_y) * "]",
+                              spec.x   , spec.y   , spec.err   , "with yerr notit pt 0 lc rgb 'gray'",
+                              spec.x[i], spec.y[i], spec.err[i], "with yerr notit pt 0 lc rgb 'black'")
+end
+
+function Gnuplot.recipe(spec::RestFrameSpectrum)
+    i = findall(spec.good)
+    return Gnuplot.parseSpecs("set bars 0", title=spec.label * (isnothing(spec.z) ? "" : ", z=$(spec.z)"),
+                              xlabel="Rest frame [x" * string(spec.unit_x) * "]", ylabel="[x" * string(spec.unit_y) * "]",
+                              spec.x   , spec.y   , spec.err   , "with yerr notit pt 0 lc rgb 'gray'",
+                              spec.x[i], spec.y[i], spec.err[i], "with yerr notit pt 0 lc rgb 'black'")
 end
 
 

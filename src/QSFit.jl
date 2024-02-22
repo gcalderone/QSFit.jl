@@ -46,103 +46,32 @@ qsfit_data() = artifact"qsfit_data"
 
 
 # ====================================================================
-struct Source
-    name::String
-    z::Union{Nothing, Float64}
-    MW_ebv::Union{Nothing, Float64}
-    specs::Vector{Spectrum}
-    function Source(name, spectra::Vararg{Spectrum, N}; z=nothing, ebv=nothing) where N
-        return new(string(name), z, ebv, Spectrum[spectra...])
-    end
-end
-
-function show(io::IO, source::Source)
-    println(io, "Source: ", source.name, ", z=", source.z, ", E(B-V) from Milky Way: ", source.MW_ebv)
-    for i in 1:length(source.specs)
-        print(io, "    ")
-        show(io, source.specs[i])
-    end
-end
-
-add_spec!(source::Source, spec::Spectrum) = push!(source.specs, spec)
-
-
-# ====================================================================
-struct PreparedSpectrum
-    origlength::Int
-    resolution::Float64
-    flux2lum::Float64
-    domain::GModelFit.Domain{1}
-    data::GModelFit.Measures{1}
-end
-
-function PreparedSpectrum(source::Source, logio=stdout;
-                          id=1,
-                          dered::Union{Nothing, Function}=nothing,
-                          cosmology::Union{Nothing, Cosmology.AbstractCosmology}=nothing)
-    data = deepcopy(source.specs[id])
-    println(logio, "Source: " * data.label)
-    println(logio, "  spectrum ID: ", id)
-    goodfraction = count(data.good) / length(data.good)
-    println(logio, "  good fraction:: ", goodfraction)
-    println(logio, "  resolution: ", @sprintf("%.4g", data.resolution), " km / s (FWHM)")
-
-    # De-reddening
-    if !isnothing(source.MW_ebv)  &&  !isnothing(dered)
-        tmp = dered([1450, 3000, 5100.], source.MW_ebv)
-        println(logio, "De-reddening factors @ 1450, 3000, 5100 AA: ", tmp)
-        tmp = dered(data.λ, source.MW_ebv)
-        data.flux .*= tmp
-        data.err  .*= tmp
-    end
-
-    # Compute rest frame spectrum
-    flux2lum = NaN
-    if !isnothing(source.z)  &&  !isnothing(cosmology)
-        ld = uconvert(u"cm", luminosity_dist(cosmology, source.z))
-        flux2lum = 4pi * ld^2 * (scale_flux() * unit_flux()) / (scale_lum() * unit_lum())
-        println(logio, "Using flux-to-lum. conversion factor: ", flux2lum)
-        data.λ    ./= (1 + source.z)
-        data.flux .*= flux2lum * (1 + source.z)
-        data.err  .*= flux2lum * (1 + source.z)
-    end
-
-    ii = findall(data.good)
-    domain = Domain(data.λ[ii])
-    return PreparedSpectrum(length(data.flux), data.resolution, flux2lum,
-                            domain, Measures(domain, data.flux[ii], data.err[ii]))
-end
-
-
-# ====================================================================
 mutable struct State
     logfile::Union{Nothing, String}
     logio::Union{IOStream, Base.TTY}
-    pspec::PreparedSpectrum
-    model::GModelFit.Model
+    spec::AbstractSpectrum
+    data::Union{Nothing, GModelFit.Measures{1}}
+    model::Union{Nothing, GModelFit.Model}
     user::OrderedDict{Symbol, Any}
 end
 
 
-function select_good!(state::State, good::Vector{Bool})
-    i = findall(good)
-    domain = Domain(coords(state.pspec.domain)[i])
-    meas = Measures(domain,
-                    values( state.pspec.data)[i],
-                    uncerts(state.pspec.data)[i])
-    state.pspec = PreparedSpectrum(state.pspec.origlength,
-                                   state.pspec.resolution,
-                                   state.pspec.flux2lum,
-                                   domain, meas)
+function update_data!(state::State)
+    ii = findall(state.spec.good)
+    domain = Domain(state.spec.x[ii])
+    state.data = Measures(domain,
+                          state.spec.y[ii]   .* state.spec.dered[ii],
+                          state.spec.err[ii] .* state.spec.dered[ii])
     state.model = Model(domain)
+    return state
 end
 
 
 struct Results
     timestamp::DateTime
     elapsed::Float64
-    source::Source
-    pspec::Union{Nothing, PreparedSpectrum}
+    spec::AbstractSpectrum
+    data::Measures{1}
     bestfit::GModelFit.ModelSnapshot
     fitstats::GModelFit.FitStats
     reduced::OrderedDict{Symbol, Any}
@@ -171,12 +100,30 @@ struct RRef{T <: AbstractRecipe}
 end
 
 default_options(::Type{<: AbstractRecipe}) = OrderedDict{Symbol, Any}()
-get_cosmology(::Type{<: AbstractRecipe}) = cosmology(h=0.70, OmegaM=0.3)   #S11
-get_MW_deredd_function(::Type{<: AbstractRecipe}) = ccm_unred
+get_cosmology(::RRef{<: AbstractRecipe}) = cosmology(h=0.70, OmegaM=0.3)
+get_dered_function(::RRef{<: AbstractRecipe}) = ccm_unred
+convert_units!(::RRef{<: AbstractRecipe}, spec::Spectrum)          = convert_units!(spec, 1. * u"angstrom", 1e-17 * u"erg" / u"s" / u"cm"^2 / u"angstrom")
+convert_units!(::RRef{<: AbstractRecipe}, spec::RestFrameSpectrum) = convert_units!(spec, 1. * u"angstrom", 1e42  * u"erg" / u"s"           / u"angstrom")
+
+function prepare_state!(recipe::RRef{T}, state::State) where T <: AbstractRecipe
+    if !isnothing(state.spec.ebv)
+        dered = get_dered_function(recipe)
+        tmp = dered([1450, 3000, 5100.], state.spec.ebv)
+        println(state.logio, "De-reddening factors @ 1450, 3000, 5100 AA: ", tmp)
+        deredden!(state.spec, dered)
+    end
+    if !isnothing(state.spec.z)
+        state.spec = RestFrameSpectrum(state.spec, get_cosmology(recipe))
+    end
+    convert_units!(recipe, state.spec)
+    show(state.logio, state.spec)
+    update_data!(state)
+    return state
+end
 
 reduce(recipe::RRef{<: AbstractRecipe}, state::State) = OrderedDict{Symbol, Any}()
 
-function analyze(recipe::RRef{T}, source::Source; logfile=nothing, overwrite=false) where T <: AbstractRecipe
+function analyze(recipe::RRef{T}, spec::AbstractSpectrum; logfile=nothing, overwrite=false) where T <: AbstractRecipe
     timestamp = now()
     starttime = time()
     if isnothing(logfile)
@@ -195,21 +142,14 @@ function analyze(recipe::RRef{T}, source::Source; logfile=nothing, overwrite=fal
     println(logio)
     println(logio)
 
-    pspecs = [PreparedSpectrum(source, logio, id=id,
-                               cosmology=get_cosmology(T),
-                               dered=get_MW_deredd_function(T))
-              for id in 1:length(source.specs)]
-    if length(pspecs) == 1
-        state = State(logfile, logio, pspecs[1], Model(pspecs[1].domain), OrderedDict{Symbol, Any}())
-    else
-        error("Multi spectrum fit is not yet supported")
-    end
+    state = State(logfile, logio, deepcopy(spec), nothing, nothing, OrderedDict{Symbol, Any}())
+    prepare_state!(recipe, state)
     bestfit, fitstats = analyze(recipe, state)
     reduced = reduce(recipe, state)
 
     out = Results(timestamp,
                   time() - starttime,
-                  source, state.pspec,
+                  state.spec, state.data,
                   bestfit, fitstats, reduced)
 
     println(logio, "\nTotal elapsed time: $(out.elapsed) s")

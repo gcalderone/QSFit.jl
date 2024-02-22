@@ -29,16 +29,13 @@ end
 
 
 function analyze(recipe::RRef{<: LineFitRecipe}, state::QSFit.State)
-    λ = coords(domain(state.model))
+    state.spec.good[findall(state.spec.x .< recipe.options[:wavelength_range][1])] .= false
+    state.spec.good[findall(state.spec.x .> recipe.options[:wavelength_range][2])] .= false
+    QSFit.update_data!(state)
 
-    good = fill(true, length(λ))
-    good[findall(λ .< recipe.options[:wavelength_range][1])] .= false
-    good[findall(λ .> recipe.options[:wavelength_range][2])] .= false
-    QSFit.select_good!(state, good)
-
-    state.model[:QSOcont] = QSFit.powerlaw(median(λ))
-    state.model[:QSOcont].norm.val = median(values(state.pspec.data))
-    state.model[:QSOcont].norm.low = median(values(state.pspec.data)) / 1000.  # ensure contiuum remains positive (needed to estimate EWs)
+    state.model[:QSOcont] = QSFit.powerlaw(median(coords(domain(state.data))))
+    state.model[:QSOcont].norm.val = median(values(state.data))
+    state.model[:QSOcont].norm.low = median(values(state.data)) / 1000.  # ensure contiuum remains positive (needed to estimate EWs)
     state.model[:QSOcont].alpha.val  = -1.5
     state.model[:QSOcont].alpha.low  = -3
     state.model[:QSOcont].alpha.high =  1
@@ -64,7 +61,7 @@ function analyze(recipe::RRef{<: LineFitRecipe}, state::QSFit.State)
 
     mzer = GModelFit.cmpfit()
     mzer.Δfitstat_threshold = 1.e-5
-    return fit(state.model, state.pspec.data, minimizer=mzer)
+    return fit(state.model, state.data, minimizer=mzer)
 end
 
 
@@ -76,7 +73,7 @@ function analyze(recipe::RRef{<: InteractiveLineFitRecipe}, state::QSFit.State)
                  VeryBroadLine,
                  NuisanceLine]
 
-    @gp :LineFit state.pspec.data
+    @gp :LineFit state.spec
     println()
     printstyled("Interactive emission line fit\n", color=:green)
     printstyled("Step 1: ", color=:green);  println("zoom on the desired range")
@@ -87,9 +84,9 @@ function analyze(recipe::RRef{<: InteractiveLineFitRecipe}, state::QSFit.State)
     range = [vars.X_MIN, vars.X_MAX]
 
     println()
-    printstyled("Step 2: ", color=:green);  println("Identify emission lines by click on the peaks")
+    printstyled("Step 2: ", color=:green);  println("Identify emission lines by click on the peaks (CTRL+left click to stop)")
     while true
-        print("Waiting for a click (CTRL+left click to stop)...")
+        print("Waiting for a click...")
         vars = wait_mouse(:LineFit)
         (vars.MOUSE_CTRL != 0)  &&  break
         print("\r")
@@ -97,10 +94,10 @@ function analyze(recipe::RRef{<: InteractiveLineFitRecipe}, state::QSFit.State)
             for i in 1:length(linetypes)
                 println("$(i): ", linetypes[i])
             end
+            println("0: skip this line")
         end
-        println("0: skp this line")
         λ = round(vars.MOUSE_X * 1e2) / 1e2
-        print("Insert space separated list of line type(s) for the emission line at $λ ", QSFit.unit_λ(), ": ")
+        print("Insert space separated list of line type(s) for the emission line at $λ ", state.spec.unit_x, ": ")
         i = Int.(Meta.parse.(string.(split(readline()))))
         (0 in i)  &&  continue
         @assert all(1 .<= i .<= length(linetypes))
