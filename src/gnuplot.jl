@@ -1,20 +1,18 @@
 import Gnuplot
 import Gnuplot.recipe
 
-function Gnuplot.recipe(spec::Spectrum)
+function Gnuplot.recipe(spec::T) where T <: AbstractSpectrum
     i = findall(spec.good)
     return Gnuplot.parseSpecs("set bars 0", title=spec.label * (isnothing(spec.z) ? "" : ", z=$(spec.z)"),
                               xlabel="[x" * string(spec.unit_x) * "]", ylabel="[x" * string(spec.unit_y) * "]",
-                              spec.x   , spec.y   , spec.err   , "with yerr notit pt 0 lc rgb 'gray'",
-                              spec.x[i], spec.y[i], spec.err[i], "with yerr notit pt 0 lc rgb 'black'")
+                              spec.x   , spec.y   , spec.err   , "with yerr notit pt 0      lc rgb 'gray'",
+                              spec.x[i], spec.y[i], spec.err[i], "with p    notit pt 1 ps 1 lc rgb 'black'")
 end
 
 function Gnuplot.recipe(spec::RestFrameSpectrum)
-    i = findall(spec.good)
-    return Gnuplot.parseSpecs("set bars 0", title=spec.label * (isnothing(spec.z) ? "" : ", z=$(spec.z)"),
-                              xlabel="Rest frame [x" * string(spec.unit_x) * "]", ylabel="[x" * string(spec.unit_y) * "]",
-                              spec.x   , spec.y   , spec.err   , "with yerr notit pt 0 lc rgb 'gray'",
-                              spec.x[i], spec.y[i], spec.err[i], "with yerr notit pt 0 lc rgb 'black'")
+    out = @invoke Gnuplot.recipe(spec::AbstractSpectrum)
+    append!(out, Gnuplot.parseSpecs(xlabel="Rest frame [x" * string(spec.unit_x) * "]"))
+    return out
 end
 
 
@@ -22,7 +20,7 @@ function Gnuplot.recipe(res::Results)
     ctypes = [comptype(res.bestfit, cname) for cname in keys(res.bestfit)]
     i = findall(isnothing.(match.(r"SpecLine", ctypes)))
     keep = keys(res.bestfit)[i]
-    out = [Gnuplot.recipe(res.pspec.data)..., Gnuplot.recipe(res.bestfit, keep=keep)...]
+    out = [Gnuplot.recipe(res.spec)..., Gnuplot.recipe(res.bestfit, keep=keep)...]
     return out
 end
 

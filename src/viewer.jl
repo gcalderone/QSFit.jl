@@ -5,16 +5,16 @@ function ViewerData(res::Results; kws...)
     ctypes = [comptype(res.bestfit, cname) for cname in keys(res.bestfit)]
     i = findall(isnothing.(match.(r"SpecLine", ctypes)))
     keep = string.(keys(res.bestfit))[i]
-    meta = GModelFitViewer.Meta(; title=res.source.name * ", z=" * string(res.source.z) * ", E(B-V)=" * string(res.source.MW_ebv),
+    meta = GModelFitViewer.Meta(; title=res.spec.label * ", z=" * string(res.spec.z) * ", E(B-V)=" * string(res.spec.ebv),
                                 xlabel="Rest frame wavelength",
-                                xunit=string(QSFit.unit_λ()),
-                                xscale=10. ^ QSFit.log10_scale_λ(),
+                                xunit=string(unit(res.spec.unit_x)),
+                                xscale=ustrip(res.spec.unit_x),
                                 ylabel="Lum. density",
-                                yunit=string(QSFit.unit_lum_density()),
-                                yscale=10. ^ QSFit.log10_scale_lum(),
+                                yunit=string(unit(res.spec.unit_y)),
+                                yscale=ustrip(res.spec.unit_y),
                                 keep=keep, kws...)
 
-    d = GModelFitViewer.ViewerData(res.bestfit, res.fitstats, res.pspec.data, meta=meta)
+    d = GModelFitViewer.ViewerData(res.bestfit, res.fitstats, res.data, meta=meta)
 
     # Add further content
     if haskey(res.reduced, :EW)
