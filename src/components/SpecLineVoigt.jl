@@ -22,7 +22,6 @@ mutable struct SpecLineVoigt <: AbstractSpecLineComp
         out.fwhm.low = 0
         out.log_a.low  = -2
         out.log_a.high =  2
-        out.voff.low = 0
         out.center.fixed = true
         return out
     end

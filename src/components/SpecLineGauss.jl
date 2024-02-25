@@ -18,7 +18,6 @@ mutable struct SpecLineGauss <: AbstractSpecLineComp
         out.norm.low = 0
         out.center.low = 0
         out.fwhm.low = 0
-        out.voff.low = 0
         out.center.fixed = true
         return out
     end
