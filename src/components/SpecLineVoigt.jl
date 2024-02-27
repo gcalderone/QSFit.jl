@@ -1,3 +1,40 @@
+function voigt(x, σ, γ)
+    z = (x + im * γ) / σ / sqrt(2)
+    return real(faddeeva(z)) / (σ * sqrt(2pi))
+end
+
+# J.J.Olivero and R.L. Longbothum in Empirical fits to the Voigt line width: A brief review, JQSRT 17, P233, 1977
+# https://ui.adsabs.harvard.edu/abs/1977JQSRT..17..233O/abstract
+# http://snst-hu.lzu.edu.cn/zhangyi/ndata/Voigt_profile.html
+function voigt_fwhm(σ, γ)
+    @assert σ > 0
+    @assert γ > 0
+    fg = σ * 2.355   #  2 * sqrt(2 * log(2)) = 2.3548200450309493
+    fl = γ * 2
+    return fl * 0.5346 + sqrt(0.2166 * fl^2 + fg^2)
+    #=
+    Introducing dampening parameter:
+    a = fl / fg
+    fwhm = fl * (0.5346 + sqrt(0.2166 + (1/a)^2))
+    =#
+end
+
+# The inverse function is
+function voigt_σγ(fwhm, log_a)
+    a = 10. ^log_a
+    fl = fwhm / (0.5346 + sqrt(0.2166 + (1/a)^2))
+    fg = fl / a
+    return (fg / 2.355, fl / 2)
+end
+#=
+σ, γ = 1.2, 3.4
+log_a = log10((γ * 2) / (σ * 2.35482));
+fwhm = QSFit.voigt_fwhm(σ, γ)
+@info "" σ γ log_a fwhm
+QSFit.voigt_σγ(fwhm, log_a), (σ, γ)
+=#
+
+
 # ____________________________________________________________________
 # SpecLineVoigt
 #
@@ -34,10 +71,5 @@ function evaluate!(buffer::Vector{Float64}, comp::SpecLineVoigt, x::Domain{1},
     σ, γ = voigt_σγ(fwhm            / 3.e5 * center, log_a)
     σ = sqrt(σ^2 + σ_res^2)
     X = coords(x) .- x0
-
-    function profile(x)
-        return norm * voigt.(x, σ, γ)
-    end
-    map!(profile, buffer, X)
-    # buffer .= norm .* voigt.(X, σ, γ)
+    buffer .= norm .* voigt.(X, σ, γ)
 end

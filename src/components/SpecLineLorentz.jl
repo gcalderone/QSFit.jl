@@ -30,12 +30,9 @@ function evaluate!(buffer::Vector{Float64}, comp::SpecLineLorentz, x::Domain{1},
     γ     = fwhm            / 2     / 3.e5 * center
     X = coords(x) .- x0
 
-    function profile(x)
-        if σ_res > 0.
-            return norm * voigt.(x, σ_res, γ)
-        else
-            return norm / (1 + (x/γ)^2) / pi / γ
-        end
+    if σ_res > 0.
+        buffer .= norm .* voigt.(X, σ_res, γ)
+    else
+        buffer .= norm .* γ ./ (pi .* (X.^2. .+ γ^2.))
     end
-    map!(profile, buffer, X)
 end
