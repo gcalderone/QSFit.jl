@@ -23,10 +23,6 @@ mutable struct SpecLineLorentz <: AbstractSpecLineComp
     end
 end
 
-function prepare!(comp::SpecLineLorentz, domain::Domain{1})
-    return fill(NaN, length(domain))
-end
-
 function evaluate!(buffer::Vector{Float64}, comp::SpecLineLorentz, x::Domain{1},
                    norm, center, fwhm, voff)
     x0 = center - (voff / 3.e5) * center

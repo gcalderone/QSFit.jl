@@ -27,10 +27,6 @@ mutable struct SpecLineVoigt <: AbstractSpecLineComp
     end
 end
 
-function prepare!(comp::SpecLineVoigt, domain::Domain{1})
-    return fill(NaN, length(domain))
-end
-
 function evaluate!(buffer::Vector{Float64}, comp::SpecLineVoigt, x::Domain{1},
                    norm, center, fwhm, log_a, voff)
     x0 = center - (voff / 3.e5) * center
@@ -43,4 +39,5 @@ function evaluate!(buffer::Vector{Float64}, comp::SpecLineVoigt, x::Domain{1},
         return norm * voigt.(x, σ, γ)
     end
     map!(profile, buffer, X)
+    # buffer .= norm .* voigt.(X, σ, γ)
 end

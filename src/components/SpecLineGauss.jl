@@ -23,10 +23,6 @@ mutable struct SpecLineGauss <: AbstractSpecLineComp
     end
 end
 
-function prepare!(comp::SpecLineGauss, domain::Domain{1})
-    return fill(NaN, length(domain))
-end
-
 function evaluate!(buffer::Vector{Float64}, comp::SpecLineGauss, x::Domain{1},
                    norm, center, fwhm, voff)
     x0 = center - (voff / 3.e5) * center
