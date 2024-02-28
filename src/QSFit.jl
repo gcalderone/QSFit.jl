@@ -17,7 +17,7 @@ using Gnuplot
 using TextParse
 using Cosmology
 
-import Dierckx  # import (instead of using) avoid conflicts with evaluate()
+import Dierckx  # `import` (rather than `using`) to avoid conflicts with evaluate()
 
 import Base.show
 
@@ -30,7 +30,6 @@ include("components/hostgalaxy.jl")
 include("components/ironopt.jl")
 include("components/ironuv.jl")
 include("components/balmercont.jl")
-include("components/voigt_profile.jl")
 
 abstract type AbstractSpecLineComp <: AbstractComponent end
 include("components/SpecLineGauss.jl")
