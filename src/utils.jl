@@ -14,6 +14,16 @@ function int_tabulated(x, y)
 end
 
 
+function planck(λ, T)
+    h = 6.6260755  * 1e-27  # Planck's constant [erg s]
+    c = 2.99792458 * 1e10   # Vacuum speed of light [cm / s]
+    k = 1.380658   * 1e-16  # Boltzmann constant [erg / K]
+    b = 2 * h * c^2. ./ (λ.^5.)
+    d = h * c ./ (λ .* k .* T)
+    return b ./ (exp.(d) .- 1)
+end
+
+
 function estimate_fwhm(λ, f; plot=false)
     imax = argmax(f)
     half_max = f[imax] / 2

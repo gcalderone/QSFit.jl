@@ -9,6 +9,7 @@ using CMPFit, GModelFit, SortMerge
 using Pkg, Pkg.Artifacts
 using Statistics, DelimitedFiles, Printf, DataStructures
 using Unitful, UnitfulAstro
+using DSP
 using FITSIO
 using Dates
 using InteractiveUtils
