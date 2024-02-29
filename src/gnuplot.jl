@@ -5,8 +5,7 @@ function Gnuplot.recipe(spec::T) where T <: AbstractSpectrum
     i = findall(spec.good)
     return Gnuplot.parseSpecs("set bars 0", title=spec.label * (isnothing(spec.z) ? "" : ", z=$(spec.z)"),
                               xlabel="[x" * string(spec.unit_x) * "]", ylabel="[x" * string(spec.unit_y) * "]",
-                              spec.x   , spec.y   , spec.err   , "with yerr notit pt 0      lc rgb 'gray'",
-                              spec.x[i], spec.y[i], spec.err[i], "with p    notit pt 1 ps 1 lc rgb 'black'")
+                              spec.x   , spec.y   , spec.err   , "with yerr notit pt 0      lc rgb 'gray'")
 end
 
 function Gnuplot.recipe(spec::RestFrameSpectrum)
