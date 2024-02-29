@@ -93,7 +93,7 @@ function eval_balmer_continuum(Temp, Tau, fwhm)
     cont ./= maximum(cont)
 
     # Broadening
-    cont = conv_gauss(λ, cont, fwhm / 2.355)
+    cont = gauss_broadening(λ, cont, fwhm / 2.355)
 
     # Normalize Balmer continuum at 3000A
     cont ./=     Dierckx.Spline1D(λ, cont, k=1, bc="extrapolate")(3000.)

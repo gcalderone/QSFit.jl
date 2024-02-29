@@ -1,5 +1,58 @@
 gauss(x, μ, σ) = exp.(-0.5 .* ((x .- μ) ./ σ).^2) ./ sqrt(2pi) ./ σ
 
+#=
+Notes on spectral resolution
+A regular log-λ grid is characterized by a constant step:
+logstep = log10(λ_i+1) - log10(λ_i)  =  log10(λ_i+1 / λ_i)
+
+hence:
+λ_i+1 / λ_i  =  const.
+
+by subtracting a constant 1 to both sides
+λ_i+1 / λ_i - 1  =  (λ_i+1 - λ_i) / λ_i  =  Δλ / λ  = const.
+
+We interpret the constant as the reciprocal of the resolution:
+Δλ / λ  =  1/R
+
+i.e.
+λ_i+1 / λ_i = 1/R + 1
+logstep = log10(1/R + 1)
+
+The resolution can also be specified in km/s:
+R = c / σ_kms
+=#
+
+# Calculate logstep corresponding to resolution R = λ / Δλ
+logstep(R) = log10(1/R + 1)
+
+# Calculate sampling resolutions of a wavelength vector
+function sampling_resolutions(x::AbstractVector{<: Real})
+    if !issorted(x)
+        return sampling_resolution(sort(x))
+    end
+    return 1 ./ (x[2:end] ./ x[1:end-1] .- 1)
+end
+
+# Calculate number of logsteps corresponding to a width sigma_kms on a
+# logregular grid with resolution R = λ / Δλ.
+nlogsteps(R, sigma_kms) = logstep(3e5 / sigma_kms)  /  logstep(R)
+
+# Generate a gaussian kernel with sigma=sigma_kms on a logregular grid
+# with resolution R, extending in the range +/-nsigma.
+function gauss_kernel(R, sigma_kms, nsigma=5)
+    N = nlogsteps(R, sigma_kms)
+    grid = -ceil(N * nsigma):ceil(N * nsigma)
+    return gauss(grid, 0., N)
+end
+
+# Interpolate on a logregular grid with constant resolution R
+function interpolate_on_logregular_grid(x, y, R)
+    out_x = 10 .^ range(log10(minimum(x)), log10(maximum(x)), step=logstep(R))
+    out_y = Dierckx.Spline1D(x, y, k=1)(out_x)
+    return (out_x, out_y)
+end
+
+
 # This provides results similar to https://docs.sciml.ai/Integrals/stable/basics/SampledIntegralProblem/, while being significantly simpler.
 function int_tabulated(x, y)
     @assert all(isfinite.(x))

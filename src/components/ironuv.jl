@@ -2,11 +2,11 @@
 # ironuv
 #
 function ironuv_read()
-    ia   = readdlm(qsfit_data() * "/VW2001/Fe_UVtemplt_A.asc")
-    ib   = readdlm(qsfit_data() * "/VW2001/Fe_UVtemplt_B.asc")
-    i34  = readdlm(qsfit_data() * "/VW2001/Fe3UV34modelB2.asc")
-    i47  = readdlm(qsfit_data() * "/VW2001/Fe3_UV47.asc")
-    i191 = readdlm(qsfit_data() * "/VW2001/Fe2_UV191.asc")
+    ia   = readdlm(joinpath(qsfit_data(), "VW2001", "Fe_UVtemplt_A.asc"))
+    ib   = readdlm(joinpath(qsfit_data(), "VW2001", "Fe_UVtemplt_B.asc"))
+    i34  = readdlm(joinpath(qsfit_data(), "VW2001", "Fe3UV34modelB2.asc"))
+    i47  = readdlm(joinpath(qsfit_data(), "VW2001", "Fe3_UV47.asc"))
+    i191 = readdlm(joinpath(qsfit_data(), "VW2001", "Fe2_UV191.asc"))
 
     lmin, lmax = extrema([ia[:,1]; ib[:,1]; i34[:,1]; i47[:,1]; i191[:,1]])
     lmax = 3.3e3 # avoid overshooting to negative values
@@ -40,7 +40,7 @@ end
 function prepare!(comp::ironuv, domain::Domain{1})
     @assert comp.fwhm > 900
     λ, L = QSFit.ironuv_read()
-    L = QSFit.conv_gauss(λ, L, sqrt(comp.fwhm^2. - 900^2) / 2.355)
+    L = gauss_broadening(λ, L, sqrt(comp.fwhm^2. - 900^2) / 2.355)
     L ./= int_tabulated(λ, L)[1]
     comp.L = Dierckx.Spline1D(λ, L, k=1, bc="zero")(coords(domain))
     return fill(NaN, length(domain))
