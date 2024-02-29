@@ -53,9 +53,14 @@ function prepare!(comp::ironopt, domain::Domain{1})
         df[key] = val[ii]
     end
 
-    λ, L = delta_conv_gauss(df[:wavelength], df[:wht], comp.fwhm / 2.355)
-    L ./= int_tabulated(λ, L)[1]
-    comp.L = Dierckx.Spline1D(λ, L, k=1, bc="zero")(coords(domain))
+    x = coords(domain)
+    comp.L = x .* 0.
+    for i in 1:length(df[:wavelength])
+        λ = df[:wavelength][i]
+        comp.L .+= df[:wht][i] .* gauss(x, λ, comp.fwhm / 2.355 / 3e5 * λ)
+    end
+    comp.L ./= int_tabulated(x, comp.L)
+
     return fill(NaN, length(domain))
 end
 
@@ -65,5 +70,5 @@ function evaluate!(buffer::Vector{Float64}, comp::ironopt, domain::Domain{1},
     buffer .= norm .* comp.L
 end
 
-ironopt_broad( fwhm) = ironopt(qsfit_data() * "/VC2004/TabA1", fwhm)
-ironopt_narrow(fwhm) = ironopt(qsfit_data() * "/VC2004/TabA2", fwhm)
+ironopt_broad( fwhm) = ironopt(joinpath(qsfit_data(), "VC2004", "TabA1"), fwhm)
+ironopt_narrow(fwhm) = ironopt(joinpath(qsfit_data(), "VC2004", "TabA2"), fwhm)
