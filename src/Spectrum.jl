@@ -1,5 +1,3 @@
-using FITSIO, DSP
-
 export Spectrum
 
 abstract type AbstractSpectrum end

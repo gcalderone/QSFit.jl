@@ -2,17 +2,18 @@ module QSFit
 
 export RRef, AbstractRecipe, analyze
 
-
 import GModelFit: Domain, CompEval,
-    Parameter, AbstractComponent, prepare!, evaluate!
+    Parameter, AbstractComponent, dependencies, prepare!, evaluate!
 
 using CMPFit, GModelFit, SortMerge
 using Pkg, Pkg.Artifacts
 using Statistics, DelimitedFiles, Printf, DataStructures
 using Unitful, UnitfulAstro
+using FITSIO
 using Dates
 using InteractiveUtils
 using SpecialFunctions
+using Polyester
 using Gnuplot
 using TextParse
 using Cosmology
@@ -30,6 +31,7 @@ include("components/hostgalaxy.jl")
 include("components/ironopt.jl")
 include("components/ironuv.jl")
 include("components/balmercont.jl")
+include("components/gaussconv.jl")
 
 abstract type AbstractSpecLineComp <: AbstractComponent end
 include("components/SpecLineGauss.jl")

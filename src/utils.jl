@@ -1,23 +1,16 @@
 gauss(x, μ, σ) = exp.(-0.5 .* ((x .- μ) ./ σ).^2) ./ sqrt(2pi) ./ σ
 
-
+# This provides results similar to https://docs.sciml.ai/Integrals/stable/basics/SampledIntegralProblem/, while being significantly simpler.
 function int_tabulated(x, y)
-    @assert issorted(x)
     @assert all(isfinite.(x))
     @assert all(isfinite.(y))
+    if !issorted(x)
+        i = sortperm(x)
+        return int_tabulated(x[i], y[i])
+    end
     b = x[2:end] .- x[1:end-1]
     h = y[2:end] .+ y[1:end-1]
     return sum(b .* h) / 2
-end
-
-
-function planck(λ, T)
-    h = 6.6260755  * 1e-27  # Planck's constant [erg s]
-    c = 2.99792458 * 1e10   # Vacuum speed of light [cm / s]
-    k = 1.380658   * 1e-16  # Boltzmann constant [erg / K]
-    b = 2 * h * c^2. ./ (λ.^5.)
-    d = h * c ./ (λ .* k .* T)
-    return b ./ (exp.(d) .- 1)
 end
 
 
@@ -113,3 +106,18 @@ function spectral_coverage(spec_λ::Vector{Float64}, resolution::Float64,
 end
 
 
+macro batch_when_threaded(args...)
+    if Threads.nthreads() > 1
+        out = Expr(:macrocall, Symbol("@batch"), LineNumberNode(1, nothing))
+        append!(out.args, args)
+        return esc(out)
+    else
+        for arg in args
+            if isa(arg, Expr)
+                if arg.head == :for
+                    return esc(arg)
+                end
+            end
+        end
+    end
+end
