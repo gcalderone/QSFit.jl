@@ -41,7 +41,7 @@ y[ mm] = 1.;
 y[3mm] = 1.;
 y[5mm] = 1.;
 comp = QSFit.GaussConv(:a, 2000)
-c = comp(Domain(x), y)
+c = comp(Domain(x), [y])
 QSFit.int_tabulated(x, y), QSFit.int_tabulated(x, c)  # <-- these should be equal
 @gp xlog=true xr=extrema(x) x y "w l notit" x c "w l notit"
 QSFit.estimate_fwhm(x[2mm:4mm], c[2mm:4mm]) / x[3mm] * 3e5 / 2.355  # should be ~150 km/s, i.e. 3e5 / 2000
