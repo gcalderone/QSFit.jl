@@ -37,7 +37,7 @@ mutable struct Spectrum <: AbstractSpectrum
         l = x[ii]
         Rsampling = median(sampling_resolutions(l))
         if isnan(resolution)
-            resolution = sampling_res / 2
+            resolution = Rsampling / 2
             @warn "Resolution is not provided, assuming it is equal to half the sampling resolution: $resolution"
         end
         @assert Rsampling > resolution "Can't have sampling resolution ($Rsampling) greater than actual resolution ($resolution)"

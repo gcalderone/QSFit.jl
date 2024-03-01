@@ -50,7 +50,7 @@ qsfit_data() = artifact"qsfit_data"
 # ====================================================================
 mutable struct State
     logfile::Union{Nothing, String}
-    logio::Union{IOStream, Base.TTY}
+    logio::IO
     spec::AbstractSpectrum
     data::Union{Nothing, GModelFit.Measures{1}}
     model::Union{Nothing, GModelFit.Model}
