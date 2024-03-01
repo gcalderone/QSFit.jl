@@ -13,7 +13,7 @@ mutable struct Spectrum <: AbstractSpectrum
     err::Vector{Float64}
     good::Vector{Bool}
     dered::Vector{Float64}
-    resolution::Float64  # FWHM km/s
+    resolution::Float64
     meta::Dict{Symbol, Any}
     function Spectrum(x::Vector{T}, y::Vector{T}, err::Vector{T};
                       good::Union{Nothing, Vector{Bool}}=nothing,
@@ -33,19 +33,18 @@ mutable struct Spectrum <: AbstractSpectrum
         # Ensure wavelengths are sorted
         ii = sortperm(x)
 
-        # Estimate sampling resolution in km/s
+        # Estimate sampling resolution
         l = x[ii]
-        sampling_res = median((l[2:end] .- l[1:end-1]) ./ ((l[2:end] .+ l[1:end-1]) ./ 2)) * 3e5
+        Rsampling = median(sampling_resolutions(l))
         if isnan(resolution)
-            resolution = 2 * sampling_res
-            @warn "Resolution is not provided, assuming it is equal to twice the sampling resolution: $resolution km/s"
+            resolution = sampling_res / 2
+            @warn "Resolution is not provided, assuming it is equal to half the sampling resolution: $resolution"
         end
-        @assert sampling_res < resolution "Estimated resolution ($sampling_res) < provided resolution ($resolution)"
-
+        @assert Rsampling > resolution "Can't have sampling resolution ($Rsampling) greater than actual resolution ($resolution)"
         return new(label, z, ebv,
                    1. * unit_x, 1. * unit_y,
                    x[ii], y[ii], err[ii], good[ii], fill(1., length(y)),
-                   resolution, Dict{Symbol, Any}(:sampling_resolution => sampling_res))
+                   resolution, Dict{Symbol, Any}(:sampling_resolution => Rsampling))
     end
 end
 
@@ -109,16 +108,16 @@ function show(io::IO, spec::AbstractSpectrum)
     println(io, @sprintf "%s: %s" string(typeof(spec)) spec.label)
     isnothing(spec.z)    ||  println(io, @sprintf "       z: %8.3f" spec.z)
     isnothing(spec.ebv)  ||  println(io, @sprintf "  E(B-V): %8.3f" spec.ebv)
-    println(io, @sprintf "  resol.: %8.3f km/s" spec.resolution)
+    println(io, @sprintf "  resol.: %8.3f" spec.resolution)
     println(io, @sprintf "    good: %8.3f%%, units: X=%s, Y=%s" count(spec.good) / length(spec.good) * 100 string(spec.unit_x) string(spec.unit_y))
 end
 
 
-# Resolution is ~150 km/s FWHM
+# Resolution is ~2000
 # (https://www.sdss.org/dr12/spectro/spectro_basics/.) Analysis of an
 # HII region (e.g. spec-1176-52791-0591) yield 180 km/s FWHM for the
 # [OIII]5007)
-function Spectrum(::Val{:SDSS_DR10}, file::AbstractString; ndrop=100, resolution=150., kws...)
+function Spectrum(::Val{:SDSS_DR10}, file::AbstractString; ndrop=100, resolution=2000., kws...)
     f = FITS(file)
     wl = 10 .^read(f[2], "loglam")
     flux = float.(read(f[2], "flux"))
@@ -187,7 +186,7 @@ mutable struct RestFrameSpectrum <: AbstractSpectrum
     err::Vector{Float64}
     good::Vector{Bool}
     dered::Vector{Float64}
-    resolution::Float64  # FWHM km/s
+    resolution::Float64
     meta::Dict{Symbol, Any}
 end
 

@@ -45,8 +45,6 @@ function default_options(::Type{T}) where T <: Type1Recipe
     out[:use_ironopt] = true;     out[:Ironoptbr_fwhm] = 3000.;  out[:Ironoptna_fwhm] =  500.
 
     out[:line_profiles] = :gauss
-    out[:line_broadening] = true
-    out[:Iron_broadening] = true
 
     out[:n_nuisance] = 10
     out[:nuisance_avoid] = [4863 .+ [-1,1] .* 50, 6565 .+ [-1,1] .* 150]  # Angstrom
@@ -282,14 +280,10 @@ end
 
 function add_iron_uv!(recipe::RRef{<: Type1Recipe}, state::QSFit.State)
     λ = coords(domain(state.model))
-    resolution = state.spec.resolution
     if recipe.options[:use_ironuv]
         fwhm = recipe.options[:Ironuv_fwhm]
-        if recipe.options[:Iron_broadening]
-            fwhm = sqrt(fwhm^2 + resolution^2)
-        end
         comp = QSFit.ironuv(fwhm)
-        (_1, _2, coverage) = QSFit.spectral_coverage(λ, resolution, comp)
+        (_1, _2, coverage) = QSFit.spectral_coverage(λ, state.spec.resolution, comp)
         threshold = get(recipe.options[:min_spectral_coverage], :Ironuv, recipe.options[:min_spectral_coverage][:default])
         if coverage >= threshold
             state.model[:Ironuv] = comp
@@ -307,22 +301,15 @@ end
 
 function add_iron_opt!(recipe::RRef{<: Type1Recipe}, state::QSFit.State)
     λ = coords(domain(state.model))
-    resolution = state.spec.resolution
     if recipe.options[:use_ironopt]
         fwhm = recipe.options[:Ironoptbr_fwhm]
-        if recipe.options[:Iron_broadening]
-            fwhm = sqrt(fwhm^2 + resolution^2)
-        end
         comp = QSFit.ironopt_broad(fwhm)
-        (_1, _2, coverage) = QSFit.spectral_coverage(λ, resolution, comp)
+        (_1, _2, coverage) = QSFit.spectral_coverage(λ, state.spec.resolution, comp)
         threshold = get(recipe.options[:min_spectral_coverage], :Ironopt, recipe.options[:min_spectral_coverage][:default])
         if coverage >= threshold
             state.model[:Ironoptbr] = comp
             state.model[:Ironoptbr].norm.val = 1 # TODO: guess a sensible value
             fwhm = recipe.options[:Ironoptna_fwhm]
-            if recipe.options[:Iron_broadening]
-                fwhm = sqrt(fwhm^2 + resolution^2)
-            end
             state.model[:Ironoptna] = QSFit.ironopt_narrow(fwhm)
             state.model[:Ironoptna].norm.val = 1 # TODO: guess a sensible value
             state.model[:Ironoptna].norm.fixed = false
@@ -343,18 +330,6 @@ function add_emission_lines!(recipe::RRef{<: Type1Recipe}, state::QSFit.State)
 
     # Create model components
     for (cname, line) in state.user[:lcs]
-        # All QSFit line profiles take spectral resolution into
-        # account.  This is significantly faster than convolving the
-        # whole model with an instrument response but has some
-        # limitations:
-        # - works only with built-in profiles (Gaussian, Lorentzian, Voigt);
-        # - all components must be additive (i.e. no absorptions);
-        # - further narrow components (besides known emission lines)
-        #   will not be corrected for instrumental resolution.
-        if recipe.options[:line_broadening]
-            line.comp.resolution = state.spec.resolution
-        end
-
         state.model[cname] = line.comp
         haskey(groups, line.group)  ||  (groups[line.group] = Vector{Symbol}())
         push!(groups[line.group], cname)

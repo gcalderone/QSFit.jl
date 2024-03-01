@@ -44,15 +44,13 @@ mutable struct SpecLineVoigt <: AbstractSpecLineComp
     fwhm::Parameter
     log_a::Parameter
     voff::Parameter
-    resolution::Float64
 
     function SpecLineVoigt(center::Number)
         out = new(Parameter(1),
                   Parameter(center),
                   Parameter(3000),
                   Parameter(0),
-                  Parameter(0),
-                  0.)
+                  Parameter(0))
         @assert center > 0
         out.norm.low = 0
         out.center.low = 0
@@ -67,9 +65,7 @@ end
 function evaluate!(buffer::Vector{Float64}, comp::SpecLineVoigt, x::Domain{1},
                    norm, center, fwhm, log_a, voff)
     x0 = center - (voff / 3.e5) * center
-    σ_res = comp.resolution / 2.355 / 3.e5 * center
     σ, γ = voigt_σγ(fwhm            / 3.e5 * center, log_a)
-    σ = sqrt(σ^2 + σ_res^2)
     X = coords(x) .- x0
     buffer .= norm .* voigt.(X, σ, γ)
 end

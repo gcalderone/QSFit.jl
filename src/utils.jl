@@ -107,12 +107,10 @@ end
 
 
 # Enlarge a wavelength range to account for the instrumental resolution
-function broaden_range(λmin, λmax, resolution_kms)
+function broaden_range(λmin, λmax, resolution)
     λcenter = (λmin + λmax) / 2
     λspan   =  λmax - λmin
-    span_kms = λspan * 3e5 / λcenter
-    span_kms = sqrt(span_kms^2 + resolution_kms^2) # instrumental resolution added in quadrature
-    λspan = λcenter * span_kms / 3.e5
+    λspan   = sqrt(λspan^2 + (λcenter / resolution)^2)
     λmin = λcenter - λspan / 2
     λmax = λcenter + λspan / 2
     return (λmin, λmax)
@@ -140,16 +138,16 @@ function spectral_coverage(spec_λ::Vector{Float64}, resolution::Float64,
 
     # Calculate Npoints within the component range at given instrument resolution
     #=
-    (l1 - l0) / ((l1 + l0) / 2) = resolution / 3e5
-    (l1 - l0) = ((l1 + l0) / 2) * resolution / 3e5
-    l1 - l1/2 * resolution / 3e5 = l0 + l0/2 * resolution / 3e5
-    l1 * (1 - 1/2 * resolution / 3e5) = l0 * (1 + 1/2 * resolution / 3e5)
-    l1 = l0 * (1 + 1/2 * resolution / 3e5) / (1 - 1/2 * resolution / 3e5)
+    ((l1 + l0) / 2) / (l1 - l0) = resolution
+    ((l1 + l0) / 2) = (l1 - l0) * resolution
+    l0/2 + l0 * resolution = l1 * resolution - l1/2
+    l0 * (1/2 + resolution) = l1 * (resolution - 1/2)
+    l1 = l0 * (1/2 + resolution) / (resolution - 1/2)
     =#
     res_Npoints = 0
     l = comp_λmin
     while l <= comp_λmax
-        l *= (1 + 1/2 * resolution / 3e5) / (1 - 1/2 * resolution / 3e5)
+        l *= (1/2 + resolution) / (resolution - 1/2)
         res_Npoints += 1
     end
 
