@@ -49,8 +49,6 @@ qsfit_data() = artifact"qsfit_data"
 
 # ====================================================================
 mutable struct State
-    logfile::Union{Nothing, String}
-    logio::IO
     spec::AbstractSpectrum
     data::Union{Nothing, GModelFit.Measures{1}}
     model::Union{Nothing, GModelFit.Model}
@@ -111,7 +109,7 @@ function prepare_state!(recipe::RRef{<: AbstractRecipe}, state::State)
     if !isnothing(state.spec.ebv)
         dered = get_dered_function(recipe)
         tmp = dered([1450, 3000, 5100.], state.spec.ebv)
-        println(state.logio, "De-reddening factors @ 1450, 3000, 5100 AA: ", tmp)
+        println("De-reddening factors @ 1450, 3000, 5100 AA: ", tmp)
         deredden!(state.spec, dered)
     end
     if !isnothing(state.spec.z)
@@ -119,33 +117,23 @@ function prepare_state!(recipe::RRef{<: AbstractRecipe}, state::State)
     end
     convert_units!(recipe, state.spec)
     round_unit_scales!(state.spec)
-    show(state.logio, state.spec)
+    show(state.spec)
     update_data!(state)
     return state
 end
 
 reduce(recipe::RRef{<: AbstractRecipe}, state::State) = OrderedDict{Symbol, Any}()
 
-function analyze(recipe::RRef{T}, spec::AbstractSpectrum; logfile=nothing, overwrite=false) where T <: AbstractRecipe
+function analyze(recipe::RRef{T}, spec::AbstractSpectrum) where T <: AbstractRecipe
     timestamp = now()
     starttime = time()
-    if isnothing(logfile)
-        GModelFit.showsettings.plain = false
-        logio = stdout
-    else
-        if isfile(logfile)  &&  !overwrite
-            error("Logfile: $logfile already exists.")
-        end
-        logio = open(logfile, "w")
-        GModelFit.showsettings.plain = true
-    end
-    println(logio, "Timestamp: ", now())
-    println(logio, "Using $T recipe with options:")
-    show(logio, "text/plain", recipe.options)
-    println(logio)
-    println(logio)
+    println("Timestamp: ", now())
+    println("Using $T recipe with options:")
+    display(recipe.options)
+    println()
+    println()
 
-    state = State(logfile, logio, deepcopy(spec), nothing, nothing, OrderedDict{Symbol, Any}())
+    state = State(deepcopy(spec), nothing, nothing, OrderedDict{Symbol, Any}())
     prepare_state!(recipe, state)
     bestfit, fitstats = analyze(recipe, state)
     reduced = reduce(recipe, state)
@@ -155,12 +143,7 @@ function analyze(recipe::RRef{T}, spec::AbstractSpectrum; logfile=nothing, overw
                   state.spec, state.data,
                   bestfit, fitstats, reduced)
 
-    println(logio, "\nTotal elapsed time: $(out.elapsed) s")
-    if !isnothing(logfile)
-        close(logio)
-        GModelFit.showsettings.plain = false
-    end
-
+    println("\nTotal elapsed time: $(out.elapsed) s")
     return out
 end
 

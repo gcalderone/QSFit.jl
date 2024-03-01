@@ -123,7 +123,7 @@ function prepare_state!(recipe::RRef{<: Type1Recipe}, state::QSFit.State)
     not sufficient the component should not be added to the model,
     and corresponding spectral samples should be ignored to avoid
     worsening the fit due to missing model components. =#
-    println(state.logio, "Good samples before line coverage filter: ", count(state.spec.good) , " / ", length(state.spec.good))
+    println("Good samples before line coverage filter: ", count(state.spec.good) , " / ", length(state.spec.good))
 
     # Collect line components (neglecting the ones with insufficent coverage)
     lcs = dict_line_instances(recipe, recipe.options[:lines])
@@ -131,23 +131,23 @@ function prepare_state!(recipe::RRef{<: Type1Recipe}, state::QSFit.State)
         # The second pass is required to neglect lines whose coverage
         # has been affected by the neglected spectral samples.
         if loop == 2
-            println(state.logio)
-            println(state.logio, "Updated coverage:")
+            println()
+            println("Updated coverage:")
         end
         for (cname, line) in lcs
             threshold = get(recipe.options[:min_spectral_coverage], cname, recipe.options[:min_spectral_coverage][:default])
             (λmin, λmax, coverage) = QSFit.spectral_coverage(state.spec.x[findall(state.spec.good)],
                                                              state.spec.resolution, line.comp)
-            print(state.logio, @sprintf("Line %-15s coverage: %5.3f on range %10.5g < λ < %10.5g", cname, coverage, λmin, λmax))
+            @printf("Line %-15s coverage: %5.3f on range %10.5g < λ < %10.5g", cname, coverage, λmin, λmax)
             if coverage < threshold
-            print(state.logio, @sprintf(", threshold is < %5.3f, neglecting...", threshold))
+            @printf(", threshold is < %5.3f, neglecting...", threshold)
                 state.spec.good[λmin .<= state.spec.x .< λmax] .= false
                 delete!(lcs, cname)
             end
-            println(state.logio)
+            println()
         end
     end
-    println(state.logio, "Good samples after line coverage filter: ", count(state.spec.good) , " / ", length(state.spec.good))
+    println("Good samples after line coverage filter: ", count(state.spec.good) , " / ", length(state.spec.good))
 
     # Sort lines according to center wavelength
     kk = collect(keys(lcs))
@@ -166,8 +166,8 @@ function fit!(recipe::RRef{<: Type1Recipe}, state::QSFit.State)
     mzer.Δfitstat_threshold = 1.e-5
 
     bestfit, fitstats = fit(state.model, state.data, minimizer=mzer)
-    # show(state.logio, state.model)
-    show(state.logio, fitstats)
+    # show(state.model)
+    show(fitstats)
     # @gp :QSFit state.data model
     # printstyled(color=:blink, "Press ENTER to continue..."); readline()
     return bestfit, fitstats
@@ -237,7 +237,7 @@ function renorm_cont!(recipe::RRef{<: Type1Recipe}, state::QSFit.State)
     c = state.model[:QSOcont]
     initialnorm = c.norm.val
     if c.norm.val > 0
-        println(state.logio, "Cont. norm. (before): ", c.norm.val)
+        println("Cont. norm. (before): ", c.norm.val)
         while true
             residuals = (state.model() - values(state.data)) ./ uncerts(state.data)
             ratio = count(residuals .< 0) / length(residuals)
@@ -246,9 +246,9 @@ function renorm_cont!(recipe::RRef{<: Type1Recipe}, state::QSFit.State)
             c.norm.val *= 0.99
             GModelFit.update!(state.model)
         end
-        println(state.logio, "Cont. norm. (after) : ", c.norm.val)
+        println("Cont. norm. (after) : ", c.norm.val)
     else
-        println(state.logio, "Skipping cont. renormalization")
+        println("Skipping cont. renormalization")
     end
     GModelFit.update!(state.model)
     # @gp (domain(state.model), state.data) state.model
@@ -293,7 +293,7 @@ function add_iron_uv!(recipe::RRef{<: Type1Recipe}, state::QSFit.State)
             guess_norm_factor!(recipe, state, :Ironuv)
             GModelFit.update!(state.model)
         else
-            println(state.logio, "Ignoring ironuv component (threshold: $threshold)")
+            println("Ignoring ironuv component (threshold: $threshold)")
         end
     end
 end
@@ -319,7 +319,7 @@ function add_iron_opt!(recipe::RRef{<: Type1Recipe}, state::QSFit.State)
             guess_norm_factor!(recipe, state, :Ironoptbr)
             GModelFit.update!(state.model)
         else
-            println(state.logio, "Ignoring ironopt component (threshold: $threshold)")
+            println("Ignoring ironopt component (threshold: $threshold)")
         end
     end
 end
@@ -493,12 +493,12 @@ function neglect_weak_features!(recipe::RRef{<: Type1Recipe}, state::QSFit.State
         if state.model[cname].norm.val == 0.
             freeze!(state.model, cname)
             needs_fitting = true
-            println(state.logio, "Disabling $cname (norm. = 0)")
+            println("Disabling $cname (norm. = 0)")
         elseif state.model[cname].norm.unc / state.model[cname].norm.val > 3
             state.model[cname].norm.val = 0.
             freeze!(state.model, cname)
             needs_fitting = true
-            println(state.logio, "Disabling $cname (unc. / norm. > 3)")
+            println("Disabling $cname (unc. / norm. > 3)")
         end
     end
     return needs_fitting

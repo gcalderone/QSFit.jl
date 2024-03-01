@@ -4,7 +4,7 @@ function analyze(recipe::RRef{<: Type1Recipe}, state::QSFit.State)
     model[:main] = SumReducer()
     select_maincomp!(model, :main)
 
-    println(state.logio, "\nFit continuum components...")
+    println("\nFit continuum components...")
     model[:Continuum] = SumReducer()
     push!(model[:main].list, :Continuum)
     add_qso_continuum!(recipe, state)
@@ -17,7 +17,7 @@ function analyze(recipe::RRef{<: Type1Recipe}, state::QSFit.State)
     haskey(model, :Balmer)  &&  freeze!(model, :Balmer)
     GModelFit.update!(model)
 
-    println(state.logio, "\nFit iron templates...")
+    println("\nFit iron templates...")
     model[:Iron] = SumReducer()
     push!(model[:main].list, :Iron)
     add_iron_uv!(recipe, state)
@@ -31,7 +31,7 @@ function analyze(recipe::RRef{<: Type1Recipe}, state::QSFit.State)
     end
     GModelFit.update!(model)
 
-    println(state.logio, "\nFit known emission lines...")
+    println("\nFit known emission lines...")
     add_emission_lines!(recipe,state)
     add_patch_functs!(recipe, state)
 
@@ -40,10 +40,10 @@ function analyze(recipe::RRef{<: Type1Recipe}, state::QSFit.State)
         freeze!(model, cname)
     end
 
-    println(state.logio, "\nFit nuisance emission lines...")
+    println("\nFit nuisance emission lines...")
     add_nuisance_lines!(recipe, state)
 
-    println(state.logio, "\nLast run with all parameters free...")
+    println("\nLast run with all parameters free...")
     thaw!(model, :QSOcont)
     haskey(model, :Galaxy   )  &&  thaw!(model, :Galaxy)
     haskey(model, :Balmer   )  &&  thaw!(model, :Balmer)
@@ -64,7 +64,7 @@ function analyze(recipe::RRef{<: Type1Recipe}, state::QSFit.State)
     bestfit, fitstats = fit!(recipe, state)
 
     if neglect_weak_features!(recipe, state)
-        println(state.logio, "\nRe-run fit...")
+        println("\nRe-run fit...")
         bestfit, fitstats = fit!(recipe, state)
     end
 
