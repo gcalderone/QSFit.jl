@@ -60,7 +60,7 @@ function analyze(recipe::RRef{<: LineFitRecipe}, state::QSFit.State)
     end
 
     mzer = GModelFit.cmpfit()
-    mzer.Δfitstat_threshold = 1.e-5
+    mzer.config.ftol = 1.e-5
     return fit(state.model, state.data, minimizer=mzer)
 end
 
