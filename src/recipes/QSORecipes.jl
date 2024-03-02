@@ -163,7 +163,6 @@ end
 
 function fit!(recipe::RRef{<: Type1Recipe}, state::QSFit.State)
     mzer = GModelFit.cmpfit()
-    mzer.Δfitstat_threshold = 1.e-5
 
     bestfit, fitstats = fit(state.model, state.data, minimizer=mzer)
     # show(state.model)

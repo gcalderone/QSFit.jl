@@ -24,11 +24,12 @@ function Gnuplot.recipe(res::Results)
 end
 
 
-function residuals(res::Results)
-    resid = (values(res.pspec.data) .- res.bestfit()) ./ uncerts(res.pspec.data)
+function residuals(bestfit::GModelFit.ModelSnapshot, data::Measures)
+    resid = (values(data) .- bestfit()) ./ uncerts(data)
     return Gnuplot.parseSpecs(
         "set grid", "set key outside horizontal",
-        coords(res.pspec.data.domain), resid, "with p t 'Residuals' lc rgb 'red'",
-        Gnuplot.line(extrema(coords(res.pspec.data.domain)), 0., "with l notit dt 2 lc rgb 'black'"),
-        coords(res.pspec.data.domain), cumsum(resid.^2), "with l t 'Cumulative residuals^2' lc rgb 'blue' axes x1y2")
+        coords(data.domain), resid, "with p t 'Residuals' lc rgb 'red'",
+        Gnuplot.line(extrema(coords(data.domain)), 0., "with l notit dt 2 lc rgb 'black'"),
+        coords(data.domain), cumsum(resid.^2), "with l t 'Cumulative residuals^2' lc rgb 'blue' axes x1y2")
 end
+residuals(res::Results) = residuals(res.bestfit, res.pspec.data)

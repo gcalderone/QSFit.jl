@@ -25,7 +25,7 @@ function prepare!(comp::GaussConv, domain::Domain{1})
 end
 
 function evaluate!(buffer::Vector{Float64}, comp::GaussConv, x::Domain{1}, arg)
-    direct_conv1d!(buffer, arg[1], comp.kernel)
+    direct_conv1d!(buffer, arg[1], comp.kernel, Val(:edge_mirror))
 end
 
 #=
