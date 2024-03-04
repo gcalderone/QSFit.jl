@@ -24,7 +24,14 @@ end
 function evaluate!(ceval::CompEval{SpecLineLorentz, Domain{1}},
                    norm, center, fwhm, voff)
     x0 = center - (voff / 3.e5) * center
-    γ     = fwhm            / 2     / 3.e5 * center
-    X = coords(ceval.domain) .- x0
-    ceval.buffer .= norm .* γ ./ (pi .* (X.^2. .+ γ^2.))
+    γ  = fwhm / 2       / 3.e5  * center
+    x = coords(ceval.domain)
+    for i in 1:length(x)
+        X = x[i] - x0
+        if abs(X) < 20γ
+            ceval.buffer[i] = norm * γ / (pi * (X^2. + γ^2.))
+        else
+            ceval.buffer[i] = 0.
+        end
+    end
 end

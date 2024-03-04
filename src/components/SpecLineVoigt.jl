@@ -64,10 +64,15 @@ end
 
 function evaluate!(ceval::CompEval{SpecLineVoigt, Domain{1}},
                    norm, center, fwhm, log_a, voff)
-    x0 = center - (voff / 3.e5) * center
-    σ, γ = voigt_σγ(fwhm / 3.e5 * center, log_a)
-    X = coords(ceval.domain) .- x0
-    # ceval.buffer .= 0.
-    # i = findall(abs.(X) .< 2 * fwhm)
-    ceval.buffer .= norm .* voigt.(X, σ, γ)
+    x0 = center -  (voff / 3.e5) * center
+    σ, γ = voigt_σγ(fwhm / 3.e5  * center, log_a)
+    x = coords(ceval.domain)
+    for i in 1:length(x)
+        X = x[i] - x0
+        if abs(X) < 20 * (σ + γ)
+            ceval.buffer[i] = norm * voigt(X, σ, γ)
+        else
+            ceval.buffer[i] = 0.
+        end
+    end
 end

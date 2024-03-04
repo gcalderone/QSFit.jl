@@ -24,12 +24,15 @@ end
 function evaluate!(ceval::CompEval{SpecLineGauss, Domain{1}},
                    norm, center, fwhm, voff)
     x0 = center - (voff / 3.e5) * center
-    σ     = fwhm            / 2.355 / 3.e5 * center
-    X = (coords(ceval.domain) .- x0) ./ σ
+    σ  = fwhm   / 2.355 / 3.e5  * center
+    x = coords(ceval.domain)
 
-    function profile(x)
-        (abs(x) > 4)  &&  (return 0.)
-        return norm * exp(-x^2 / 2) / sqrt(2pi) / σ
+    for i in 1:length(x)
+        X = x[i] - x0
+        if abs(X) < 5σ
+            ceval.buffer[i] = norm * exp(-(X / σ)^2 / 2) / sqrt(2pi) / σ
+        else
+            ceval.buffer[i] = 0.
+        end
     end
-    map!(profile, ceval.buffer, X)
 end
