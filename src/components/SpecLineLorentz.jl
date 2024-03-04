@@ -12,7 +12,8 @@ mutable struct SpecLineLorentz <: AbstractSpecLineComp
         out = new(Parameter(1),
                   Parameter(center),
                   Parameter(3000),
-                  Parameter(0))
+                  Parameter(0),
+                  span)
         @assert center > 0
         @assert span > 0
         out.norm.low = 0
