@@ -21,15 +21,15 @@ mutable struct SpecLineGauss <: AbstractSpecLineComp
     end
 end
 
-function evaluate!(buffer::Vector{Float64}, comp::SpecLineGauss, x::Domain{1},
+function evaluate!(ceval::CompEval{SpecLineGauss, Domain{1}},
                    norm, center, fwhm, voff)
     x0 = center - (voff / 3.e5) * center
     σ     = fwhm            / 2.355 / 3.e5 * center
-    X = (coords(x) .- x0) ./ σ
+    X = (coords(ceval.domain) .- x0) ./ σ
 
     function profile(x)
         (abs(x) > 4)  &&  (return 0.)
         return norm * exp(-x^2 / 2) / sqrt(2pi) / σ
     end
-    map!(profile, buffer, X)
+    map!(profile, ceval.buffer, X)
 end

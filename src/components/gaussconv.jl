@@ -24,8 +24,8 @@ function prepare!(comp::GaussConv, domain::Domain{1})
     return fill(NaN, length(domain))
 end
 
-function evaluate!(buffer::Vector{Float64}, comp::GaussConv, x::Domain{1}, arg)
-    direct_conv1d!(buffer, arg[1], comp.kernel, Val(:edge_mirror))
+function evaluate!(ceval::CompEval{GaussConv, Domain{1}})
+    direct_conv1d!(ceval.buffer, ceval.deps[1], ceval.comp.kernel, Val(:edge_mirror))
 end
 
 #=
