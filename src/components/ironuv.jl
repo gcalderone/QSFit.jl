@@ -47,7 +47,7 @@ function prepare!(comp::ironuv, domain::Domain{1})
 end
 
 
-function evaluate!(buffer::Vector{Float64}, comp::ironuv, domain::Domain{1},
+function evaluate!(ceval::CompEval{ironuv, Domain{1}},
                    norm)
-    buffer .= norm .* comp.L
+    ceval.buffer .= norm .* ceval.comp.L
 end

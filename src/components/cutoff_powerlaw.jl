@@ -23,7 +23,8 @@ mutable struct cutoff_powerlaw <: AbstractComponent
 end
 
 
-function evaluate!(buffer, comp::cutoff_powerlaw, x::Domain{1},
+function evaluate!(ceval::CompEval{cutoff_powerlaw, Domain{1}},
                    norm, x0, alpha, beta)
-    buffer .= norm .* (coords(x) ./ x0).^alpha .* exp.(1 .- ((coords(x) ./ x0) .^beta))
+    x = coords(ceval.domain)
+    ceval.buffer .= norm .* (x ./ x0).^alpha .* exp.(1 .- ((x ./ x0) .^beta))
 end

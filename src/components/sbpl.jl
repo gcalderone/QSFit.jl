@@ -24,9 +24,9 @@ mutable struct sbpl <: AbstractComponent
     end
 end
 
-function evaluate!(buffer::Vector{Float64}, comp::sbpl, x::Domain{1},
+function evaluate!(ceval::CompEval{sbpl, Domain{1}},
                    norm, x0, alpha1, alpha2, delta)
-    xx = coords(x) ./ x0
+    xx = coords(ceval.comp) ./ x0
 
     # The quantity `t = (x / x_b)^(1 / delta)` can become quite large.
     # To avoid overflow errors we will start by calculating its
@@ -48,7 +48,7 @@ function evaluate!(buffer::Vector{Float64}, comp::sbpl, x::Domain{1},
     
     i = findall(abs.(logt) .< threshold)
     if length(i) > 0
-        buffer[i] .= norm .* xx[i].^alpha1 .*
+        ceval.buffer[i] .= norm .* xx[i].^alpha1 .*
             ((0.5 .* (1 .+ xx[i].^(1/delta))) .^((alpha2 - alpha1) * delta))
     end
 end

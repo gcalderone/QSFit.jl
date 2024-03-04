@@ -18,7 +18,7 @@ mutable struct powerlaw <: AbstractComponent
     end
 end
 
-function evaluate!(buffer::Vector{Float64}, comp::powerlaw, x::Domain{1},
+function evaluate!(ceval::CompEval{powerlaw, Domain{1}},
                    norm, x0, alpha)
-    buffer .= norm .* (coords(x) ./ x0).^alpha
+    ceval.buffer .= norm .* (coords(ceval.domain) ./ x0).^alpha
 end

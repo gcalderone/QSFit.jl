@@ -67,7 +67,7 @@ function prepare!(comp::hostgalaxy, domain::Domain{1})
     return fill(NaN, length(domain))
 end
 
-function evaluate!(buffer::Vector{Float64}, comp::hostgalaxy, domain::Domain{1},
+function evaluate!(ceval::CompEval{hostgalaxy, Domain{1}},
                    norm)
-    buffer .= norm .* comp.base
+    ceval.buffer .= norm .* ceval.comp.base
 end

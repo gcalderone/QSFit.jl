@@ -134,7 +134,7 @@ function prepare!(comp::balmercont, domain::Domain{1})
     return fill(NaN, length(domain))
 end
 
-function evaluate!(buffer::Vector{Float64}, comp::balmercont, domain::Domain{1},
+function evaluate!(ceval::CompEval{balmercont, Domain{1}},
                    norm, ratio)
-    buffer .= norm .* (comp.c1 .+ ratio .* comp.c2)
+    ceval.buffer .= norm .* (ceval.comp.c1 .+ ratio .* ceval.comp.c2)
 end
