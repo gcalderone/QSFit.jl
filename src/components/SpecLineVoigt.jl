@@ -44,14 +44,17 @@ mutable struct SpecLineVoigt <: AbstractSpecLineComp
     fwhm::Parameter
     log_a::Parameter
     voff::Parameter
+    span::Float64
 
-    function SpecLineVoigt(center::Number)
+    function SpecLineVoigt(center::Number; span=10)
         out = new(Parameter(1),
                   Parameter(center),
                   Parameter(3000),
                   Parameter(0),
-                  Parameter(0))
+                  Parameter(0),
+                  span)
         @assert center > 0
+        @assert span > 0
         out.norm.low = 0
         out.center.low = 0
         out.fwhm.low = 0
@@ -69,7 +72,7 @@ function evaluate!(ceval::CompEval{SpecLineVoigt, Domain{1}},
     x = coords(ceval.domain)
     for i in 1:length(x)
         X = x[i] - x0
-        if abs(X) < 20 * (σ + γ)
+        if abs(X) < ceval.comp.span * (σ + γ)
             ceval.buffer[i] = norm * voigt(X, σ, γ)
         else
             ceval.buffer[i] = 0.
