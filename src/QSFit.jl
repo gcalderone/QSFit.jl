@@ -51,7 +51,7 @@ qsfit_data() = artifact"qsfit_data"
 mutable struct State
     spec::AbstractSpectrum
     data::Union{Nothing, GModelFit.Measures{1}}
-    model::Union{Nothing, GModelFit.Model}
+    meval::Union{Nothing, GModelFit.ModelEval}
     user::OrderedDict{Symbol, Any}
 end
 
@@ -62,7 +62,6 @@ function update_data!(state::State)
     state.data = Measures(domain,
                           state.spec.y[ii]   .* state.spec.dered[ii],
                           state.spec.err[ii] .* state.spec.dered[ii])
-    state.model = Model(domain)
     return state
 end
 

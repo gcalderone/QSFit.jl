@@ -1,8 +1,7 @@
 
 function analyze(recipe::RRef{<: Type1Recipe}, state::QSFit.State)
-    model = state.model
-    model[:main] = SumReducer()
-    select_maincomp!(model, :main)
+    model = Model(:main => SumReducer())
+    state.meval = GModelFit.ModelEval(model, domain(state.data))
 
     println("\nFit continuum components...")
     model[:Continuum] = SumReducer()
@@ -15,7 +14,7 @@ function analyze(recipe::RRef{<: Type1Recipe}, state::QSFit.State)
     freeze!(model, :QSOcont)
     haskey(model, :Galaxy)  &&  freeze!(model, :Galaxy)
     haskey(model, :Balmer)  &&  freeze!(model, :Balmer)
-    GModelFit.update!(model)
+    GModelFit.update!(state.meval)
 
     println("\nFit iron templates...")
     model[:Iron] = SumReducer()
@@ -29,7 +28,7 @@ function analyze(recipe::RRef{<: Type1Recipe}, state::QSFit.State)
         haskey(model, :Ironoptbr)  &&  freeze!(model, :Ironoptbr)
         haskey(model, :Ironoptna)  &&  freeze!(model, :Ironoptna)
     end
-    GModelFit.update!(model)
+    GModelFit.update!(state.meval)
 
     println("\nFit known emission lines...")
     add_emission_lines!(recipe,state)

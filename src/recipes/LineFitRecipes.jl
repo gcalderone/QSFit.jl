@@ -33,35 +33,36 @@ function analyze(recipe::RRef{<: LineFitRecipe}, state::QSFit.State)
     state.spec.good[findall(state.spec.x .> recipe.options[:wavelength_range][2])] .= false
     QSFit.update_data!(state)
 
-    state.model[:QSOcont] = QSFit.powerlaw(median(coords(domain(state.data))))
-    state.model[:QSOcont].norm.val = median(values(state.data))
-    state.model[:QSOcont].norm.low = median(values(state.data)) / 1000.  # ensure contiuum remains positive (needed to estimate EWs)
-    state.model[:QSOcont].alpha.val  = -1.5
-    state.model[:QSOcont].alpha.low  = -3
-    state.model[:QSOcont].alpha.high =  1
+    model = Model()
+    model[:QSOcont] = QSFit.powerlaw(median(coords(domain(state.data))))
+    model[:QSOcont].norm.val = median(values(state.data))
+    model[:QSOcont].norm.low = median(values(state.data)) / 1000.  # ensure contiuum remains positive (needed to estimate EWs)
+    model[:QSOcont].alpha.val  = -1.5
+    model[:QSOcont].alpha.low  = -3
+    model[:QSOcont].alpha.high =  1
 
-    state.model[:main] = SumReducer(:QSOcont)
-    select_maincomp!(state.model, :main)
+    model[:main] = SumReducer(:QSOcont)
+    select_maincomp!(model, :main)
 
     for ld in recipe.options[:lines]
         for T in ld.types
             cname = line_cname(recipe, T, ld.id)
-            @assert !(cname in keys(state.model)) "Duplicate component name: $cname"
-            state.model[cname] = line_component(recipe, T, ld.id)
+            @assert !(cname in keys(model)) "Duplicate component name: $cname"
+            model[cname] = line_component(recipe, T, ld.id)
 
             group = line_group(recipe, T)
-            if !(group in keys(state.model))
-                state.model[group] = SumReducer(cname)
-                push!(state.model[:main].list, group)
+            if !(group in keys(model))
+                model[group] = SumReducer(cname)
+                push!(model[:main].list, group)
             else
-                push!(state.model[group].list, cname)
+                push!(model[group].list, cname)
             end
         end
     end
 
     mzer = GModelFit.cmpfit()
     mzer.config.ftol = 1.e-5
-    return fit(state.model, state.data, minimizer=mzer)
+    return fit(model, state.data, minimizer=mzer)
 end
 
 

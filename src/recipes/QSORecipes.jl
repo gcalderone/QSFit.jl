@@ -163,18 +163,14 @@ end
 
 function fit!(recipe::RRef{<: Type1Recipe}, state::QSFit.State)
     mzer = GModelFit.cmpfit()
-
-    bestfit, fitstats = fit(state.model, state.data, minimizer=mzer)
-    # show(state.model)
+    bestfit, fitstats = GModelFit.fit!(state.meval, state.data, minimizer=mzer)
     show(fitstats)
-    # @gp :QSFit state.data model
-    # printstyled(color=:blink, "Press ENTER to continue..."); readline()
     return bestfit, fitstats
 end
 
 
 function add_qso_continuum!(recipe::RRef{<: Type1Recipe}, state::QSFit.State)
-    λ = coords(domain(state.model))
+    λ = coords(state.meval.domain)
 
     comp = QSFit.powerlaw(3000)
     comp.x0.val = median(λ)
@@ -184,21 +180,21 @@ function add_qso_continuum!(recipe::RRef{<: Type1Recipe}, state::QSFit.State)
     comp.alpha.low  = -3
     comp.alpha.high =  1
 
-    state.model[:QSOcont] = comp
-    push!(state.model[:Continuum].list, :QSOcont)
-    GModelFit.update!(state.model)
+    state.meval.model[:QSOcont] = comp
+    push!(state.meval.model[:Continuum].list, :QSOcont)
+    GModelFit.update!(state.meval)
 end
 
 
 function add_host_galaxy!(recipe::RRef{<: Type1Recipe}, state::QSFit.State)
-    λ = coords(domain(state.model))
+    λ = coords(state.meval.domain)
     if recipe.options[:use_host_template]  &&
         (recipe.options[:host_template_range][1] .< maximum(λ))  &&
         (recipe.options[:host_template_range][2] .> minimum(λ))
-        state.model[:Galaxy] = QSFit.hostgalaxy(recipe.options[:host_template][:template],
+        state.meval.model[:Galaxy] = QSFit.hostgalaxy(recipe.options[:host_template][:template],
                                                 library=recipe.options[:host_template][:library],
                                                 refwl=recipe.options[:host_template_ref_wavelength])
-        push!(state.model[:Continuum].list, :Galaxy)
+        push!(state.meval.model[:Continuum].list, :Galaxy)
 
         # Split total flux between continuum and host galaxy
         refwl = recipe.options[:host_template_ref_wavelength]
@@ -206,18 +202,18 @@ function add_host_galaxy!(recipe::RRef{<: Type1Recipe}, state::QSFit.State)
         @assert !isnan(vv) "Predicted L_λ at $(refwl)A is NaN"
         @assert vv > 0 "Predicted L_λ at $(refwl)A is negative"
         # (vv <= 0)  &&  (vv = .1 * median(values(state.data)))
-        state.model[:Galaxy].norm.val    = 1/2 * vv
-        state.model[:QSOcont].norm.val *= 1/2 * vv / Dierckx.Spline1D(λ, state.model(:QSOcont), k=1, bc="extrapolate")(refwl)
-        GModelFit.update!(state.model)
+        state.meval.model[:Galaxy].norm.val    = 1/2 * vv
+        state.meval.model[:QSOcont].norm.val *= 1/2 * vv / Dierckx.Spline1D(λ, state.meval(:QSOcont), k=1, bc="extrapolate")(refwl)
+        GModelFit.update!(state.meval)
     end
 end
 
 
 function add_balmer_cont!(recipe::RRef{<: Type1Recipe}, state::QSFit.State)
     if recipe.options[:use_balmer]
-        state.model[:Balmer] = QSFit.balmercont(0.1, 0.5)
-        push!(state.model[:Continuum].list, :Balmer)
-        c = state.model[:Balmer]
+        state.meval.model[:Balmer] = QSFit.balmercont(0.1, 0.5)
+        push!(state.meval.model[:Continuum].list, :Balmer)
+        c = state.meval.model[:Balmer]
         c.norm.val  = 0.1
         c.norm.fixed = false
         c.norm.high = 0.5
@@ -225,39 +221,38 @@ function add_balmer_cont!(recipe::RRef{<: Type1Recipe}, state::QSFit.State)
         c.ratio.fixed = false
         c.ratio.low  = 0.1
         c.ratio.high = 1
-        state.model[:Balmer].norm.patch = @λ (m, v) -> v * m[:QSOcont].norm
-        GModelFit.update!(state.model)
+        state.meval.model[:Balmer].norm.patch = @λ (m, v) -> v * m[:QSOcont].norm
+        GModelFit.update!(state.meval)
     end
 end
 
 
 function renorm_cont!(recipe::RRef{<: Type1Recipe}, state::QSFit.State)
-    freeze!(state.model, :QSOcont)
-    c = state.model[:QSOcont]
+    freeze!(state.meval.model, :QSOcont)
+    c = state.meval.model[:QSOcont]
+    d = state.meval.cevals[:QSOcont]
     initialnorm = c.norm.val
     if c.norm.val > 0
         println("Cont. norm. (before): ", c.norm.val)
         while true
-            residuals = (state.model() - values(state.data)) ./ uncerts(state.data)
+            residuals = (state.meval() - values(state.data)) ./ uncerts(state.data)
             ratio = count(residuals .< 0) / length(residuals)
             (ratio > 0.9)  &&  break
             (c.norm.val < (initialnorm / 5))  &&  break # give up
             c.norm.val *= 0.99
-            GModelFit.update!(state.model)
+            GModelFit.update!(state.meval)
         end
         println("Cont. norm. (after) : ", c.norm.val)
     else
         println("Skipping cont. renormalization")
     end
-    GModelFit.update!(state.model)
-    # @gp (domain(state.model), state.data) state.model
-    # printstyled(color=:blink, "Press ENTER to continue..."); readline()
+    GModelFit.update!(state.meval)
 end
 
 
 function guess_norm_factor!(recipe::RRef{<: Type1Recipe}, state::QSFit.State, name::Symbol; quantile=0.95)
-    @assert state.model[name].norm.val != 0
-    m = state.model(name)
+    @assert state.meval.model[name].norm.val != 0
+    m = state.meval(name)
     c = cumsum(m)
     @assert maximum(c) != 0. "Model for $name evaluates to zero over the whole domain"
     c ./= maximum(c)
@@ -266,31 +261,31 @@ function guess_norm_factor!(recipe::RRef{<: Type1Recipe}, state::QSFit.State, na
     if i1 >= i2
         return #Can't calculate normalization for component
     end
-    resid = values(state.data) - state.model()
-    ratio = state.model[name].norm.val / sum(m[i1:i2])
+    resid = values(state.data) - state.meval()
+    ratio = state.meval.model[name].norm.val / sum(m[i1:i2])
     off = sum(resid[i1:i2]) * ratio
-    state.model[name].norm.val += off
+    state.meval.model[name].norm.val += off
     @assert !isnan(off) "Norm. offset is NaN for $name"
-    if state.model[name].norm.val < 0  # ensure line has positive normalization
-        state.model[name].norm.val = abs(off)
+    if state.meval.model[name].norm.val < 0  # ensure line has positive normalization
+        state.meval.model[name].norm.val = abs(off)
     end
 end
 
 
 function add_iron_uv!(recipe::RRef{<: Type1Recipe}, state::QSFit.State)
-    λ = coords(domain(state.model))
+    λ = coords(state.meval.domain)
     if recipe.options[:use_ironuv]
         fwhm = recipe.options[:Ironuv_fwhm]
         comp = QSFit.ironuv(fwhm)
         (_1, _2, coverage) = QSFit.spectral_coverage(λ, state.spec.resolution, comp)
         threshold = get(recipe.options[:min_spectral_coverage], :Ironuv, recipe.options[:min_spectral_coverage][:default])
         if coverage >= threshold
-            state.model[:Ironuv] = comp
-            state.model[:Ironuv].norm.val = 1.
-            push!(state.model[:Iron].list, :Ironuv)
-            GModelFit.update!(state.model)
+            state.meval.model[:Ironuv] = comp
+            state.meval.model[:Ironuv].norm.val = 1.
+            push!(state.meval.model[:Iron].list, :Ironuv)
+            GModelFit.update!(state.meval)
             guess_norm_factor!(recipe, state, :Ironuv)
-            GModelFit.update!(state.model)
+            GModelFit.update!(state.meval)
         else
             println("Ignoring ironuv component (threshold: $threshold)")
         end
@@ -299,24 +294,24 @@ end
 
 
 function add_iron_opt!(recipe::RRef{<: Type1Recipe}, state::QSFit.State)
-    λ = coords(domain(state.model))
+    λ = coords(state.meval.domain)
     if recipe.options[:use_ironopt]
         fwhm = recipe.options[:Ironoptbr_fwhm]
         comp = QSFit.ironopt_broad(fwhm)
         (_1, _2, coverage) = QSFit.spectral_coverage(λ, state.spec.resolution, comp)
         threshold = get(recipe.options[:min_spectral_coverage], :Ironopt, recipe.options[:min_spectral_coverage][:default])
         if coverage >= threshold
-            state.model[:Ironoptbr] = comp
-            state.model[:Ironoptbr].norm.val = 1 # TODO: guess a sensible value
+            state.meval.model[:Ironoptbr] = comp
+            state.meval.model[:Ironoptbr].norm.val = 1 # TODO: guess a sensible value
             fwhm = recipe.options[:Ironoptna_fwhm]
-            state.model[:Ironoptna] = QSFit.ironopt_narrow(fwhm)
-            state.model[:Ironoptna].norm.val = 1 # TODO: guess a sensible value
-            state.model[:Ironoptna].norm.fixed = false
-            push!(state.model[:Iron].list, :Ironoptbr)
-            push!(state.model[:Iron].list, :Ironoptna)
-            GModelFit.update!(state.model)
+            state.meval.model[:Ironoptna] = QSFit.ironopt_narrow(fwhm)
+            state.meval.model[:Ironoptna].norm.val = 1 # TODO: guess a sensible value
+            state.meval.model[:Ironoptna].norm.fixed = false
+            push!(state.meval.model[:Iron].list, :Ironoptbr)
+            push!(state.meval.model[:Iron].list, :Ironoptna)
+            GModelFit.update!(state.meval)
             guess_norm_factor!(recipe, state, :Ironoptbr)
-            GModelFit.update!(state.model)
+            GModelFit.update!(state.meval)
         else
             println("Ignoring ironopt component (threshold: $threshold)")
         end
@@ -329,7 +324,7 @@ function add_emission_lines!(recipe::RRef{<: Type1Recipe}, state::QSFit.State)
 
     # Create model components
     for (cname, line) in state.user[:lcs]
-        state.model[cname] = line.comp
+        state.meval.model[cname] = line.comp
         haskey(groups, line.group)  ||  (groups[line.group] = Vector{Symbol}())
         push!(groups[line.group], cname)
     end
@@ -337,10 +332,10 @@ function add_emission_lines!(recipe::RRef{<: Type1Recipe}, state::QSFit.State)
     # Create reducers for groups
     for (group, lnames) in groups
         @assert group in [:BroadLines, :NarrowLines, :VeryBroadLines] "Unexpected group for emission lines: $group"
-        state.model[group] = SumReducer(lnames)
-        push!(state.model[:main].list, group)
+        state.meval.model[group] = SumReducer(lnames)
+        push!(state.meval.model[:main].list, group)
     end
-    GModelFit.update!(state.model)
+    GModelFit.update!(state.meval)
 
     # Guess normalizations
     for group in [:BroadLines, :NarrowLines, :VeryBroadLines]  # Note: order is important
@@ -354,60 +349,61 @@ end
 
 
 function add_patch_functs!(recipe::RRef{<: Type1Recipe}, state::QSFit.State)
+    model = state.meval.model
     # Patch parameters
-    if haskey(state.model, :OIII_4959)  &&  haskey(state.model, :OIII_5007)
-        # state.model[:OIII_4959].norm.patch = @λ m -> m[:OIII_5007].norm / 3
-        state.model[:OIII_4959].voff.patch = :OIII_5007
+    if haskey(model, :OIII_4959)  &&  haskey(model, :OIII_5007)
+        # model[:OIII_4959].norm.patch = @λ m -> m[:OIII_5007].norm / 3
+        model[:OIII_4959].voff.patch = :OIII_5007
     end
-    if haskey(state.model, :OIII_5007)  &&  haskey(state.model, :OIII_5007_bw)
-        state.model[:OIII_5007_bw].voff.patch = @λ (m, v) -> v + m[:OIII_5007].voff
-        state.model[:OIII_5007_bw].fwhm.patch = @λ (m, v) -> v + m[:OIII_5007].fwhm
+    if haskey(model, :OIII_5007)  &&  haskey(model, :OIII_5007_bw)
+        model[:OIII_5007_bw].voff.patch = @λ (m, v) -> v + m[:OIII_5007].voff
+        model[:OIII_5007_bw].fwhm.patch = @λ (m, v) -> v + m[:OIII_5007].fwhm
     end
-    if haskey(state.model, :OI_6300)  &&  haskey(state.model, :OI_6364)
-        # state.model[:OI_6300].norm.patch = @λ m -> m[:OI_6364].norm / 3
-        state.model[:OI_6300].voff.patch = :OI_6364
+    if haskey(model, :OI_6300)  &&  haskey(model, :OI_6364)
+        # model[:OI_6300].norm.patch = @λ m -> m[:OI_6364].norm / 3
+        model[:OI_6300].voff.patch = :OI_6364
     end
-    if haskey(state.model, :NII_6549)  &&  haskey(state.model, :NII_6583)
-        # state.model[:NII_6549].norm.patch = @λ m -> m[:NII_6583].norm / 3
-        state.model[:NII_6549].voff.patch = :NII_6583
+    if haskey(model, :NII_6549)  &&  haskey(model, :NII_6583)
+        # model[:NII_6549].norm.patch = @λ m -> m[:NII_6583].norm / 3
+        model[:NII_6549].voff.patch = :NII_6583
     end
-    if haskey(state.model, :SII_6716)  &&  haskey(state.model, :SII_6731)
-        # state.model[:SII_6716].norm.patch = @λ m -> m[:SII_6731].norm / 3
-        state.model[:SII_6716].voff.patch = :SII_6731
+    if haskey(model, :SII_6716)  &&  haskey(model, :SII_6731)
+        # model[:SII_6716].norm.patch = @λ m -> m[:SII_6731].norm / 3
+        model[:SII_6716].voff.patch = :SII_6731
     end
 
-    if haskey(state.model, :Hb_na)  &&  haskey(state.model, :Ha_na)
-        state.model[:Hb_na].voff.patch = :Ha_na
+    if haskey(model, :Hb_na)  &&  haskey(model, :Ha_na)
+        model[:Hb_na].voff.patch = :Ha_na
     end
 
     # The following are required to avoid degeneracy with iron
     # template
-    if haskey(state.model, :Hg)  &&  haskey(state.model, :Hb_br)
-        state.model[:Hg].voff.patch = :Hb_br
-        state.model[:Hg].fwhm.patch = :Hb_br
+    if haskey(model, :Hg)  &&  haskey(model, :Hb_br)
+        model[:Hg].voff.patch = :Hb_br
+        model[:Hg].fwhm.patch = :Hb_br
     end
-    if haskey(state.model, :Hg_br)  &&  haskey(state.model, :Hb_br)
-        state.model[:Hg_br].voff.patch = :Hb_br
-        state.model[:Hg_br].fwhm.patch = :Hb_br
+    if haskey(model, :Hg_br)  &&  haskey(model, :Hb_br)
+        model[:Hg_br].voff.patch = :Hb_br
+        model[:Hg_br].fwhm.patch = :Hb_br
     end
-    if haskey(state.model, :Hg_na)  &&  haskey(state.model, :Hb_na)
-        state.model[:Hg_na].voff.patch = :Hb_na
-        state.model[:Hg_na].fwhm.patch = :Hb_na
+    if haskey(model, :Hg_na)  &&  haskey(model, :Hb_na)
+        model[:Hg_na].voff.patch = :Hb_na
+        model[:Hg_na].fwhm.patch = :Hb_na
     end
 
     # Ensure luminosity at peak of the broad base component is
     # smaller than the associated broad component:
-    if  haskey(state.model, :Hb_br)  &&
-        haskey(state.model, :Hb_bb)
-        state.model[:Hb_bb].norm.high = 1
-        state.model[:Hb_bb].norm.val  = 0.5
-        state.model[:Hb_bb].norm.patch = @λ (m, v) -> v * m[:Hb_br].norm / m[:Hb_br].fwhm * m[:Hb_bb].fwhm
+    if  haskey(model, :Hb_br)  &&
+        haskey(model, :Hb_bb)
+        model[:Hb_bb].norm.high = 1
+        model[:Hb_bb].norm.val  = 0.5
+        model[:Hb_bb].norm.patch = @λ (m, v) -> v * m[:Hb_br].norm / m[:Hb_br].fwhm * m[:Hb_bb].fwhm
     end
-    if  haskey(state.model, :Ha_br)  &&
-        haskey(state.model, :Ha_bb)
-        state.model[:Ha_bb].norm.high = 1
-        state.model[:Ha_bb].norm.val  = 0.5
-        state.model[:Ha_bb].norm.patch = @λ (m, v) -> v * m[:Ha_br].norm / m[:Ha_br].fwhm * m[:Ha_bb].fwhm
+    if  haskey(model, :Ha_br)  &&
+        haskey(model, :Ha_bb)
+        model[:Ha_bb].norm.high = 1
+        model[:Ha_bb].norm.val  = 0.5
+        model[:Ha_bb].norm.patch = @λ (m, v) -> v * m[:Ha_br].norm / m[:Ha_br].fwhm * m[:Ha_bb].fwhm
     end
 end
 
@@ -417,24 +413,24 @@ function add_nuisance_lines!(recipe::RRef{<: Type1Recipe}, state::QSFit.State)
 
     # Prepare nuisance line components
     for i in 1:recipe.options[:n_nuisance]
-        state.model[Symbol(:nuisance, i)] = line_component(recipe, NuisanceLine, 3000.)
+        state.meval.model[Symbol(:nuisance, i)] = line_component(recipe, NuisanceLine, 3000.)
     end
-    state.model[line_group(recipe, NuisanceLine)] = SumReducer([Symbol(:nuisance, i) for i in 1:recipe.options[:n_nuisance]])
-    push!(state.model[:main].list, line_group(recipe, NuisanceLine))
-    GModelFit.update!(state.model)
+    state.meval.model[line_group(recipe, NuisanceLine)] = SumReducer([Symbol(:nuisance, i) for i in 1:recipe.options[:n_nuisance]])
+    push!(state.meval.model[:main].list, line_group(recipe, NuisanceLine))
+    GModelFit.update!(state.meval)
     for j in 1:recipe.options[:n_nuisance]
-        freeze!(state.model, Symbol(:nuisance, j))
+        freeze!(state.meval.model, Symbol(:nuisance, j))
     end
-    GModelFit.update!(state.model)
+    GModelFit.update!(state.meval)
 
     # Set "nuisance" line center wavelength where there is a maximum in
     # the fit residuals, and re-run a fit.
-    λ = coords(domain(state.model))
+    λ = coords(state.meval.domain)
     λnuisance = Vector{Float64}()
     while true
         (length(λnuisance) >= recipe.options[:n_nuisance])  &&  break
-        GModelFit.update!(state.model)
-        Δ = (values(state.data) - state.model()) ./ uncerts(state.data)
+        GModelFit.update!(state.meval)
+        Δ = (values(state.data) - state.meval()) ./ uncerts(state.data)
 
         # Avoid considering again the same region (within 1A) TODO: within resolution
         for l in λnuisance
@@ -455,30 +451,30 @@ function add_nuisance_lines!(recipe::RRef{<: Type1Recipe}, state::QSFit.State)
         push!(λnuisance, λ[iadd])
 
         cname = Symbol(:nuisance, length(λnuisance))
-        state.model[cname].norm.val = 1.
-        state.model[cname].center.val  = λ[iadd]
+        state.meval.model[cname].norm.val = 1.
+        state.meval.model[cname].center.val  = λ[iadd]
 
         # Allow to shift by a quantity equal to ...
         @assert recipe.options[:nuisance_maxoffset_from_guess] > 0
-        state.model[cname].center.low  = λ[iadd] * (1 - recipe.options[:nuisance_maxoffset_from_guess] / 3e5)
-        state.model[cname].center.high = λ[iadd] * (1 + recipe.options[:nuisance_maxoffset_from_guess] / 3e5)
+        state.meval.model[cname].center.low  = λ[iadd] * (1 - recipe.options[:nuisance_maxoffset_from_guess] / 3e5)
+        state.meval.model[cname].center.high = λ[iadd] * (1 + recipe.options[:nuisance_maxoffset_from_guess] / 3e5)
 
         # In any case, we must stay out of avoidance regions
         for rr in recipe.options[:nuisance_avoid]
             @assert !(rr[1] .< λ[iadd] .< rr[2])
             if rr[1] .>= λ[iadd]
-                state.model[cname].center.high = min(state.model[cname].center.high, rr[1])
+                state.meval.model[cname].center.high = min(state.meval.model[cname].center.high, rr[1])
             end
             if rr[2] .<= λ[iadd]
-                state.model[cname].center.low  = max(state.model[cname].center.low, rr[2])
+                state.meval.model[cname].center.low  = max(state.meval.model[cname].center.low, rr[2])
             end
         end
 
-        thaw!(state.model, cname)
+        thaw!(state.meval.model, cname)
         fit!(recipe, state)
-        freeze!(state.model, cname)
+        freeze!(state.meval.model, cname)
     end
-    GModelFit.update!(state.model)
+    GModelFit.update!(state.meval)
 end
 
 
@@ -488,14 +484,14 @@ function neglect_weak_features!(recipe::RRef{<: Type1Recipe}, state::QSFit.State
     needs_fitting = false
     for ii in 1:recipe.options[:n_nuisance]
         cname = Symbol(:nuisance, ii)
-        isfreezed(state.model, cname)  &&  continue
-        if state.model[cname].norm.val == 0.
-            freeze!(state.model, cname)
+        isfreezed(state.meval.model, cname)  &&  continue
+        if state.meval.model[cname].norm.val == 0.
+            freeze!(state.meval.model, cname)
             needs_fitting = true
             println("Disabling $cname (norm. = 0)")
-        elseif state.model[cname].norm.unc / state.model[cname].norm.val > 3
-            state.model[cname].norm.val = 0.
-            freeze!(state.model, cname)
+        elseif state.meval.model[cname].norm.unc / state.meval.model[cname].norm.val > 3
+            state.meval.model[cname].norm.val = 0.
+            freeze!(state.meval.model, cname)
             needs_fitting = true
             println("Disabling $cname (unc. / norm. > 3)")
         end
@@ -507,16 +503,16 @@ end
 function reduce(recipe::RRef{<: Type1Recipe}, state::QSFit.State)
     EW = OrderedDict{Symbol, Float64}()
 
-    cont = deepcopy(state.model())
+    cont = deepcopy(state.meval())
     for cname in keys(state.user[:lcs])
-        haskey(state.model, cname) || continue
-        cont .-= state.model(cname)
+        haskey(state.meval.model, cname) || continue
+        cont .-= state.meval(cname)
     end
     @assert all(cont .> 0) "Continuum model is zero or negative"
     for cname in keys(state.user[:lcs])
-        haskey(state.model, cname) || continue
-        EW[cname] = QSFit.int_tabulated(coords(domain(state.model)),
-                                        state.model(cname) ./ cont)[1]
+        haskey(state.meval.model, cname) || continue
+        EW[cname] = QSFit.int_tabulated(coords(state.meval.domain),
+                                        state.meval(cname) ./ cont)[1]
     end
     return OrderedDict{Symbol, Any}(:EW => EW)
 end
