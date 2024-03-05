@@ -163,6 +163,7 @@ end
 
 function fit!(recipe::RRef{<: Type1Recipe}, state::QSFit.State)
     mzer = GModelFit.cmpfit()
+    mzer.config.ftol = 1.e-6
     bestfit, fitstats = GModelFit.fit!(state.meval, state.data, minimizer=mzer)
     show(fitstats)
     return bestfit, fitstats

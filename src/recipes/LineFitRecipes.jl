@@ -61,7 +61,7 @@ function analyze(recipe::RRef{<: LineFitRecipe}, state::QSFit.State)
     end
 
     mzer = GModelFit.cmpfit()
-    mzer.config.ftol = 1.e-5
+    mzer.config.ftol = 1.e-6
     return fit(model, state.data, minimizer=mzer)
 end
 
