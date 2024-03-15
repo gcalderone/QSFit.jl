@@ -222,7 +222,7 @@ function add_balmer_cont!(recipe::RRef{<: Type1Recipe}, state::QSFit.State)
         c.ratio.fixed = false
         c.ratio.low  = 0.1
         c.ratio.high = 1
-        state.meval.model[:Balmer].norm.patch = @λ (m, v) -> v * m[:QSOcont].norm
+        state.meval.model[:Balmer].norm.patch = @fd (m, v) -> v * m[:QSOcont].norm
         GModelFit.update!(state.meval)
     end
 end
@@ -353,23 +353,23 @@ function add_patch_functs!(recipe::RRef{<: Type1Recipe}, state::QSFit.State)
     model = state.meval.model
     # Patch parameters
     if haskey(model, :OIII_4959)  &&  haskey(model, :OIII_5007)
-        # model[:OIII_4959].norm.patch = @λ m -> m[:OIII_5007].norm / 3
+        # model[:OIII_4959].norm.patch = @fd m -> m[:OIII_5007].norm / 3
         model[:OIII_4959].voff.patch = :OIII_5007
     end
     if haskey(model, :OIII_5007)  &&  haskey(model, :OIII_5007_bw)
-        model[:OIII_5007_bw].voff.patch = @λ (m, v) -> v + m[:OIII_5007].voff
-        model[:OIII_5007_bw].fwhm.patch = @λ (m, v) -> v + m[:OIII_5007].fwhm
+        model[:OIII_5007_bw].voff.patch = @fd (m, v) -> v + m[:OIII_5007].voff
+        model[:OIII_5007_bw].fwhm.patch = @fd (m, v) -> v + m[:OIII_5007].fwhm
     end
     if haskey(model, :OI_6300)  &&  haskey(model, :OI_6364)
-        # model[:OI_6300].norm.patch = @λ m -> m[:OI_6364].norm / 3
+        # model[:OI_6300].norm.patch = @fd m -> m[:OI_6364].norm / 3
         model[:OI_6300].voff.patch = :OI_6364
     end
     if haskey(model, :NII_6549)  &&  haskey(model, :NII_6583)
-        # model[:NII_6549].norm.patch = @λ m -> m[:NII_6583].norm / 3
+        # model[:NII_6549].norm.patch = @fd m -> m[:NII_6583].norm / 3
         model[:NII_6549].voff.patch = :NII_6583
     end
     if haskey(model, :SII_6716)  &&  haskey(model, :SII_6731)
-        # model[:SII_6716].norm.patch = @λ m -> m[:SII_6731].norm / 3
+        # model[:SII_6716].norm.patch = @fd m -> m[:SII_6731].norm / 3
         model[:SII_6716].voff.patch = :SII_6731
     end
 
@@ -398,13 +398,13 @@ function add_patch_functs!(recipe::RRef{<: Type1Recipe}, state::QSFit.State)
         haskey(model, :Hb_bb)
         model[:Hb_bb].norm.high = 1
         model[:Hb_bb].norm.val  = 0.5
-        model[:Hb_bb].norm.patch = @λ (m, v) -> v * m[:Hb_br].norm / m[:Hb_br].fwhm * m[:Hb_bb].fwhm
+        model[:Hb_bb].norm.patch = @fd (m, v) -> v * m[:Hb_br].norm / m[:Hb_br].fwhm * m[:Hb_bb].fwhm
     end
     if  haskey(model, :Ha_br)  &&
         haskey(model, :Ha_bb)
         model[:Ha_bb].norm.high = 1
         model[:Ha_bb].norm.val  = 0.5
-        model[:Ha_bb].norm.patch = @λ (m, v) -> v * m[:Ha_br].norm / m[:Ha_br].fwhm * m[:Ha_bb].fwhm
+        model[:Ha_bb].norm.patch = @fd (m, v) -> v * m[:Ha_br].norm / m[:Ha_br].fwhm * m[:Ha_bb].fwhm
     end
 end
 
