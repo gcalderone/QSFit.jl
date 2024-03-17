@@ -5,7 +5,8 @@ abstract type AbstractSpectrum end
 mutable struct Spectrum <: AbstractSpectrum
     label::String
     z::Union{Nothing, Float64}
-    ebv::Union{Nothing, Float64}
+    extlaw::DustExtinction.ExtinctionLaw
+    Av::Float64
     unit_x::Unitful.Quantity
     unit_y::Unitful.Quantity
     x::Vector{Float64}
@@ -19,7 +20,8 @@ mutable struct Spectrum <: AbstractSpectrum
                       good::Union{Nothing, Vector{Bool}}=nothing,
                       unit_x=u"angstrom",
                       unit_y=u"erg" / u"s" / u"cm"^2 / u"angstrom",
-                      label="", z=nothing, ebv=nothing, resolution=NaN) where {T <: Real}
+                      label="", z=nothing, resolution=NaN,
+                      extlaw=OD94(Rv=3.1), Av=0.) where {T <: Real}
         @assert dimension(unit_x) == dimension(u"cm")
         @assert dimension(unit_y) == dimension(u"erg" / u"s" / u"cm"^2 / u"angstrom")
         isnothing(good)  &&  (good = fill(true, length(x)))
@@ -29,6 +31,14 @@ mutable struct Spectrum <: AbstractSpectrum
         end
         @assert length(x) == length(y) == length(err) == length(good)
         @assert minimum(err) > 0 "Uncertainties must be positive!"
+
+        if Av != 0.
+            println("De-reddening factors @ 1450, 3000, 5100 AA: ",
+                    deredden.(extlaw, [1450, 3000, 5100.], [1., 1., 1.], Av=Av))
+            dered = deredden.(extlaw, x .* unit_x,  fill(1., length(x)), Av=Av)
+        else
+            dered = fill(1., length(x))
+        end
 
         # Ensure wavelengths are sorted
         ii = sortperm(x)
@@ -41,9 +51,10 @@ mutable struct Spectrum <: AbstractSpectrum
             @warn "Resolution is not provided, assuming it is equal to half the sampling resolution: $resolution"
         end
         @assert Rsampling > resolution "Can't have sampling resolution ($Rsampling) greater than actual resolution ($resolution)"
-        return new(label, z, ebv,
+
+        return new(label, z, extlaw, Av,
                    1. * unit_x, 1. * unit_y,
-                   x[ii], y[ii], err[ii], good[ii], fill(1., length(y)),
+                   x[ii], y[ii], err[ii], good[ii], dered,
                    resolution, Dict{Symbol, Any}(:sampling_resolution => Rsampling))
     end
 end
@@ -107,7 +118,7 @@ spec.unit_x, spec.x[1], spec.unit_y, spec.y[1]
 function show(io::IO, spec::AbstractSpectrum)
     println(io, @sprintf "%s: %s" string(typeof(spec)) spec.label)
     isnothing(spec.z)    ||  println(io, @sprintf "       z: %8.3f" spec.z)
-    isnothing(spec.ebv)  ||  println(io, @sprintf "  E(B-V): %8.3f" spec.ebv)
+    isnothing(spec.Av)   ||  println(io, @sprintf "      Av: %8.3f  (%s)" spec.Av join(split(string(spec.extlaw), "\n"), ","))
     println(io, @sprintf "  resol.: %8.3f" spec.resolution)
     println(io, @sprintf "    good: %8.3f%%, units: X=%s, Y=%s" count(spec.good) / length(spec.good) * 100 string(spec.unit_x) string(spec.unit_y))
 end
@@ -166,19 +177,11 @@ end
 
 
 # ====================================================================
-function deredden!(spec::Spectrum, dered::Function)
-    @assert !isnothing(spec.ebv)  &&  (spec.ebv > 0)
-    @assert spec.unit_x == 1 * u"angstrom"
-    spec.dered .= dered(spec.x, spec.ebv)
-    return spec
-end
-
-
-# ====================================================================
 mutable struct RestFrameSpectrum <: AbstractSpectrum
     label::String
     z::Float64
-    ebv::Union{Nothing, Float64}
+    extlaw::DustExtinction.ExtinctionLaw
+    Av::Float64
     unit_x::Unitful.Quantity
     unit_y::Unitful.Quantity
     x::Vector{Float64}
@@ -196,7 +199,7 @@ function RestFrameSpectrum(spec::Spectrum, cosmology::Cosmology.AbstractCosmolog
     @assert dimension(spec.unit_y) == dimension(u"erg" / u"s" / u"cm"^2 / u"angstrom")
     ld = uconvert(u"cm", luminosity_dist(cosmology, spec.z))
     flux2lum = 4pi * ld^2
-    out = RestFrameSpectrum(spec.label, spec.z, spec.ebv,
+    out = RestFrameSpectrum(spec.label, spec.z, spec.extlaw, spec.Av,
                             spec.unit_x, spec.unit_y * flux2lum,
                             spec.x    ./ (1 + spec.z),
                             spec.y    .* (1 + spec.z),

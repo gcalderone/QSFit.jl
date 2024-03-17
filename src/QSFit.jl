@@ -9,7 +9,6 @@ using CMPFit, GModelFit, SortMerge
 using Pkg, Pkg.Artifacts
 using Statistics, DelimitedFiles, Printf, DataStructures
 using Unitful, UnitfulAstro
-using DSP
 using FITSIO
 using Dates
 using InteractiveUtils
@@ -18,13 +17,12 @@ using Polyester
 using Gnuplot
 using TextParse
 using Cosmology
+using DustExtinction
 
 import Dierckx  # `import` (rather than `using`) to avoid conflicts with evaluate()
 
 import Base.show
 
-
-include("ccm_unred.jl")
 include("components/powerlaw.jl")
 include("components/sbpl.jl")
 include("components/cutoff_powerlaw.jl")
@@ -105,12 +103,6 @@ convert_units!(::RRef{<: AbstractRecipe}, spec::Spectrum)          = convert_uni
 convert_units!(::RRef{<: AbstractRecipe}, spec::RestFrameSpectrum) = convert_units!(spec, 1. * u"angstrom", 1e42  * u"erg" / u"s"           / u"angstrom")
 
 function prepare_state!(recipe::RRef{<: AbstractRecipe}, state::State)
-    if !isnothing(state.spec.ebv)
-        dered = get_dered_function(recipe)
-        tmp = dered([1450, 3000, 5100.], state.spec.ebv)
-        println("De-reddening factors @ 1450, 3000, 5100 AA: ", tmp)
-        deredden!(state.spec, dered)
-    end
     if !isnothing(state.spec.z)
         state.spec = RestFrameSpectrum(state.spec, get_cosmology(recipe))
     end
