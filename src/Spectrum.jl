@@ -1,27 +1,21 @@
 export Spectrum
 
-abstract type AbstractSpectrum end
-
-mutable struct Spectrum <: AbstractSpectrum
+mutable struct Spectrum
     label::String
-    z::Union{Nothing, Float64}
-    extlaw::DustExtinction.ExtinctionLaw
-    Av::Float64
     unit_x::Unitful.Quantity
     unit_y::Unitful.Quantity
     x::Vector{Float64}
     y::Vector{Float64}
     err::Vector{Float64}
     good::Vector{Bool}
-    dered::Vector{Float64}
     resolution::Float64
+    isrestframe::Bool
     meta::Dict{Symbol, Any}
     function Spectrum(x::Vector{T}, y::Vector{T}, err::Vector{T};
                       good::Union{Nothing, Vector{Bool}}=nothing,
                       unit_x=u"angstrom",
                       unit_y=u"erg" / u"s" / u"cm"^2 / u"angstrom",
-                      label="", z=nothing, resolution=NaN,
-                      extlaw=OD94(Rv=3.1), Av=0.) where {T <: Real}
+                      label="", resolution=NaN) where {T <: Real}
         @assert dimension(unit_x) == dimension(u"cm")
         @assert dimension(unit_y) == dimension(u"erg" / u"s" / u"cm"^2 / u"angstrom")
         isnothing(good)  &&  (good = fill(true, length(x)))
@@ -31,14 +25,6 @@ mutable struct Spectrum <: AbstractSpectrum
         end
         @assert length(x) == length(y) == length(err) == length(good)
         @assert minimum(err) > 0 "Uncertainties must be positive!"
-
-        if Av != 0.
-            println("De-reddening factors @ 1450, 3000, 5100 AA: ",
-                    deredden.(extlaw, [1450, 3000, 5100.], [1., 1., 1.], Av=Av))
-            dered = deredden.(extlaw, x .* unit_x,  fill(1., length(x)), Av=Av)
-        else
-            dered = fill(1., length(x))
-        end
 
         # Ensure wavelengths are sorted
         ii = sortperm(x)
@@ -52,15 +38,41 @@ mutable struct Spectrum <: AbstractSpectrum
         end
         @assert Rsampling > resolution "Can't have sampling resolution ($Rsampling) greater than actual resolution ($resolution)"
 
-        return new(label, z, extlaw, Av,
+        return new(label,
                    1. * unit_x, 1. * unit_y,
-                   x[ii], y[ii], err[ii], good[ii], dered,
-                   resolution, Dict{Symbol, Any}(:sampling_resolution => Rsampling))
+                   x[ii], y[ii], err[ii], good[ii],
+                   resolution, false,
+                   Dict{Symbol, Any}(:sampling_resolution => Rsampling))
     end
 end
 
 
-function convert_units!(spec::AbstractSpectrum, newunit_x::Quantity, newunit_y::Quantity)
+function deredden!(spec::Spectrum, extlaw::DustExtinction.ExtinctionLaw, Av::Float64)
+    println("De-reddening factors @ 1450, 3000, 5100 AA: ",
+    deredden.(extlaw, [1450, 3000, 5100.], [1., 1., 1.], Av=Av))
+    dered = deredden.(extlaw, spec.x .* spec.unit_x,  fill(1., length(spec.x)), Av=Av)
+    spec.y   .*= dered
+    spec.err .*= dered
+    return spec
+end
+
+
+function torestframe!(spec::Spectrum, cosmology::Cosmology.AbstractCosmology, z::Float64)
+    @assert !spec.isrestframe
+    @assert !isnothing(z > 0)
+    @assert dimension(spec.unit_x) == dimension(u"cm")
+    @assert dimension(spec.unit_y) == dimension(u"erg" / u"s" / u"cm"^2 / u"angstrom")
+    ld = uconvert(u"cm", luminosity_dist(cosmology, z))
+    spec.unit_y *= 4pi * ld^2
+    spec.x    ./= (1 + z)
+    spec.y    .*= (1 + z)
+    spec.err  .*= (1 + z)
+    spec.isrestframe = true
+    return spec
+end
+
+
+function convert_units!(spec::Spectrum, newunit_x::Quantity, newunit_y::Quantity)
     if  ((dimension(spec.unit_x) == dimension(u"cm"))  &&  (dimension(newunit_x) == dimension(u"Hz")))  ||
         ((dimension(spec.unit_x) == dimension(u"Hz"))  &&  (dimension(newunit_x) == dimension(u"cm")))
         c = 3e5 * u"km" / u"s"
@@ -77,7 +89,7 @@ function convert_units!(spec::AbstractSpectrum, newunit_x::Quantity, newunit_y::
 end
 
 
-function round_unit_scales!(spec::AbstractSpectrum)
+function round_unit_scales!(spec::Spectrum)
     convert_units!(spec,
                    10. ^round(log10(ustrip(spec.unit_x))) * unit(spec.unit_x),
                    10. ^round(log10(ustrip(spec.unit_y))) * unit(spec.unit_y))
@@ -107,7 +119,7 @@ spec = Spectrum(Val(:SDSS_DR10), "/home/gcalderone/my/work/software/qsfit/data/s
                            label="My SDSS source", z=0.3806);
 spec.unit_x, spec.x[1], spec.unit_y, spec.y[1]
 
-spec = QSFit.RestFrameSpectrum(spec, cosmology(h=0.70, OmegaM=0.3));
+spec = QSFit.RestFrameSpectrum(spec);
 
 QSFit.convert_units!(spec, 1 *u"Hz", 1 * u"erg" / u"s" / u"Hz");
 spec.unit_x, spec.x[1], spec.unit_y, spec.y[1]
@@ -115,10 +127,8 @@ spec.unit_x, spec.x[1], spec.unit_y, spec.y[1]
 =#
 
 
-function show(io::IO, spec::AbstractSpectrum)
+function show(io::IO, spec::Spectrum)
     println(io, @sprintf "%s: %s" string(typeof(spec)) spec.label)
-    isnothing(spec.z)    ||  println(io, @sprintf "       z: %8.3f" spec.z)
-    isnothing(spec.Av)   ||  println(io, @sprintf "      Av: %8.3f  (%s)" spec.Av join(split(string(spec.extlaw), "\n"), ","))
     println(io, @sprintf "  resol.: %8.3f" spec.resolution)
     println(io, @sprintf "    good: %8.3f%%, units: X=%s, Y=%s" count(spec.good) / length(spec.good) * 100 string(spec.unit_x) string(spec.unit_y))
 end
@@ -172,38 +182,5 @@ function Spectrum(::Val{:ASCII}, file::AbstractString;
         end
     end
     out = Spectrum(wl, flux , unc; kws...)
-    return out
-end
-
-
-# ====================================================================
-mutable struct RestFrameSpectrum <: AbstractSpectrum
-    label::String
-    z::Float64
-    extlaw::DustExtinction.ExtinctionLaw
-    Av::Float64
-    unit_x::Unitful.Quantity
-    unit_y::Unitful.Quantity
-    x::Vector{Float64}
-    y::Vector{Float64}
-    err::Vector{Float64}
-    good::Vector{Bool}
-    dered::Vector{Float64}
-    resolution::Float64
-    meta::Dict{Symbol, Any}
-end
-
-function RestFrameSpectrum(spec::Spectrum, cosmology::Cosmology.AbstractCosmology)
-    @assert !isnothing(spec.z)  &&  (spec.z > 0)
-    @assert dimension(spec.unit_x) == dimension(u"cm")
-    @assert dimension(spec.unit_y) == dimension(u"erg" / u"s" / u"cm"^2 / u"angstrom")
-    ld = uconvert(u"cm", luminosity_dist(cosmology, spec.z))
-    flux2lum = 4pi * ld^2
-    out = RestFrameSpectrum(spec.label, spec.z, spec.extlaw, spec.Av,
-                            spec.unit_x, spec.unit_y * flux2lum,
-                            spec.x    ./ (1 + spec.z),
-                            spec.y    .* (1 + spec.z),
-                            spec.err  .* (1 + spec.z),
-                            spec.good, spec.dered, spec.resolution, spec.meta)
     return out
 end

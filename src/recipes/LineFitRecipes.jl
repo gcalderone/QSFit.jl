@@ -3,12 +3,12 @@ module LineFitRecipes
 using Statistics
 using ..QSFit, GModelFit, Gnuplot
 
-import QSFit: line_profile, default_options, analyze
+import QSFit: init_recipe!, preprocess_spec!, line_profile, analyze
 
-export LineFitRecipe, InteractiveLineFitRecipe
+export LineFit, InteractiveLineFit
 
-abstract type LineFitRecipe <: AbstractRecipe end
-abstract type InteractiveLineFitRecipe <: LineFitRecipe end
+abstract type LineFit <: AbstractRecipeSpec end
+abstract type InteractiveLineFit <: LineFit end
 
 function wait_mouse(sid=Gnuplot.options.default)
     gpexec(sid, "pause mouse")
@@ -16,27 +16,30 @@ function wait_mouse(sid=Gnuplot.options.default)
 end
 
 
-line_profile(recipe::RRef{<: LineFitRecipe}, ::Type{<: AbstractLine}, id::Val) = recipe.options[:line_profiles]
-line_profile(recipe::RRef{<: LineFitRecipe}, ::Type{<: AbstractLine})          = recipe.options[:line_profiles]
+line_profile(recipe::Recipe{<: LineFit}, ::Type{<: AbstractLine}, id::Val) = recipe.line_profiles
+line_profile(recipe::Recipe{<: LineFit}, ::Type{<: AbstractLine})          = recipe.line_profiles
 
-function default_options(::Type{T}) where T <: LineFitRecipe
-    out = default_options(supertype(T))
-    out[:wavelength_range] = [1215, 7.3e3]
-    out[:line_profiles] = :gauss
-    out[:lines] = LineDescriptor[]
-    return out
+function init_recipe!(recipe::Recipe{T}) where T <: LineFit
+    @invoke init_recipe!(recipe::Recipe{<: AbstractRecipeSpec})
+    recipe.wavelength_range = [1215, 7.3e3]
+    recipe.line_profiles = :gauss
+    recipe.lines = LineDescriptor[]
 end
 
 
-function analyze(recipe::RRef{<: LineFitRecipe}, state::QSFit.State)
-    state.spec.good[findall(state.spec.x .< recipe.options[:wavelength_range][1])] .= false
-    state.spec.good[findall(state.spec.x .> recipe.options[:wavelength_range][2])] .= false
-    QSFit.update_data!(state)
+function preprocess_spec!(recipe::Recipe{T}, spec::QSFit.Spectrum) where T <: LineFit
+    @invoke preprocess_spec!(recipe::Recipe{<: AbstractRecipeSpec}, spec)
+    spec.good[findall(spec.x .< recipe.wavelength_range[1])] .= false
+    spec.good[findall(spec.x .> recipe.wavelength_range[2])] .= false
+end
 
-    model = Model()
-    model[:QSOcont] = QSFit.powerlaw(median(coords(domain(state.data))))
-    model[:QSOcont].norm.val = median(values(state.data))
-    model[:QSOcont].norm.low = median(values(state.data)) / 1000.  # ensure contiuum remains positive (needed to estimate EWs)
+
+function analyze(recipe::Recipe{<: LineFit}, spec::QSFit.Spectrum, resid::GModelFit.Residuals)
+    resid.mzer.config.ftol = 1.e-6
+    model = resid.meval.model
+    model[:QSOcont] = QSFit.powerlaw(median(coords(domain(resid.data))))
+    model[:QSOcont].norm.val = median(values(resid.data))
+    model[:QSOcont].norm.low = median(values(resid.data)) / 1000.  # ensure contiuum remains positive (needed to estimate EWs)
     model[:QSOcont].alpha.val  = -1.5
     model[:QSOcont].alpha.low  = -3
     model[:QSOcont].alpha.high =  1
@@ -44,7 +47,7 @@ function analyze(recipe::RRef{<: LineFitRecipe}, state::QSFit.State)
     model[:main] = SumReducer(:QSOcont)
     select_maincomp!(model, :main)
 
-    for ld in recipe.options[:lines]
+    for ld in recipe.:lines
         for T in ld.types
             cname = line_cname(recipe, T, ld.id)
             @assert !(cname in keys(model)) "Duplicate component name: $cname"
@@ -60,13 +63,14 @@ function analyze(recipe::RRef{<: LineFitRecipe}, state::QSFit.State)
         end
     end
 
-    mzer = GModelFit.cmpfit()
-    mzer.config.ftol = 1.e-6
-    return fit(model, state.data, minimizer=mzer)
+    display(model)
+    display(resid.meval.model)
+    
+    return fit!(resid)
 end
 
 
-function analyze(recipe::RRef{<: InteractiveLineFitRecipe}, state::QSFit.State)
+function analyze(recipe::Recipe{<: InteractiveLineFit}, spec::QSFit.Spectrum, resid::GModelFit.Residuals)
     ld = Vector{LineDescriptor}()
     linetypes = [ForbiddenLine,
                  NarrowLine,
@@ -74,7 +78,7 @@ function analyze(recipe::RRef{<: InteractiveLineFitRecipe}, state::QSFit.State)
                  VeryBroadLine,
                  NuisanceLine]
 
-    @gp :LineFit state.spec
+    @gp :LineFit spec
     println()
     printstyled("Interactive emission line fit\n", color=:green)
     printstyled("Step 1: ", color=:green);  println("zoom on the desired range")
@@ -98,7 +102,7 @@ function analyze(recipe::RRef{<: InteractiveLineFitRecipe}, state::QSFit.State)
             println("0: skip this line")
         end
         λ = round(vars.MOUSE_X * 1e2) / 1e2
-        print("Insert space separated list of line type(s) for the emission line at $λ ", state.spec.unit_x, ": ")
+        print("Insert space separated list of line type(s) for the emission line at $λ ", spec.unit_x, ": ")
         i = Int.(Meta.parse.(string.(split(readline()))))
         (0 in i)  &&  continue
         @assert all(1 .<= i .<= length(linetypes))
@@ -107,9 +111,8 @@ function analyze(recipe::RRef{<: InteractiveLineFitRecipe}, state::QSFit.State)
     println()
     Gnuplot.quit(:LineFit)
 
-    empty!(recipe.options)
-    recipe.options[:wavelength_range] = range
-    recipe.options[:lines] = ld
+    recipe.wavelength_range = range
+    recipe.lines = ld
 
     println()
     printstyled("Step 3: ", color=:green);  println("choose line profile:")
@@ -120,24 +123,24 @@ function analyze(recipe::RRef{<: InteractiveLineFitRecipe}, state::QSFit.State)
     i = Int(Meta.parse(readline()))
     @assert (1 <= i <= 3)
     if i == 1
-        recipe.options[:line_profiles] = :gauss
+        recipe.line_profiles = :gauss
     elseif i == 2
-        recipe.options[:line_profiles] = :lorentz
+        recipe.line_profiles = :lorentz
     else
-        recipe.options[:line_profiles] = :voigt
+        recipe.line_profiles = :voigt
     end
 
     println()
-    println("recipe = RRef(LineFitRecipe)")
-    println("recipe.options[:wavelength_range] = ", recipe.options[:wavelength_range])
-    println("recipe.options[:line_profiles] = :", recipe.options[:line_profiles])
-    println("recipe.options[:lines] = [")
+    println("recipe = Recipe(LineFit)")
+    println("recipe.wavelength_range = ", recipe.wavelength_range)
+    println("recipe.line_profiles = :", recipe.line_profiles)
+    println("recipe.lines = [")
     for i in 1:length(ld)
         println("     LineDescriptor(", ld[i].id, ", ", join(string.(ld[i].types), ", "), ")")
     end
     println("]")
 
-    return @invoke analyze(recipe::RRef{<: LineFitRecipe}, state)
+    return @invoke analyze(recipe::Recipe{<: LineFit}, spec, resid)
 end
 
 end

@@ -96,44 +96,44 @@ struct LineDescriptor{T}
 end
 
 
-line_suffix(recipe::RRef{<: AbstractRecipe}, ::Type{<: AbstractLine})  = ""
-line_suffix(recipe::RRef{<: AbstractRecipe}, ::Type{<: NarrowLine})    = "_na"
-line_suffix(recipe::RRef{<: AbstractRecipe}, ::Type{<: BroadLine})     = "_br"
-line_suffix(recipe::RRef{<: AbstractRecipe}, ::Type{<: VeryBroadLine}) = "_bb"
+line_suffix(recipe::Recipe{<: AbstractRecipeSpec}, ::Type{<: AbstractLine})  = ""
+line_suffix(recipe::Recipe{<: AbstractRecipeSpec}, ::Type{<: NarrowLine})    = "_na"
+line_suffix(recipe::Recipe{<: AbstractRecipeSpec}, ::Type{<: BroadLine})     = "_br"
+line_suffix(recipe::Recipe{<: AbstractRecipeSpec}, ::Type{<: VeryBroadLine}) = "_bb"
 
-line_group( recipe::RRef{<: AbstractRecipe}, ::Type{<: ForbiddenLine}) = :NarrowLines
-line_group( recipe::RRef{<: AbstractRecipe}, ::Type{<: NarrowLine})    = :NarrowLines
-line_group( recipe::RRef{<: AbstractRecipe}, ::Type{<: BroadLine})     = :BroadLines
-line_group( recipe::RRef{<: AbstractRecipe}, ::Type{<: VeryBroadLine}) = :VeryBroadLines
-line_group( recipe::RRef{<: AbstractRecipe}, ::Type{<: NuisanceLine}) =  :NuisanceLines
+line_group( recipe::Recipe{<: AbstractRecipeSpec}, ::Type{<: ForbiddenLine}) = :NarrowLines
+line_group( recipe::Recipe{<: AbstractRecipeSpec}, ::Type{<: NarrowLine})    = :NarrowLines
+line_group( recipe::Recipe{<: AbstractRecipeSpec}, ::Type{<: BroadLine})     = :BroadLines
+line_group( recipe::Recipe{<: AbstractRecipeSpec}, ::Type{<: VeryBroadLine}) = :VeryBroadLines
+line_group( recipe::Recipe{<: AbstractRecipeSpec}, ::Type{<: NuisanceLine}) =  :NuisanceLines
 
-line_profile(::RRef{<: AbstractRecipe}, ::Type{<: AbstractLine}, id::Val) = :gauss
-line_profile(::RRef{<: AbstractRecipe}, ::Type{<: AbstractLine})          = :gauss
+line_profile(::Recipe{<: AbstractRecipeSpec}, ::Type{<: AbstractLine}, id::Val) = :gauss
+line_profile(::Recipe{<: AbstractRecipeSpec}, ::Type{<: AbstractLine})          = :gauss
 
-line_cname(recipe::RRef{<: AbstractRecipe}, ::Type{T}, id::Symbol) where T <: AbstractLine = Symbol(   id    , line_suffix(recipe, T))
-line_cname(recipe::RRef{<: AbstractRecipe}, ::Type{T}, λ::Float64) where T <: AbstractLine = Symbol(:l, λ, :A, line_suffix(recipe, T))
+line_cname(recipe::Recipe{<: AbstractRecipeSpec}, ::Type{T}, id::Symbol) where T <: AbstractLine = Symbol(   id    , line_suffix(recipe, T))
+line_cname(recipe::Recipe{<: AbstractRecipeSpec}, ::Type{T}, λ::Float64) where T <: AbstractLine = Symbol(:l, λ, :A, line_suffix(recipe, T))
 
-function set_constraints!(recipe::RRef{<: AbstractRecipe}, ::Type{ForbiddenLine}, comp::AbstractSpecLineComp)
+function set_constraints!(recipe::Recipe{<: AbstractRecipeSpec}, ::Type{ForbiddenLine}, comp::AbstractSpecLineComp)
     comp.fwhm.low, comp.fwhm.val, comp.fwhm.high = 100, 5e2, 2e3
     comp.voff.low, comp.voff.val, comp.voff.high = -1e3, 0, 1e3
 end
 
-function set_constraints!(recipe::RRef{<: AbstractRecipe}, ::Type{NarrowLine}, comp::AbstractSpecLineComp)
+function set_constraints!(recipe::Recipe{<: AbstractRecipeSpec}, ::Type{NarrowLine}, comp::AbstractSpecLineComp)
     comp.fwhm.low, comp.fwhm.val, comp.fwhm.high = 100, 5e2, 1e3 # avoid confusion with the broad component
     comp.voff.low, comp.voff.val, comp.voff.high = -1e3, 0, 1e3
 end
 
-function set_constraints!(recipe::RRef{<: AbstractRecipe}, ::Type{BroadLine}, comp::AbstractSpecLineComp)
+function set_constraints!(recipe::Recipe{<: AbstractRecipeSpec}, ::Type{BroadLine}, comp::AbstractSpecLineComp)
     comp.fwhm.low, comp.fwhm.val, comp.fwhm.high = 900, 5e3, 1.5e4
     comp.voff.low, comp.voff.val, comp.voff.high = -3e3, 0, 3e3
 end
 
-function set_constraints!(recipe::RRef{<: AbstractRecipe}, ::Type{VeryBroadLine}, comp::AbstractSpecLineComp)
+function set_constraints!(recipe::Recipe{<: AbstractRecipeSpec}, ::Type{VeryBroadLine}, comp::AbstractSpecLineComp)
     comp.fwhm.low, comp.fwhm.val, comp.fwhm.high = 1e4, 2e4, 3e4
     comp.voff.fixed = true
 end
 
-function set_constraints!(recipe::RRef{<: AbstractRecipe}, ::Type{NuisanceLine}, comp::AbstractSpecLineComp)
+function set_constraints!(recipe::Recipe{<: AbstractRecipeSpec}, ::Type{NuisanceLine}, comp::AbstractSpecLineComp)
     comp.norm.val = 0.
     comp.center.fixed = false;  comp.voff.fixed = true
     comp.fwhm.low, comp.fwhm.val, comp.fwhm.high = 600, 5e3, 1e4
@@ -143,7 +143,7 @@ line_component(::Val{:gauss}  , λ::Float64) = SpecLineGauss(λ)
 line_component(::Val{:lorentz}, λ::Float64) = SpecLineLorentz(λ)
 line_component(::Val{:voigt}  , λ::Float64) = SpecLineVoigt(λ)
 
-function line_component(recipe::RRef{<: AbstractRecipe}, ::Type{T}, id::Symbol) where T <: AbstractLine
+function line_component(recipe::Recipe{<: AbstractRecipeSpec}, ::Type{T}, id::Symbol) where T <: AbstractLine
     λ = vacuum_wavelength(id)
     profile = line_profile(recipe, T, Val(id))
     comp = line_component(Val(profile), λ)
@@ -151,7 +151,7 @@ function line_component(recipe::RRef{<: AbstractRecipe}, ::Type{T}, id::Symbol) 
     return comp
 end
 
-function line_component(recipe::RRef{<: AbstractRecipe}, ::Type{T}, λ::Float64) where T <: AbstractLine
+function line_component(recipe::Recipe{<: AbstractRecipeSpec}, ::Type{T}, λ::Float64) where T <: AbstractLine
     profile = line_profile(recipe, T)
     comp = line_component(Val(profile), λ)
     set_constraints!(recipe, T, comp)

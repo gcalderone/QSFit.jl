@@ -1,9 +1,11 @@
 module QSFit
 
-export RRef, AbstractRecipe, analyze
+export Recipe, AbstractRecipeSpec, analyze
 
-import GModelFit: Domain, CompEval,
+import GModelFit: Domain, CompEval, Residuals,
     Parameter, AbstractComponent, dependencies, prepare!, evaluate!
+
+import Base: propertynames, getproperty, setproperty!, show
 
 using CMPFit, GModelFit, SortMerge
 using Pkg, Pkg.Artifacts
@@ -20,8 +22,6 @@ using Cosmology
 using DustExtinction
 
 import Dierckx  # `import` (rather than `using`) to avoid conflicts with evaluate()
-
-import Base.show
 
 include("components/powerlaw.jl")
 include("components/sbpl.jl")
@@ -46,28 +46,48 @@ qsfit_data() = artifact"qsfit_data"
 
 
 # ====================================================================
-mutable struct State
-    spec::AbstractSpectrum
-    data::Union{Nothing, GModelFit.Measures{1}}
-    meval::Union{Nothing, GModelFit.ModelEval}
-    user::OrderedDict{Symbol, Any}
+abstract type AbstractRecipeSpec end
+
+struct Recipe{T <: AbstractRecipeSpec}
+    dict::OrderedDict{Symbol, Any}
+    function Recipe(::Type{T}; kws...) where T <: AbstractRecipeSpec
+        out = new{T}(OrderedDict{Symbol, Any}())
+        init_recipe!(out)
+        for (key, value) in kws  # set options provided as keywords
+            setproperty!(out, key, value)
+        end
+        return out
+    end
+end
+
+propertynames(recipe::Recipe) = collect(keys(getfield(recipe, :dict)))
+getproperty(recipe::Recipe, key::Symbol) = getfield(recipe, :dict)[key]
+setproperty!(recipe::Recipe, key::Symbol, value) = getfield(recipe, :dict)[key] = value
+function show(io::IO, recipe::Recipe)
+    println(io, typeof(recipe))
+    tmp = IOBuffer()
+    show(tmp, "text/plain", getfield(recipe, :dict))
+    s = String(take!(tmp))
+    s = join(split(s, "\n")[2:end], "\n")
+    println(io, s)
+end
+
+function init_recipe!(recipe::Recipe{T}) where T <: AbstractRecipeSpec
+    recipe.cosmology = cosmology(h=0.70, OmegaM=0.3)
+    recipe.redshift = missing
+    recipe.extlaw = OD94(Rv=3.1)
+    recipe.Av = missing
+    recipe.unit_x    = 1. * u"angstrom"
+    recipe.unit_flux = 1e-17 * u"erg" / u"s" / u"cm"^2 / u"angstrom"
+    recipe.unit_lum  = 1e42  * u"erg" / u"s"           / u"angstrom"
 end
 
 
-function update_data!(state::State)
-    ii = findall(state.spec.good)
-    domain = Domain(state.spec.x[ii])
-    state.data = Measures(domain,
-                          state.spec.y[ii]   .* state.spec.dered[ii],
-                          state.spec.err[ii] .* state.spec.dered[ii])
-    return state
-end
-
-
+# ====================================================================
 struct Results
     timestamp::DateTime
     elapsed::Float64
-    spec::AbstractSpectrum
+    spec::Spectrum
     data::Measures{1}
     bestfit::GModelFit.ModelSnapshot
     fitstats::GModelFit.FitStats
@@ -81,58 +101,51 @@ end
 
 
 # ====================================================================
-abstract type AbstractRecipe end
-
-struct RRef{T <: AbstractRecipe}
-    options::OrderedDict{Symbol, Any}
-
-    function RRef(::Type{T}; kws...) where T <: AbstractRecipe
-        out = new{T}(default_options(T))
-        # Set options provided as keywords
-        for (k, v) in kws
-            out.options[Symbol(k)] = v
-        end
-        return out
+function preprocess_spec!(recipe::Recipe{<: AbstractRecipeSpec}, spec::Spectrum)
+    show(spec)
+    if !ismissing(recipe.Av)
+        @printf "      Av: %8.3f  (%s)\n" recipe.Av join(split(string(recipe.extlaw), "\n"), ",")
+        deredden!(spec, recipe.extlaw, recipe.Av)
     end
+    if ismissing(recipe.redshift)
+        convert_units!(spec, recipe.unit_x, recipe.unit_flux)
+    else
+        @printf "       z: %8.3f  (%s)\n" recipe.redshift string(recipe.cosmology)
+        torestframe!(spec, recipe.cosmology, recipe.redshift)
+        convert_units!(spec, recipe.unit_x, recipe.unit_lum)
+    end
+    round_unit_scales!(spec)
 end
 
-default_options(::Type{<: AbstractRecipe}) = OrderedDict{Symbol, Any}()
-get_cosmology(::RRef{<: AbstractRecipe}) = cosmology(h=0.70, OmegaM=0.3)
-get_dered_function(::RRef{<: AbstractRecipe}) = ccm_unred
-convert_units!(::RRef{<: AbstractRecipe}, spec::Spectrum)          = convert_units!(spec, 1. * u"angstrom", 1e-17 * u"erg" / u"s" / u"cm"^2 / u"angstrom")
-convert_units!(::RRef{<: AbstractRecipe}, spec::RestFrameSpectrum) = convert_units!(spec, 1. * u"angstrom", 1e42  * u"erg" / u"s"           / u"angstrom")
 
-function prepare_state!(recipe::RRef{<: AbstractRecipe}, state::State)
-    if !isnothing(state.spec.z)
-        state.spec = RestFrameSpectrum(state.spec, get_cosmology(recipe))
-    end
-    convert_units!(recipe, state.spec)
-    round_unit_scales!(state.spec)
-    show(state.spec)
-    update_data!(state)
-    return state
-end
+reduce(recipe::Recipe{<: AbstractRecipeSpec}, resid::Residuals) = OrderedDict{Symbol, Any}()
 
-reduce(recipe::RRef{<: AbstractRecipe}, state::State) = OrderedDict{Symbol, Any}()
-
-function analyze(recipe::RRef{T}, spec::AbstractSpectrum) where T <: AbstractRecipe
+function analyze(_recipe::Recipe{T}, _spec::Spectrum) where T <: AbstractRecipeSpec
     timestamp = now()
     starttime = time()
-    println("Timestamp: ", now())
-    println("Using $T recipe with options:")
-    display(recipe.options)
-    println()
+
+    recipe = deepcopy(_recipe)
+    spec = deepcopy(_spec)
+    println("Timestamp: ", timestamp)
+    display(recipe)
     println()
 
-    state = State(deepcopy(spec), nothing, nothing, OrderedDict{Symbol, Any}())
-    prepare_state!(recipe, state)
-    bestfit, fitstats = analyze(recipe, state)
-    reduced = reduce(recipe, state)
+    preprocess_spec!(recipe, spec)
+
+    # Create GModelFit objects
+    ii = findall(spec.good)
+    domain = Domain(spec.x[ii])
+    data = Measures(domain, spec.y[ii], spec.err[ii])
+    meval = GModelFit.ModelEval(Model(), domain)
+    resid = Residuals(meval, data, GModelFit.cmpfit())
+
+    bestfit, stats = analyze(recipe, spec, resid)
+    reduced = reduce(recipe, resid)
 
     out = Results(timestamp,
                   time() - starttime,
-                  state.spec, state.data,
-                  bestfit, fitstats, reduced)
+                  spec, data,
+                  bestfit, stats, reduced)
 
     println("\nTotal elapsed time: $(out.elapsed) s")
     return out

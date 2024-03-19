@@ -4,53 +4,51 @@ using Printf, DataStructures, Statistics
 using Dierckx
 using ..QSFit, GModelFit
 
-import QSFit: line_profile, line_suffix, set_constraints!,
-    default_options, prepare_state!, analyze, reduce
+import QSFit: init_recipe!, preprocess_spec!, line_profile, line_suffix, set_constraints!, analyze, reduce
 
-export Type1Recipe
+export Type1
 
-abstract type Type1Recipe <: AbstractRecipe end
+abstract type Type1 <: AbstractRecipeSpec end
 
-line_profile(recipe::RRef{<: Type1Recipe}, ::Type{<: AbstractLine}, id::Val) = recipe.options[:line_profiles]
-line_profile(recipe::RRef{<: Type1Recipe}, ::Type{<: AbstractLine})          = recipe.options[:line_profiles]
+line_profile(recipe::Recipe{<: Type1}, ::Type{<: AbstractLine}, id::Val) = recipe.line_profiles
+line_profile(recipe::Recipe{<: Type1}, ::Type{<: AbstractLine})          = recipe.line_profiles
 
 # Special cases for emission lines
 abstract type MgIIBroadLine <: BroadLine end
-function set_constraints!(recipe::RRef{<: Type1Recipe}, ::Type{MgIIBroadLine}, comp::GModelFit.AbstractComponent)
+function set_constraints!(recipe::Recipe{<: Type1}, ::Type{MgIIBroadLine}, comp::GModelFit.AbstractComponent)
     comp.voff.low, comp.voff.val, comp.voff.high = -1e3, 0, 1e3
 end
 
 
 abstract type OIIIBlueWing  <: NarrowLine end
-line_suffix(recipe::RRef{<: Type1Recipe}, ::Type{OIIIBlueWing}) = :_bw
-function set_constraints!(recipe::RRef{<: Type1Recipe}, ::Type{OIIIBlueWing}, comp::GModelFit.AbstractComponent)
+line_suffix(recipe::Recipe{<: Type1}, ::Type{OIIIBlueWing}) = :_bw
+function set_constraints!(recipe::Recipe{<: Type1}, ::Type{OIIIBlueWing}, comp::GModelFit.AbstractComponent)
     comp.voff.low, comp.voff.val, comp.voff.high = 0, 0, 2e3
 end
 
+function init_recipe!(recipe::Recipe{T}) where T <: Type1
+    @invoke init_recipe!(recipe::Recipe{<: AbstractRecipeSpec})
+    recipe.wavelength_range = [1215, 7.3e3]
+    recipe.min_spectral_coverage = Dict(:default => 0.6,
+                                        :Ironuv  => 0.3,
+                                        :Ironopt => 0.3)
 
-function default_options(::Type{T}) where T <: Type1Recipe
-    out = default_options(supertype(T))
-    out[:wavelength_range] = [1215, 7.3e3]
-    out[:min_spectral_coverage] = Dict(:default => 0.6,
-                                       :Ironuv  => 0.3,
-                                       :Ironopt => 0.3)
+    recipe.host_template = Dict(:library=>"swire", :template=>"Ell5")
+    recipe.host_template_ref_wavelength = 5500. # A
+    recipe.use_host_template = true
+    recipe.host_template_range = [4000., 7000.]
 
-    out[:host_template] = Dict(:library=>"swire", :template=>"Ell5")
-    out[:host_template_ref_wavelength] = 5500. # A
-    out[:use_host_template] = true
-    out[:host_template_range] = [4000., 7000.]
+    recipe.use_balmer = true
+    recipe.use_ironuv = true;      recipe.Ironuv_fwhm    = 3000.
+    recipe.use_ironopt = true;     recipe.Ironoptbr_fwhm = 3000.;  recipe.Ironoptna_fwhm =  500.
 
-    out[:use_balmer] = true
-    out[:use_ironuv] = true;      out[:Ironuv_fwhm]    = 3000.
-    out[:use_ironopt] = true;     out[:Ironoptbr_fwhm] = 3000.;  out[:Ironoptna_fwhm] =  500.
+    recipe.line_profiles = :gauss
 
-    out[:line_profiles] = :gauss
+    recipe.n_nuisance = 10
+    recipe.nuisance_avoid = [4863 .+ [-1,1] .* 50, 6565 .+ [-1,1] .* 150]  # Angstrom
+    recipe.nuisance_maxoffset_from_guess = 1e3  # km/s
 
-    out[:n_nuisance] = 10
-    out[:nuisance_avoid] = [4863 .+ [-1,1] .* 50, 6565 .+ [-1,1] .* 150]  # Angstrom
-    out[:nuisance_maxoffset_from_guess] = 1e3  # km/s
-
-    out[:lines] = [
+    recipe.lines = [
         LineDescriptor(:Lyb        , NarrowLine, BroadLine),
         # LineDescriptor(:OV_1213   , ForbiddenLine)  # 1213.8A, Ferland+92, Shields+95,
         LineDescriptor(:Lya        , NarrowLine, BroadLine),
@@ -87,7 +85,6 @@ function default_options(::Type{T}) where T <: Type1Recipe
         LineDescriptor(:SII_6716   , ForbiddenLine),
         LineDescriptor(:SII_6731   , ForbiddenLine)
     ]
-    return out
 end
 
 
@@ -99,7 +96,7 @@ struct LineInstance{T}
 end
 
 
-function dict_line_instances(recipe::RRef{<: Type1Recipe}, linedescrs::Vector{LineDescriptor})
+function dict_line_instances(recipe::Recipe{<: Type1}, linedescrs::Vector{LineDescriptor})
     out = OrderedDict{Symbol, LineInstance}()
     for ld in linedescrs
         for T in ld.types
@@ -112,109 +109,59 @@ function dict_line_instances(recipe::RRef{<: Type1Recipe}, linedescrs::Vector{Li
 end
 
 
-function prepare_state!(recipe::RRef{<: Type1Recipe}, state::QSFit.State)
-    @invoke prepare_state!(recipe::RRef{<: AbstractRecipe}, state)
-    state.spec.good[findall(state.spec.x .< recipe.options[:wavelength_range][1])] .= false
-    state.spec.good[findall(state.spec.x .> recipe.options[:wavelength_range][2])] .= false
-
-    #= Emission line are localized features whose parameter can be
-    reliably estimated only if there are sufficient samples to
-    constrain the corresponding parameters.  If data coverage is
-    not sufficient the component should not be added to the model,
-    and corresponding spectral samples should be ignored to avoid
-    worsening the fit due to missing model components. =#
-    println("Good samples before line coverage filter: ", count(state.spec.good) , " / ", length(state.spec.good))
-
-    # Collect line components (neglecting the ones with insufficent coverage)
-    lcs = dict_line_instances(recipe, recipe.options[:lines])
-    for loop in 1:2
-        # The second pass is required to neglect lines whose coverage
-        # has been affected by the neglected spectral samples.
-        if loop == 2
-            println()
-            println("Updated coverage:")
-        end
-        for (cname, line) in lcs
-            threshold = get(recipe.options[:min_spectral_coverage], cname, recipe.options[:min_spectral_coverage][:default])
-            (λmin, λmax, coverage) = QSFit.spectral_coverage(state.spec.x[findall(state.spec.good)],
-                                                             state.spec.resolution, line.comp)
-            @printf("Line %-15s coverage: %5.3f on range %10.5g < λ < %10.5g", cname, coverage, λmin, λmax)
-            if coverage < threshold
-            @printf(", threshold is < %5.3f, neglecting...", threshold)
-                state.spec.good[λmin .<= state.spec.x .< λmax] .= false
-                delete!(lcs, cname)
-            end
-            println()
-        end
-    end
-    println("Good samples after line coverage filter: ", count(state.spec.good) , " / ", length(state.spec.good))
-
-    # Sort lines according to center wavelength
-    kk = collect(keys(lcs))
-    vv = collect(values(lcs))
-    ii = sortperm(getfield.(getfield.(getfield.(vv, :comp), :center), :val))
-    lcs = OrderedDict(Pair.(kk[ii], vv[ii]))
-    state.user[:lcs] = lcs
-
-    # Update Measure and Model objects
-    QSFit.update_data!(state)
+function fit!(recipe::Recipe{<: Type1}, resid::GModelFit.Residuals)
+    resid.mzer.config.ftol = 1.e-6
+    bestfit, stats = GModelFit.fit!(resid)
+    show(stats)
+    return bestfit, stats
 end
 
 
-function fit!(recipe::RRef{<: Type1Recipe}, state::QSFit.State)
-    mzer = GModelFit.cmpfit()
-    mzer.config.ftol = 1.e-6
-    bestfit, fitstats = GModelFit.fit!(state.meval, state.data, minimizer=mzer)
-    show(fitstats)
-    return bestfit, fitstats
-end
-
-
-function add_qso_continuum!(recipe::RRef{<: Type1Recipe}, state::QSFit.State)
-    λ = coords(state.meval.domain)
+function add_qso_continuum!(recipe::Recipe{<: Type1}, resid::GModelFit.Residuals)
+    λ = coords(resid.meval.domain)
 
     comp = QSFit.powerlaw(3000)
     comp.x0.val = median(λ)
-    comp.norm.val = median(values(state.data)) # Can't use Dierckx.Spline1D since it may fail when data is segmented (non-good channels)
+    comp.norm.val = median(values(resid.data)) # Can't use Dierckx.Spline1D since it may fail when data is segmented (non-good channels)
     comp.norm.low = comp.norm.val / 1000.  # ensure contiuum remains positive (needed to estimate EWs)
     comp.alpha.val  = -1.5
     comp.alpha.low  = -3
     comp.alpha.high =  1
 
-    state.meval.model[:QSOcont] = comp
-    push!(state.meval.model[:Continuum].list, :QSOcont)
-    GModelFit.update!(state.meval)
+    resid.meval.model[:QSOcont] = comp
+    push!(resid.meval.model[:Continuum].list, :QSOcont)
+    GModelFit.update!(resid.meval)
 end
 
 
-function add_host_galaxy!(recipe::RRef{<: Type1Recipe}, state::QSFit.State)
-    λ = coords(state.meval.domain)
-    if recipe.options[:use_host_template]  &&
-        (recipe.options[:host_template_range][1] .< maximum(λ))  &&
-        (recipe.options[:host_template_range][2] .> minimum(λ))
-        state.meval.model[:Galaxy] = QSFit.hostgalaxy(recipe.options[:host_template][:template],
-                                                library=recipe.options[:host_template][:library],
-                                                refwl=recipe.options[:host_template_ref_wavelength])
-        push!(state.meval.model[:Continuum].list, :Galaxy)
+function add_host_galaxy!(recipe::Recipe{<: Type1}, resid::GModelFit.Residuals)
+    λ = coords(resid.meval.domain)
+    if recipe.use_host_template  &&
+        (recipe.host_template_range[1] .< maximum(λ))  &&
+        (recipe.host_template_range[2] .> minimum(λ))
+        resid.meval.model[:Galaxy] = QSFit.hostgalaxy(recipe.host_template[:template],
+                                                library=recipe.host_template[:library],
+                                                refwl=recipe.host_template_ref_wavelength)
+        push!(resid.meval.model[:Continuum].list, :Galaxy)
 
         # Split total flux between continuum and host galaxy
-        refwl = recipe.options[:host_template_ref_wavelength]
-        vv = Dierckx.Spline1D(λ, values(state.data), k=1, bc="extrapolate")(refwl)
+        refwl = recipe.host_template_ref_wavelength
+        vv = Dierckx.Spline1D(λ, values(resid.data), k=1, bc="extrapolate")(refwl)
         @assert !isnan(vv) "Predicted L_λ at $(refwl)A is NaN"
         @assert vv > 0 "Predicted L_λ at $(refwl)A is negative"
-        # (vv <= 0)  &&  (vv = .1 * median(values(state.data)))
-        state.meval.model[:Galaxy].norm.val    = 1/2 * vv
-        state.meval.model[:QSOcont].norm.val *= 1/2 * vv / Dierckx.Spline1D(λ, state.meval(:QSOcont), k=1, bc="extrapolate")(refwl)
-        GModelFit.update!(state.meval)
+        # (vv <= 0)  &&  (vv = .1 * median(values(resid.data)))
+        resid.meval.model[:Galaxy].norm.val    = 1/2 * vv
+        resid.meval.model[:QSOcont].norm.val *= 1/2 * vv / Dierckx.Spline1D(λ, GModelFit.last_evaluation(resid.meval, :QSOcont), k=1, bc="extrapolate")(refwl)
+        GModelFit.update!(resid.meval)
     end
 end
 
 
-function add_balmer_cont!(recipe::RRef{<: Type1Recipe}, state::QSFit.State)
-    if recipe.options[:use_balmer]
-        state.meval.model[:Balmer] = QSFit.balmercont(0.1, 0.5)
-        push!(state.meval.model[:Continuum].list, :Balmer)
-        c = state.meval.model[:Balmer]
+function add_balmer_cont!(recipe::Recipe{<: Type1}, resid::GModelFit.Residuals)
+    if recipe.use_balmer
+        resid.meval.model[:Balmer] = QSFit.balmercont(0.1, 0.5)
+        push!(resid.meval.model[:Continuum].list, :Balmer)
+        c = resid.meval.model[:Balmer]
         c.norm.val  = 0.1
         c.norm.fixed = false
         c.norm.high = 0.5
@@ -222,38 +169,38 @@ function add_balmer_cont!(recipe::RRef{<: Type1Recipe}, state::QSFit.State)
         c.ratio.fixed = false
         c.ratio.low  = 0.1
         c.ratio.high = 1
-        state.meval.model[:Balmer].norm.patch = @fd (m, v) -> v * m[:QSOcont].norm
-        GModelFit.update!(state.meval)
+        resid.meval.model[:Balmer].norm.patch = @fd (m, v) -> v * m[:QSOcont].norm
+        GModelFit.update!(resid.meval)
     end
 end
 
 
-function renorm_cont!(recipe::RRef{<: Type1Recipe}, state::QSFit.State)
-    freeze!(state.meval.model, :QSOcont)
-    c = state.meval.model[:QSOcont]
-    d = state.meval.cevals[:QSOcont]
+function renorm_cont!(recipe::Recipe{<: Type1}, resid::GModelFit.Residuals)
+    freeze!(resid.meval.model, :QSOcont)
+    c = resid.meval.model[:QSOcont]
+    d = resid.meval.cevals[:QSOcont]
     initialnorm = c.norm.val
     if c.norm.val > 0
         println("Cont. norm. (before): ", c.norm.val)
         while true
-            residuals = (state.meval() - values(state.data)) ./ uncerts(state.data)
+            residuals = (GModelFit.last_evaluation(resid.meval) - values(resid.data)) ./ uncerts(resid.data)
             ratio = count(residuals .< 0) / length(residuals)
             (ratio > 0.9)  &&  break
             (c.norm.val < (initialnorm / 5))  &&  break # give up
             c.norm.val *= 0.99
-            GModelFit.update!(state.meval)
+            GModelFit.update!(resid.meval)
         end
         println("Cont. norm. (after) : ", c.norm.val)
     else
         println("Skipping cont. renormalization")
     end
-    GModelFit.update!(state.meval)
+    GModelFit.update!(resid.meval)
 end
 
 
-function guess_norm_factor!(recipe::RRef{<: Type1Recipe}, state::QSFit.State, name::Symbol; quantile=0.95)
-    @assert state.meval.model[name].norm.val != 0
-    m = state.meval(name)
+function guess_norm_factor!(recipe::Recipe{<: Type1}, resid::GModelFit.Residuals, name::Symbol; quantile=0.95)
+    @assert resid.meval.model[name].norm.val != 0
+    m = GModelFit.last_evaluation(resid.meval, name)
     c = cumsum(m)
     @assert maximum(c) != 0. "Model for $name evaluates to zero over the whole domain"
     c ./= maximum(c)
@@ -262,31 +209,31 @@ function guess_norm_factor!(recipe::RRef{<: Type1Recipe}, state::QSFit.State, na
     if i1 >= i2
         return #Can't calculate normalization for component
     end
-    resid = values(state.data) - state.meval()
-    ratio = state.meval.model[name].norm.val / sum(m[i1:i2])
-    off = sum(resid[i1:i2]) * ratio
-    state.meval.model[name].norm.val += off
+    r = values(resid.data) - GModelFit.last_evaluation(resid.meval)
+    ratio = resid.meval.model[name].norm.val / sum(m[i1:i2])
+    off = sum(r[i1:i2]) * ratio
+    resid.meval.model[name].norm.val += off
     @assert !isnan(off) "Norm. offset is NaN for $name"
-    if state.meval.model[name].norm.val < 0  # ensure line has positive normalization
-        state.meval.model[name].norm.val = abs(off)
+    if resid.meval.model[name].norm.val < 0  # ensure line has positive normalization
+        resid.meval.model[name].norm.val = abs(off)
     end
 end
 
 
-function add_iron_uv!(recipe::RRef{<: Type1Recipe}, state::QSFit.State)
-    λ = coords(state.meval.domain)
-    if recipe.options[:use_ironuv]
-        fwhm = recipe.options[:Ironuv_fwhm]
+function add_iron_uv!(recipe::Recipe{<: Type1}, resid::GModelFit.Residuals)
+    λ = coords(resid.meval.domain)
+    if recipe.use_ironuv
+        fwhm = recipe.Ironuv_fwhm
         comp = QSFit.ironuv(fwhm)
-        (_1, _2, coverage) = QSFit.spectral_coverage(λ, state.spec.resolution, comp)
-        threshold = get(recipe.options[:min_spectral_coverage], :Ironuv, recipe.options[:min_spectral_coverage][:default])
+        (_1, _2, coverage) = QSFit.spectral_coverage(λ, recipe.spec.resolution, comp)
+        threshold = get(recipe.min_spectral_coverage, :Ironuv, recipe.min_spectral_coverage[:default])
         if coverage >= threshold
-            state.meval.model[:Ironuv] = comp
-            state.meval.model[:Ironuv].norm.val = 1.
-            push!(state.meval.model[:Iron].list, :Ironuv)
-            GModelFit.update!(state.meval)
-            guess_norm_factor!(recipe, state, :Ironuv)
-            GModelFit.update!(state.meval)
+            resid.meval.model[:Ironuv] = comp
+            resid.meval.model[:Ironuv].norm.val = 1.
+            push!(resid.meval.model[:Iron].list, :Ironuv)
+            GModelFit.update!(resid.meval)
+            guess_norm_factor!(recipe, resid, :Ironuv)
+            GModelFit.update!(resid.meval)
         else
             println("Ignoring ironuv component (threshold: $threshold)")
         end
@@ -294,25 +241,25 @@ function add_iron_uv!(recipe::RRef{<: Type1Recipe}, state::QSFit.State)
 end
 
 
-function add_iron_opt!(recipe::RRef{<: Type1Recipe}, state::QSFit.State)
-    λ = coords(state.meval.domain)
-    if recipe.options[:use_ironopt]
-        fwhm = recipe.options[:Ironoptbr_fwhm]
+function add_iron_opt!(recipe::Recipe{<: Type1}, resid::GModelFit.Residuals)
+    λ = coords(resid.meval.domain)
+    if recipe.use_ironopt
+        fwhm = recipe.Ironoptbr_fwhm
         comp = QSFit.ironopt_broad(fwhm)
-        (_1, _2, coverage) = QSFit.spectral_coverage(λ, state.spec.resolution, comp)
-        threshold = get(recipe.options[:min_spectral_coverage], :Ironopt, recipe.options[:min_spectral_coverage][:default])
+        (_1, _2, coverage) = QSFit.spectral_coverage(λ, recipe.spec.resolution, comp)
+        threshold = get(recipe.min_spectral_coverage, :Ironopt, recipe.min_spectral_coverage[:default])
         if coverage >= threshold
-            state.meval.model[:Ironoptbr] = comp
-            state.meval.model[:Ironoptbr].norm.val = 1 # TODO: guess a sensible value
-            fwhm = recipe.options[:Ironoptna_fwhm]
-            state.meval.model[:Ironoptna] = QSFit.ironopt_narrow(fwhm)
-            state.meval.model[:Ironoptna].norm.val = 1 # TODO: guess a sensible value
-            state.meval.model[:Ironoptna].norm.fixed = false
-            push!(state.meval.model[:Iron].list, :Ironoptbr)
-            push!(state.meval.model[:Iron].list, :Ironoptna)
-            GModelFit.update!(state.meval)
-            guess_norm_factor!(recipe, state, :Ironoptbr)
-            GModelFit.update!(state.meval)
+            resid.meval.model[:Ironoptbr] = comp
+            resid.meval.model[:Ironoptbr].norm.val = 1 # TODO: guess a sensible value
+            fwhm = recipe.Ironoptna_fwhm
+            resid.meval.model[:Ironoptna] = QSFit.ironopt_narrow(fwhm)
+            resid.meval.model[:Ironoptna].norm.val = 1 # TODO: guess a sensible value
+            resid.meval.model[:Ironoptna].norm.fixed = false
+            push!(resid.meval.model[:Iron].list, :Ironoptbr)
+            push!(resid.meval.model[:Iron].list, :Ironoptna)
+            GModelFit.update!(resid.meval)
+            guess_norm_factor!(recipe, resid, :Ironoptbr)
+            GModelFit.update!(resid.meval)
         else
             println("Ignoring ironopt component (threshold: $threshold)")
         end
@@ -320,12 +267,12 @@ function add_iron_opt!(recipe::RRef{<: Type1Recipe}, state::QSFit.State)
 end
 
 
-function add_emission_lines!(recipe::RRef{<: Type1Recipe}, state::QSFit.State)
+function add_emission_lines!(recipe::Recipe{<: Type1}, resid::GModelFit.Residuals)
     groups = OrderedDict{Symbol, Vector{Symbol}}()
 
     # Create model components
-    for (cname, line) in state.user[:lcs]
-        state.meval.model[cname] = line.comp
+    for (cname, line) in recipe.lcs
+        resid.meval.model[cname] = line.comp
         haskey(groups, line.group)  ||  (groups[line.group] = Vector{Symbol}())
         push!(groups[line.group], cname)
     end
@@ -333,24 +280,24 @@ function add_emission_lines!(recipe::RRef{<: Type1Recipe}, state::QSFit.State)
     # Create reducers for groups
     for (group, lnames) in groups
         @assert group in [:BroadLines, :NarrowLines, :VeryBroadLines] "Unexpected group for emission lines: $group"
-        state.meval.model[group] = SumReducer(lnames)
-        push!(state.meval.model[:main].list, group)
+        resid.meval.model[group] = SumReducer(lnames)
+        push!(resid.meval.model[:main].list, group)
     end
-    GModelFit.update!(state.meval)
+    GModelFit.update!(resid.meval)
 
     # Guess normalizations
     for group in [:BroadLines, :NarrowLines, :VeryBroadLines]  # Note: order is important
         if group in keys(groups)
             for cname in groups[group]
-                guess_norm_factor!(recipe, state, cname)
+                guess_norm_factor!(recipe, resid, cname)
             end
         end
     end
 end
 
 
-function add_patch_functs!(recipe::RRef{<: Type1Recipe}, state::QSFit.State)
-    model = state.meval.model
+function add_patch_functs!(recipe::Recipe{<: Type1}, resid::GModelFit.Residuals)
+    model = resid.meval.model
     # Patch parameters
     if haskey(model, :OIII_4959)  &&  haskey(model, :OIII_5007)
         # model[:OIII_4959].norm.patch = @fd m -> m[:OIII_5007].norm / 3
@@ -409,29 +356,29 @@ function add_patch_functs!(recipe::RRef{<: Type1Recipe}, state::QSFit.State)
 end
 
 
-function add_nuisance_lines!(recipe::RRef{<: Type1Recipe}, state::QSFit.State)
-    (recipe.options[:n_nuisance] > 0)  ||  (return nothing)
+function add_nuisance_lines!(recipe::Recipe{<: Type1}, resid::GModelFit.Residuals)
+    (recipe.n_nuisance > 0)  ||  (return nothing)
 
     # Prepare nuisance line components
-    for i in 1:recipe.options[:n_nuisance]
-        state.meval.model[Symbol(:nuisance, i)] = line_component(recipe, NuisanceLine, 3000.)
+    for i in 1:recipe.n_nuisance
+        resid.meval.model[Symbol(:nuisance, i)] = line_component(recipe, NuisanceLine, 3000.)
     end
-    state.meval.model[line_group(recipe, NuisanceLine)] = SumReducer([Symbol(:nuisance, i) for i in 1:recipe.options[:n_nuisance]])
-    push!(state.meval.model[:main].list, line_group(recipe, NuisanceLine))
-    GModelFit.update!(state.meval)
-    for j in 1:recipe.options[:n_nuisance]
-        freeze!(state.meval.model, Symbol(:nuisance, j))
+    resid.meval.model[line_group(recipe, NuisanceLine)] = SumReducer([Symbol(:nuisance, i) for i in 1:recipe.n_nuisance])
+    push!(resid.meval.model[:main].list, line_group(recipe, NuisanceLine))
+    GModelFit.update!(resid.meval)
+    for j in 1:recipe.n_nuisance
+        freeze!(resid.meval.model, Symbol(:nuisance, j))
     end
-    GModelFit.update!(state.meval)
+    GModelFit.update!(resid.meval)
 
     # Set "nuisance" line center wavelength where there is a maximum in
     # the fit residuals, and re-run a fit.
-    λ = coords(state.meval.domain)
+    λ = coords(resid.meval.domain)
     λnuisance = Vector{Float64}()
     while true
-        (length(λnuisance) >= recipe.options[:n_nuisance])  &&  break
-        GModelFit.update!(state.meval)
-        Δ = (values(state.data) - state.meval()) ./ uncerts(state.data)
+        (length(λnuisance) >= recipe.n_nuisance)  &&  break
+        GModelFit.update!(resid.meval)
+        Δ = (values(resid.data) - GModelFit.last_evaluation(resid.meval)) ./ uncerts(resid.data)
 
         # Avoid considering again the same region (within 1A) TODO: within resolution
         for l in λnuisance
@@ -439,7 +386,7 @@ function add_nuisance_lines!(recipe::RRef{<: Type1Recipe}, state::QSFit.State)
         end
 
         # Avoidance regions
-        for rr in recipe.options[:nuisance_avoid]
+        for rr in recipe.nuisance_avoid
             Δ[findall(rr[1] .< λ .< rr[2])] .= 0.
         end
 
@@ -452,47 +399,47 @@ function add_nuisance_lines!(recipe::RRef{<: Type1Recipe}, state::QSFit.State)
         push!(λnuisance, λ[iadd])
 
         cname = Symbol(:nuisance, length(λnuisance))
-        state.meval.model[cname].norm.val = 1.
-        state.meval.model[cname].center.val  = λ[iadd]
+        resid.meval.model[cname].norm.val = 1.
+        resid.meval.model[cname].center.val  = λ[iadd]
 
         # Allow to shift by a quantity equal to ...
-        @assert recipe.options[:nuisance_maxoffset_from_guess] > 0
-        state.meval.model[cname].center.low  = λ[iadd] * (1 - recipe.options[:nuisance_maxoffset_from_guess] / 3e5)
-        state.meval.model[cname].center.high = λ[iadd] * (1 + recipe.options[:nuisance_maxoffset_from_guess] / 3e5)
+        @assert recipe.nuisance_maxoffset_from_guess > 0
+        resid.meval.model[cname].center.low  = λ[iadd] * (1 - recipe.nuisance_maxoffset_from_guess / 3e5)
+        resid.meval.model[cname].center.high = λ[iadd] * (1 + recipe.nuisance_maxoffset_from_guess / 3e5)
 
         # In any case, we must stay out of avoidance regions
-        for rr in recipe.options[:nuisance_avoid]
+        for rr in recipe.nuisance_avoid
             @assert !(rr[1] .< λ[iadd] .< rr[2])
             if rr[1] .>= λ[iadd]
-                state.meval.model[cname].center.high = min(state.meval.model[cname].center.high, rr[1])
+                resid.meval.model[cname].center.high = min(resid.meval.model[cname].center.high, rr[1])
             end
             if rr[2] .<= λ[iadd]
-                state.meval.model[cname].center.low  = max(state.meval.model[cname].center.low, rr[2])
+                resid.meval.model[cname].center.low  = max(resid.meval.model[cname].center.low, rr[2])
             end
         end
 
-        thaw!(state.meval.model, cname)
-        fit!(recipe, state)
-        freeze!(state.meval.model, cname)
+        thaw!(resid.meval.model, cname)
+        fit!(recipe, resid)
+        freeze!(resid.meval.model, cname)
     end
-    GModelFit.update!(state.meval)
+    GModelFit.update!(resid.meval)
 end
 
 
-function neglect_weak_features!(recipe::RRef{<: Type1Recipe}, state::QSFit.State)
+function neglect_weak_features!(recipe::Recipe{<: Type1}, resid::GModelFit.Residuals)
     # Disable "nuisance" lines whose normalization uncertainty is larger
     # than X times the normalization
     needs_fitting = false
-    for ii in 1:recipe.options[:n_nuisance]
+    for ii in 1:recipe.n_nuisance
         cname = Symbol(:nuisance, ii)
-        isfreezed(state.meval.model, cname)  &&  continue
-        if state.meval.model[cname].norm.val == 0.
-            freeze!(state.meval.model, cname)
+        isfreezed(resid.meval.model, cname)  &&  continue
+        if resid.meval.model[cname].norm.val == 0.
+            freeze!(resid.meval.model, cname)
             needs_fitting = true
             println("Disabling $cname (norm. = 0)")
-        elseif state.meval.model[cname].norm.unc / state.meval.model[cname].norm.val > 3
-            state.meval.model[cname].norm.val = 0.
-            freeze!(state.meval.model, cname)
+        elseif resid.meval.model[cname].norm.unc / resid.meval.model[cname].norm.val > 3
+            resid.meval.model[cname].norm.val = 0.
+            freeze!(resid.meval.model, cname)
             needs_fitting = true
             println("Disabling $cname (unc. / norm. > 3)")
         end
@@ -501,19 +448,19 @@ function neglect_weak_features!(recipe::RRef{<: Type1Recipe}, state::QSFit.State
 end
 
 
-function reduce(recipe::RRef{<: Type1Recipe}, state::QSFit.State)
+function reduce(recipe::Recipe{<: Type1}, resid::GModelFit.Residuals)
     EW = OrderedDict{Symbol, Float64}()
 
-    cont = deepcopy(state.meval())
-    for cname in keys(state.user[:lcs])
-        haskey(state.meval.model, cname) || continue
-        cont .-= state.meval(cname)
+    cont = deepcopy(GModelFit.last_evaluation(resid.meval))
+    for cname in keys(recipe.lcs)
+        haskey(resid.meval.model, cname) || continue
+        cont .-= GModelFit.last_evaluation(resid.meval, cname)
     end
     @assert all(cont .> 0) "Continuum model is zero or negative"
-    for cname in keys(state.user[:lcs])
-        haskey(state.meval.model, cname) || continue
-        EW[cname] = QSFit.int_tabulated(coords(state.meval.domain),
-                                        state.meval(cname) ./ cont)[1]
+    for cname in keys(recipe.lcs)
+        haskey(resid.meval.model, cname) || continue
+        EW[cname] = QSFit.int_tabulated(coords(resid.meval.domain),
+                                        GModelFit.last_evaluation(resid.meval, cname) ./ cont)[1]
     end
     return OrderedDict{Symbol, Any}(:EW => EW)
 end

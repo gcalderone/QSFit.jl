@@ -1,17 +1,13 @@
 import Gnuplot
 import Gnuplot.recipe
 
-function Gnuplot.recipe(spec::T) where T <: AbstractSpectrum
+function Gnuplot.recipe(spec::T) where T <: Spectrum
     i = findall(spec.good)
-    return Gnuplot.parseSpecs("set bars 0", title=spec.label * (isnothing(spec.z) ? "" : ", z=$(spec.z)"),
-                              xlabel="[x" * string(spec.unit_x) * "]", ylabel="[x" * string(spec.unit_y) * "]",
+    xlabel = (spec.isrestframe  ?  "Rest frame "  :  "") * "wavelenth "
+    return Gnuplot.parseSpecs("set bars 0", title=spec.label,
+                              xlabel=xlabel * "[x" * string(spec.unit_x) * "]",
+                              ylabel="[x" * string(spec.unit_y) * "]",
                               spec.x   , spec.y   , spec.err   , "with yerr notit pt 0      lc rgb 'gray'")
-end
-
-function Gnuplot.recipe(spec::RestFrameSpectrum)
-    out = @invoke Gnuplot.recipe(spec::AbstractSpectrum)
-    append!(out, Gnuplot.parseSpecs(xlabel="Rest frame [x" * string(spec.unit_x) * "]"))
-    return out
 end
 
 
