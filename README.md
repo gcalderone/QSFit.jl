@@ -51,7 +51,7 @@ using GModelFit
 abstract type MyRecipe <: Type1 end
 import QSFit.QSORecipes.add_qso_continuum!
 function add_qso_continuum!(recipe::Recipe{T}, resid::GModelFit.Residuals) where T <: MyRecipe
-	@invoke add_qso_continuum!(recipe::Recipe{<: supertype(T)}, resid)
+    @invoke add_qso_continuum!(recipe::Recipe{<: supertype(T)}, resid)
     resid.meval.model[:QSOcont].alpha.fixed = true
 end
 spec = Spectrum(Val(:SDSS_DR10), "spec-0752-52251-0323.fits", label="My SDSS source")
