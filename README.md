@@ -9,7 +9,7 @@ Quasar Spectral FITting package - http://qsfit.inaf.it/
 ```julia
 using Pkg
 Pkg.add("GModelFit.jl")
-Pkg.add("GModelFitViewer.jl")
+Pkg.add(url="https://github.com/lnicastro/GModelFitViewer.jl", rev="master")
 Pkg.add(url="https://github.com/gcalderone/QSFit.jl", rev="master")
 ```
 
@@ -42,41 +42,37 @@ viewer(res)
 
 using QSFit.QSORecipes
 spec = Spectrum(Val(:SDSS_DR10), "spec-0752-52251-0323.fits", label="My SDSS source")
-recipe = Recipe(Type1, z=0.3806)
+recipe = Recipe(Type1, redshift=0.3806)
 res = analyze(recipe, spec)
 display(res.bestfit)
 @gp res; viewer(res)
 
-
+using GModelFit
 abstract type MyRecipe <: Type1 end
 import QSFit.QSORecipes.add_qso_continuum!
-function add_qso_continuum!(recipe::Recipe{T}, state::QSFit.State) where T <: MyRecipe
-	@invoke add_qso_continuum!(recipe::Recipe{<: supertype(T)}, state)
-    state.model[:QSOcont].alpha.fixed = true
+function add_qso_continuum!(recipe::Recipe{T}, resid::GModelFit.Residuals) where T <: MyRecipe
+	@invoke add_qso_continuum!(recipe::Recipe{<: supertype(T)}, resid)
+    resid.meval.model[:QSOcont].alpha.fixed = true
 end
-spec = Spectrum(Val(:SDSS_DR10), "spec-0752-52251-0323.fits", label="My SDSS source", z=0.3806)
-recipe = Recipe(MyRecipe)
+spec = Spectrum(Val(:SDSS_DR10), "spec-0752-52251-0323.fits", label="My SDSS source")
+recipe = Recipe(MyRecipe, redshift=0.3806)
 res = analyze(recipe, spec)
 display(res.bestfit)
 
 
 using GModelFit, Statistics
-function add_qso_continuum!(recipe::Recipe{T}, state::QSFit.State) where T <: MyRecipe
-    λ = coords(domain(state.model))
+function add_qso_continuum!(recipe::Recipe{T}, resid::GModelFit.Residuals) where T <: MyRecipe
+    λ = coords(domain(resid.data))
     comp = QSFit.sbpl(3000)
     comp.x0.val = median(λ)
-    comp.norm.val = median(values(state.data))
+    comp.norm.val = median(values(resid.data))
     comp.norm.low = comp.norm.val / 1000.  # ensure contiuum remains positive (needed to estimate EWs)
-    state.model[:QSOcont] = comp
-    push!(state.model[:Continuum].list, :QSOcont)
-    GModelFit.update!(state.model)
+    resid.meval.model[:QSOcont] = comp
+    push!(resid.meval.model[:Continuum].list, :QSOcont)
+    GModelFit.update!(resid.meval)
 end
-spec = Spectrum(Val(:SDSS_DR10), "spec-0752-52251-0323.fits", label="My SDSS source", z=0.3806)
-recipe = Recipe(MyRecipe)
+spec = Spectrum(Val(:SDSS_DR10), "spec-0752-52251-0323.fits", label="My SDSS source")
+recipe = Recipe(MyRecipe, redshift=0.3806)
 res = analyze(recipe, spec)
 display(res.bestfit)
-
-
-
-
 ```
