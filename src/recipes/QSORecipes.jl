@@ -182,7 +182,7 @@ function renorm_cont!(recipe::Recipe{<: Type1}, resid::GModelFit.Residuals)
     initialnorm = c.norm.val
     if c.norm.val > 0
         println("Cont. norm. (before): ", c.norm.val)
-        while true
+        while c.norm.val > c.norm.low
             residuals = (GModelFit.last_evaluation(resid.meval) - values(resid.data)) ./ uncerts(resid.data)
             ratio = count(residuals .< 0) / length(residuals)
             (ratio > 0.9)  &&  break
