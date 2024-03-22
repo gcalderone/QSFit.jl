@@ -31,6 +31,7 @@ include("components/ironopt.jl")
 include("components/ironuv.jl")
 include("components/balmercont.jl")
 include("components/gaussconv.jl")
+include("components/interpolator.jl")
 
 abstract type AbstractSpecLineComp <: AbstractComponent end
 include("components/SpecLineGauss.jl")
