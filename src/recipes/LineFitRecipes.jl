@@ -66,7 +66,7 @@ function analyze(recipe::Recipe{<: LineFit}, spec::QSFit.Spectrum, resid::GModel
     display(model)
     display(resid.meval.model)
     
-    return fit!(resid)
+    return GModelFit.minimize!(resid)
 end
 
 
