@@ -1,8 +1,8 @@
 # Direct convolution is faster than FFT-based convolution when the
 # kernel is small. This is the case for the convolution to simulate
-# instrumental resolution, as the instrumental sampling is typically
-# ~2 times finer than the instrument resolution, resulting in kernels
-# being 21 points long (5sigma)
+# instrumental resolution since the instrumental sampling is typically
+# ~2 times netter than the instrument resolution, resulting in kernels
+# being 21 points long (for a 5sigma kernel)
 
 # See https://www.nv5geospatialsoftware.com/docs/CONVOL.html for "edge" mode meaning
 _edge_left( x::Vector{<: Real}, i::Int, value::Real) = value
@@ -23,7 +23,7 @@ _edge_right(x::Vector{<: Real}, i::Int, mode::Val{:edge_reflect}) = x[end-(i - l
 
 function direct_conv1d!(z::Vector{T}, x::Vector{T}, y::Vector{T}, edge_mode=Val(:edge_zero)) where T <: Real
     if length(x) < length(y)
-        return _direct_conv1d!(z, y, x)
+        return direct_conv1d!(z, y, x, edge_mode)
     end
     @assert length(x) == length(z)
     @assert isodd(length(y))
@@ -58,7 +58,7 @@ function direct_conv1d!(z::Vector{T}, x::Vector{T}, y::Vector{T}, edge_mode=Val(
     return z
 end
 
-direct_conv1d(x::Vector{T}, y::Vector{T}) where T = direct_conv1d!(similar(x, length(x)), x, y)
+direct_conv1d(x::Vector{T}, y::Vector{T}, edge_mode=Val(:edge_zero)) where T = direct_conv1d!(similar(x, length(x)), x, y, edge_mode)
 
 
 
