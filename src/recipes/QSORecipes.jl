@@ -140,18 +140,21 @@ function add_host_galaxy!(recipe::Recipe{<: Type1}, resid::GModelFit.Residuals)
         (recipe.host_template_range[1] .< maximum(λ))  &&
         (recipe.host_template_range[2] .> minimum(λ))
         resid.meval.model[:Galaxy] = QSFit.hostgalaxy(recipe.host_template[:template],
-                                                library=recipe.host_template[:library],
-                                                refwl=recipe.host_template_ref_wavelength)
+                                                      library=recipe.host_template[:library],
+                                                      refwl=recipe.host_template_ref_wavelength)
         push!(resid.meval.model[:Continuum].list, :Galaxy)
 
         # Split total flux between continuum and host galaxy
         refwl = recipe.host_template_ref_wavelength
         vv = Dierckx.Spline1D(λ, values(resid.data), k=1, bc="extrapolate")(refwl)
         @assert !isnan(vv) "Predicted L_λ at $(refwl)A is NaN"
-        @assert vv > 0 "Predicted L_λ at $(refwl)A is negative"
-        # (vv <= 0)  &&  (vv = .1 * median(values(resid.data)))
-        resid.meval.model[:Galaxy].norm.val    = 1/2 * vv
-        resid.meval.model[:QSOcont].norm.val *= 1/2 * vv / Dierckx.Spline1D(λ, GModelFit.last_evaluation(resid.meval, :QSOcont), k=1, bc="extrapolate")(refwl)
+        if vv <= 0
+            @warn "Predicted L_λ at $(refwl)A is negative, set host galaxy guess value at zero."
+            resid.meval.model[:Galaxy].norm.val   = 0.
+        else
+            resid.meval.model[:Galaxy].norm.val   = 1/2 * vv
+            resid.meval.model[:QSOcont].norm.val *= 1/2 * vv / Dierckx.Spline1D(λ, GModelFit.last_evaluation(resid.meval, :QSOcont), k=1, bc="extrapolate")(refwl)
+        end
         GModelFit.update!(resid.meval)
     end
 end
