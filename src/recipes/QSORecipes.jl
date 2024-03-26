@@ -185,12 +185,13 @@ function renorm_cont!(recipe::Recipe{<: Type1}, resid::GModelFit.Residuals)
     initialnorm = c.norm.val
     if c.norm.val > 0
         println("Cont. norm. (before): ", c.norm.val)
-        while c.norm.val > c.norm.low
+        scaling = 0.99
+        while c.norm.val * scaling > c.norm.low
             residuals = (GModelFit.last_evaluation(resid.meval) - values(resid.data)) ./ uncerts(resid.data)
             ratio = count(residuals .< 0) / length(residuals)
             (ratio > 0.9)  &&  break
             (c.norm.val < (initialnorm / 5))  &&  break # give up
-            c.norm.val *= 0.99
+            c.norm.val *= scaling
             GModelFit.update!(resid.meval)
         end
         println("Cont. norm. (after) : ", c.norm.val)
