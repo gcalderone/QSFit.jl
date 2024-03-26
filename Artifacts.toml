@@ -1,6 +1,6 @@
 [qsfit_data]
-git-tree-sha1 = "d92036936313dadf6a468ccb8934c6eb484b101a"
+git-tree-sha1 = "33e2ba6965fcb715d73d81e4aeb6f34f0f47f04a"
 
     [[qsfit_data.download]]
-    sha256 = "88b85eb59f5a98cc4e27c86576af091e60264cd080d72ce4d60f544352a96317"
+    sha256 = "cb720b35da3459ecf4b872c76c9b043eac816291cf29601732d3a4951ad50edd"
     url = "http://wwwuser.oats.inaf.it/calderone/QSFit_data/qsfit_data.tar.gz"
