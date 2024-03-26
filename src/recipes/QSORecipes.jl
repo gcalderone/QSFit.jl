@@ -113,6 +113,7 @@ function fit!(recipe::Recipe{<: Type1}, resid::GModelFit.Residuals)
     resid.mzer.config.ftol = 1.e-6
     bestfit, stats = GModelFit.minimize!(resid)
     show(stats)
+    # println(resid.mzer.result)
     return bestfit, stats
 end
 
