@@ -35,6 +35,7 @@ include("components/interpolator.jl")
 
 abstract type AbstractSpecLineComp <: AbstractComponent end
 include("components/SpecLineGauss.jl")
+include("components/SpecLineAsymmGauss.jl")
 include("components/SpecLineLorentz.jl")
 include("components/SpecLineVoigt.jl")
 
