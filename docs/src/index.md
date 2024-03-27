@@ -30,9 +30,9 @@ The code has now been ported to [Julia](https://julialang.org/) and the new pack
 In the Julia REPL type:
 ```julia
 using Pkg
-Pkg.add("GModelFit.jl")
-Pkg.add("GModelFitViewer.jl")
-Pkg.add(url="https://github.com/gcalderone/QSFit.jl", rev="0.1.0")
+Pkg.add("GModelFit")
+Pkg.add("GModelFitViewer")
+Pkg.add(url="https://github.com/gcalderone/QSFit.jl", rev="v0.1.0")
 ```
 
 To test the package type `Pkg.test("QSFit")`.
@@ -49,8 +49,7 @@ The typical workflow for a spectral analysis is as follows:
 ```@example abc
 using QSFit, QSFit.QSORecipes
 # Download a spectrum
-filename = "/home/gcalderone/my/work/software/qsfit/data/spec-0752-52251-0323.fits" 
-# download("http://dr10.sdss3.org/sas/dr10/sdss/spectro/redux/26/spectra/0752/spec-0752-52251-0323.fits")
+filename = download("http://dr10.sdss3.org/sas/dr10/sdss/spectro/redux/26/spectra/0752/spec-0752-52251-0323.fits")
 
 # Read spectrum into a Spectrum Object
 spec = Spectrum(Val(:SDSS_DR10), filename, label="My SDSS source")
