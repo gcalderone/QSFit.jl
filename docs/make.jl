@@ -5,7 +5,9 @@ makedocs(sitename="QSFit.jl",
          format = Documenter.HTML(prettyurls = false),  # uncomment for local use, comment for deployment
          modules=[QSFit],
          pages = [
-             "Home" => "index.md",
+             "QSFit" => "index.md",
+             "Components" => "components.md",
+             "Recipes" => "recipes.md",
          ])
 Gnuplot.quitall()
 

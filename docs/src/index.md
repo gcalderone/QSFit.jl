@@ -3,16 +3,14 @@ include("setup.jl")
 ```
 
 # QSFit.jl
-## QSO Spectral FITting package
+
+**QSO spectral fitting made easy !!**
+
 [![Stars](https://img.shields.io/github/stars/gcalderone/QSFit.jl?style=social)](https://github.com/gcalderone/QSFit.jl)
 
-QSO spectral fitting made easy !!
 
 !!! warn
     This software is under active development and details may change at any time without notice.  Also, documentation is not yet exhaustive.
-
-
-## Introduction
 
 QSFit started as an attempt to perform automatic analysis of optical spectra of AGNs and QSOs in a simple, replicable and shareable way. The first implementation in IDL language (see repo [here](https://github.com/gcalderone/qsfit) has been used to analyze 71261 AGN and QSO spectra from SDSS DR10.  The resulting spectral properties (such as emission line luminosities and widths, continuum slopes, etc.) are collected in a catalog in FITS format, as well as being publicly available here: [https://qsfit.inaf.it/](https://qsfit.inaf.it/).
 
@@ -20,9 +18,9 @@ The details of the spectral analysis are presented in a paper: [Calderone et al.
 
 The code has now been ported to [Julia](https://julialang.org/) and the new package is dubbed **QSFit.jl**.  It comes with the following advantages with respect to the IDL version:
 - Julia is released with a [MIT license](https://en.wikipedia.org/wiki/MIT_License) and doesn't require a paid license to be executed;
-- It provides better performances;
-- It provides a few built-in recipes to perform automatic spectral analysis as well as interactive line fitting;
-- It exploits the concept of *customizable recipes* (see below) to customize the analysis for specific purposes;
+- It provides better performances and allows to distribute workload on multiple CPUs or multiple host;
+- It provides several reusable [Components](@ref) and a few [Recipes](@ref) to perform automatic spectral analysis as well as interactive emissione line fitting;
+- It exploits the concept of *customizable recipes* (see [Recipes](@ref)) to customize the analysis for specific purposes;
 
 **QSFit.jl** relies on the [GModelFit.jl](https://gcalderone.github.io/GModelFit.jl/) package to perform spectral fitting.  A basic knowledge of such package is required to get the most out of **QSFit.jl**.
 
@@ -82,31 +80,3 @@ using GModelFitViewer
 viewer(res)
 println() # hide
 ```
-
-
-## Currently available recipes 
-
-
-## Customizing built-in recipes
-To be written.
-
-
-## Define new recipes
-To be written.
-
-- `InteractiveLineFit`:
-
-
-. It provides estimates of:
-
-    AGN continuum luminosities and slopes at several rest frame wavelengths;
-    host galaxy luminosities (for sources with z < 0.8);
-    luminosities, widths and velocity offsets of 20 individual emission lines (Hα, Hβ, MgII, [OIII], CIV, etc.), and luminosity of the blended Balmer lines (n ≥ 7);
-    luminosities of iron blended lines at optical and UV wavelengths;
-    luminosity of the Balmer continuum;
-    several "quality flags" to assess the reliability of the results.
-
-
-
-
-

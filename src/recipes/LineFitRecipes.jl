@@ -63,9 +63,6 @@ function analyze(recipe::Recipe{<: LineFit}, spec::QSFit.Spectrum, resid::GModel
         end
     end
 
-    display(model)
-    display(resid.meval.model)
-    
     return GModelFit.minimize!(resid)
 end
 
@@ -132,6 +129,8 @@ function analyze(recipe::Recipe{<: InteractiveLineFit}, spec::QSFit.Spectrum, re
 
     println()
     println("recipe = Recipe(LineFit)")
+    println("recipe.redshift = ", recipe.redshift)
+    println("recipe.Av = ", recipe.Av)
     println("recipe.wavelength_range = ", recipe.wavelength_range)
     println("recipe.line_profiles = :", recipe.line_profiles)
     println("recipe.lines = [")

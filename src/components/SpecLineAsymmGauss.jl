@@ -1,7 +1,7 @@
 # ____________________________________________________________________
 # SpecLineAsymmGauss
 #
-mutable struct SpecLineAsymmGauss <: AbstractComponent
+mutable struct SpecLineAsymmGauss <: AbstractSpecLineComp
     norm::Parameter
     center::Parameter
     fwhm::Parameter
