@@ -1,0 +1,18 @@
+
+# Components
+
+The **QSFit.jl** package implements the following GModelFit-compatible [components](https://gcalderone.github.io/GModelFit.jl/concepts/):
+
+- `balmercont`: Balmer continuum 
+- `cutoff_powerlaw`:
+- `gaussconv`:
+- `hostgalaxy`:
+- `interpolator`:
+- `ironopt`:
+- `ironuv`:
+- `powerlaw`:
+- `sbpl`:
+- `SpecLineAsymmGauss`:
+- `SpecLineGauss`:
+- `SpecLineLorentz`:
+- `SpecLineVoigt`:
