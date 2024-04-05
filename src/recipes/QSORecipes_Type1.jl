@@ -9,13 +9,6 @@ function set_constraints!(recipe::Recipe{<: Type1}, ::Type{MgIIBroadLine}, comp:
 end
 
 
-abstract type OIIIBlueWing  <: NarrowLine end
-line_suffix(recipe::Recipe{<: Type1}, ::Type{OIIIBlueWing}) = :_bw
-function set_constraints!(recipe::Recipe{<: Type1}, ::Type{OIIIBlueWing}, comp::GModelFit.AbstractComponent)
-    comp.voff.low, comp.voff.val, comp.voff.high = 0, 0, 2e3
-end
-
-
 function init_recipe!(recipe::Recipe{T}) where T <: Type1
     @invoke init_recipe!(recipe::Recipe{<: QSOGeneric})
     recipe.min_spectral_coverage[:Ironuv]  = 0.3
@@ -52,7 +45,7 @@ function init_recipe!(recipe::Recipe{T}) where T <: Type1
         LineDescriptor(:HeII_4686  , BroadLine),
         LineDescriptor(:Hb         , NarrowLine, BroadLine),
         LineDescriptor(:OIII_4959  , ForbiddenLine),
-        LineDescriptor(:OIII_5007  , ForbiddenLine, OIIIBlueWing),
+        LineDescriptor(:OIII_5007  , ForbiddenLine, BlueWing),
         LineDescriptor(:HeI_5876   , BroadLine),
         LineDescriptor(:OI_6300    , ForbiddenLine),
         LineDescriptor(:OI_6364    , ForbiddenLine),

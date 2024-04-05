@@ -12,6 +12,13 @@ line_profile(recipe::Recipe{<: QSOGeneric}, ::Type{<: AbstractLine}, id::Val) = 
 line_profile(recipe::Recipe{<: QSOGeneric}, ::Type{<: AbstractLine})          = recipe.line_profiles
 
 
+abstract type BlueWing <: NarrowLine end
+line_suffix(recipe::Recipe{<: QSOGeneric}, ::Type{BlueWing}) = :_bw
+function set_constraints!(recipe::Recipe{<: QSOGeneric}, ::Type{BlueWing}, comp::GModelFit.AbstractComponent)
+    comp.voff.low, comp.voff.val, comp.voff.high = 0, 0, 2e3
+end
+
+
 function init_recipe!(recipe::Recipe{T}) where T <: QSOGeneric
     @invoke init_recipe!(recipe::Recipe{<: AbstractRecipeSpec})
     recipe.wavelength_range = [1215, 7.3e3]
