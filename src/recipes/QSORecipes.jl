@@ -47,7 +47,7 @@ struct LineInstance{T}
 end
 
 
-function dict_line_instances(recipe::Recipe{<: QSOGeneric}, linedescrs::Vector{LineDescriptor})
+function dict_line_instances(recipe::Recipe{<: QSOGeneric}, linedescrs::Vector{<: LineDescriptor})
     out = OrderedDict{Symbol, LineInstance}()
     for ld in linedescrs
         for T in ld.types
