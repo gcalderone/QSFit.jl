@@ -4,7 +4,7 @@ abstract type Type1 <: QSOGeneric end
 
 # Special cases for emission lines
 abstract type MgIIBroadLine <: BroadLine end
-function set_constraints!(recipe::Recipe{<: Type1}, ::Type{MgIIBroadLine}, comp::GModelFit.AbstractComponent)
+function set_constraints!(recipe::Recipe{<: Type1}, ::Type{MgIIBroadLine}, comp::QSFit.AbstractSpecLineComp)
     comp.voff.low, comp.voff.val, comp.voff.high = -1e3, 0, 1e3
 end
 
