@@ -123,6 +123,66 @@ function add_iron_opt!(recipe::Recipe{<: Type1}, resid::GModelFit.Residuals)
 end
 
 
+function add_patch_functs!(recipe::Recipe{<: Type1}, resid::GModelFit.Residuals)
+    model = resid.meval.model
+    # Patch parameters
+    if haskey(model, :OIII_4959)  &&  haskey(model, :OIII_5007)
+        # model[:OIII_4959].norm.patch = @fd m -> m[:OIII_5007].norm / 3
+        model[:OIII_4959].voff.patch = :OIII_5007
+    end
+    if haskey(model, :OIII_5007)  &&  haskey(model, :OIII_5007_bw)
+        model[:OIII_5007_bw].voff.patch = @fd (m, v) -> v + m[:OIII_5007].voff
+        model[:OIII_5007_bw].fwhm.patch = @fd (m, v) -> v + m[:OIII_5007].fwhm
+    end
+    if haskey(model, :OI_6300)  &&  haskey(model, :OI_6364)
+        # model[:OI_6300].norm.patch = @fd m -> m[:OI_6364].norm / 3
+        model[:OI_6300].voff.patch = :OI_6364
+    end
+    if haskey(model, :NII_6549)  &&  haskey(model, :NII_6583)
+        # model[:NII_6549].norm.patch = @fd m -> m[:NII_6583].norm / 3
+        model[:NII_6549].voff.patch = :NII_6583
+    end
+    if haskey(model, :SII_6716)  &&  haskey(model, :SII_6731)
+        # model[:SII_6716].norm.patch = @fd m -> m[:SII_6731].norm / 3
+        model[:SII_6716].voff.patch = :SII_6731
+    end
+
+    if haskey(model, :Hb_na)  &&  haskey(model, :Ha_na)
+        model[:Hb_na].voff.patch = :Ha_na
+    end
+
+    # The following are required to avoid degeneracy with iron
+    # template
+    if haskey(model, :Hg)  &&  haskey(model, :Hb_br)
+        model[:Hg].voff.patch = :Hb_br
+        model[:Hg].fwhm.patch = :Hb_br
+    end
+    if haskey(model, :Hg_br)  &&  haskey(model, :Hb_br)
+        model[:Hg_br].voff.patch = :Hb_br
+        model[:Hg_br].fwhm.patch = :Hb_br
+    end
+    if haskey(model, :Hg_na)  &&  haskey(model, :Hb_na)
+        model[:Hg_na].voff.patch = :Hb_na
+        model[:Hg_na].fwhm.patch = :Hb_na
+    end
+
+    # Ensure luminosity at peak of the broad base component is
+    # smaller than the associated broad component:
+    if  haskey(model, :Hb_br)  &&
+        haskey(model, :Hb_bb)
+        model[:Hb_bb].norm.high = 1
+        model[:Hb_bb].norm.val  = 0.5
+        model[:Hb_bb].norm.patch = @fd (m, v) -> v * m[:Hb_br].norm / m[:Hb_br].fwhm * m[:Hb_bb].fwhm
+    end
+    if  haskey(model, :Ha_br)  &&
+        haskey(model, :Ha_bb)
+        model[:Ha_bb].norm.high = 1
+        model[:Ha_bb].norm.val  = 0.5
+        model[:Ha_bb].norm.patch = @fd (m, v) -> v * m[:Ha_br].norm / m[:Ha_br].fwhm * m[:Ha_bb].fwhm
+    end
+end
+
+
 function analyze(recipe::Recipe{<: Type1}, spec::Spectrum, resid::GModelFit.Residuals)
     recipe.spec = spec  # TODO: remove
     model = resid.meval.model
