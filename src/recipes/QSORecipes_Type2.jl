@@ -5,6 +5,7 @@ abstract type Type2 <: QSOGeneric end
 function init_recipe!(recipe::Recipe{T}) where T <: Type2
     @invoke init_recipe!(recipe::Recipe{<: QSOGeneric})
 
+    recipe.n_nuisance = 2
     recipe.lines = [
         LineDescriptor(:Lya       , NarrowLine),
         LineDescriptor(:NV_1241   , NarrowLine),

@@ -14,7 +14,7 @@ line_profile(recipe::Recipe{<: QSOGeneric}, ::Type{<: AbstractLine})          = 
 
 abstract type BlueWing <: NarrowLine end
 line_suffix(recipe::Recipe{<: QSOGeneric}, ::Type{BlueWing}) = :_bw
-function set_constraints!(recipe::Recipe{<: QSOGeneric}, ::Type{BlueWing}, comp::GModelFit.AbstractComponent)
+function set_constraints!(recipe::Recipe{<: QSOGeneric}, ::Type{<: BlueWing}, comp::QSFit.AbstractSpecLineComp)
     comp.voff.low, comp.voff.val, comp.voff.high = 0, 0, 2e3
 end
 
@@ -32,7 +32,8 @@ function init_recipe!(recipe::Recipe{T}) where T <: QSOGeneric
     recipe.line_profiles = :gauss
 
     recipe.n_nuisance = 10
-    recipe.nuisance_avoid = [4863 .+ [-1,1] .* 50, 6565 .+ [-1,1] .* 150]  # Angstrom
+    recipe.nuisance_avoid = [4863 .+ [-1,1] .* 50,    # Angstrom
+                             6565 .+ [-1,1] .* 150]
     recipe.nuisance_maxoffset_from_guess = 1e3  # km/s
 
     recipe.lines = LineDescriptor[]
