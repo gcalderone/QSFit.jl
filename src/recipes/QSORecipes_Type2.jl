@@ -6,26 +6,30 @@ function init_recipe!(recipe::Recipe{T}) where T <: Type2
     @invoke init_recipe!(recipe::Recipe{<: QSOGeneric})
 
     recipe.n_nuisance = 2
+    push!(recipe.nuisance_avoid,
+          4959 .+ [-1,1] .* 25,
+          5008 .+ [-1,1] .* 25)
+
     recipe.lines = [
         LineDescriptor(:Lya       , NarrowLine),
-        LineDescriptor(:NV_1241   , NarrowLine),
+        LineDescriptor(:NV_1241   , ForbiddenLine),
         LineDescriptor(:CIV_1549  , NarrowLine),
         LineDescriptor(:CIII_1909 , NarrowLine),
         LineDescriptor(:MgII_2798 , NarrowLine),
-        LineDescriptor(:NeV_3426  , NarrowLine),
-        LineDescriptor(:OII_3727  , NarrowLine),
-        LineDescriptor(:NeIII_3869, NarrowLine),
+        LineDescriptor(:NeV_3426  , ForbiddenLine),
+        LineDescriptor(:OII_3727  , ForbiddenLine),
+        LineDescriptor(:NeIII_3869, ForbiddenLine),
         LineDescriptor(:Hg        , NarrowLine),
         LineDescriptor(:Hb        , NarrowLine),
-        LineDescriptor(:OIII_4959 , NarrowLine, BlueWing),
-        LineDescriptor(:OIII_5007 , NarrowLine, BlueWing),
-        LineDescriptor(:OI_6300   , NarrowLine),
-        LineDescriptor(:OI_6364   , NarrowLine),
-        LineDescriptor(:NII_6549  , NarrowLine),
+        LineDescriptor(:OIII_4959 , ForbiddenLine, BlueWing),
+        LineDescriptor(:OIII_5007 , ForbiddenLine, BlueWing),
+        LineDescriptor(:OI_6300   , ForbiddenLine),
+        LineDescriptor(:OI_6364   , ForbiddenLine),
+        LineDescriptor(:NII_6549  , ForbiddenLine),
         LineDescriptor(:Ha        , NarrowLine),
-        LineDescriptor(:NII_6583  , NarrowLine),
-        LineDescriptor(:SII_6716  , NarrowLine),
-        LineDescriptor(:SII_6731  , NarrowLine)
+        LineDescriptor(:NII_6583  , ForbiddenLine),
+        LineDescriptor(:SII_6716  , ForbiddenLine),
+        LineDescriptor(:SII_6731  , ForbiddenLine)
     ]
 end
 
