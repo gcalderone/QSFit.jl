@@ -4,7 +4,7 @@ using Printf, DataStructures, Statistics
 using Dierckx
 using ..QSFit, ..QSFit.ATL, GModelFit
 
-import QSFit: init_recipe!, preprocess_spec!, line_suffix, line_component, analyze, reduce
+import QSFit: init_recipe!, preprocess_spec!, line_suffix, line_component, set_lines_dict!, analyze, reduce
 
 abstract type QSOGeneric <: AbstractRecipeSpec end
 
@@ -256,6 +256,7 @@ end
 
 function preprocess_spec!(recipe::Recipe{T}, spec::QSFit.Spectrum) where T <: QSOGeneric
     @invoke preprocess_spec!(recipe::Recipe{<: AbstractRecipeSpec}, spec)
+    set_lines_dict!(recipe)
 
     spec.good[findall(spec.x .< recipe.wavelength_range[1])] .= false
     spec.good[findall(spec.x .> recipe.wavelength_range[2])] .= false

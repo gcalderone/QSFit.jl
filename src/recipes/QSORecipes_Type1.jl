@@ -17,7 +17,11 @@ function init_recipe!(recipe::Recipe{T}) where T <: Type1
     recipe.use_balmer = true
     recipe.use_ironuv = true;      recipe.Ironuv_fwhm    = 3000.
     recipe.use_ironopt = true;     recipe.Ironoptbr_fwhm = 3000.;  recipe.Ironoptna_fwhm =  500.
+end
 
+
+function set_lines_dict!(recipe::Recipe{T}) where T <: Type1
+    (:lines in propertynames(recipe))  &&  (return get_lines_dict(recipe))
     add_line!(recipe, :Lyb),
     # add_line!(recipe, :OV_1213)  # 1213.8A, Ferland+92, Shields+95,
     add_line!(recipe, :Lya),
@@ -53,6 +57,7 @@ function init_recipe!(recipe::Recipe{T}) where T <: Type1
     add_line!(recipe, :NII_6583),
     add_line!(recipe, :SII_6716),
     add_line!(recipe, :SII_6731)
+    return get_lines_dict(recipe)
 end
 
 

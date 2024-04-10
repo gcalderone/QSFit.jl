@@ -9,7 +9,10 @@ function init_recipe!(recipe::Recipe{T}) where T <: Type2
     push!(recipe.nuisance_avoid,
           4959 .+ [-1,1] .* 25,
           5008 .+ [-1,1] .* 25)
+end
 
+function set_lines_dict!(recipe::Recipe{T}) where T <: Type2
+    (:lines in propertynames(recipe))  &&  (return get_lines_dict(recipe))
     add_line!(recipe, :Lya       , NarrowLine)
     add_line!(recipe, :NV_1241   , ForbiddenLine)
     add_line!(recipe, :CIV_1549  , NarrowLine)
@@ -29,6 +32,7 @@ function init_recipe!(recipe::Recipe{T}) where T <: Type2
     add_line!(recipe, :NII_6583  , ForbiddenLine)
     add_line!(recipe, :SII_6716  , ForbiddenLine)
     add_line!(recipe, :SII_6731  , ForbiddenLine)
+    return get_lines_dict(recipe)
 end
 
 

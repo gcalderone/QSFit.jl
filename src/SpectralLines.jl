@@ -3,7 +3,7 @@ include("ATL.jl")
 using .ATL
 
 export ForbiddenLine, SemiForbiddenLine, NarrowLine, BroadLine, VeryBroadLine, NuisanceLine
-export get_lines_dict, add_line!
+export get_lines_dict, set_lines_dict!, add_line!
 
 
 abstract type LineTemplate end
@@ -24,11 +24,12 @@ line_suffix(::Recipe, ::Type{<: NarrowLine})    = "_na"
 line_suffix(::Recipe, ::Type{<: BroadLine})     = "_br"
 line_suffix(::Recipe, ::Type{<: VeryBroadLine}) = "_bb"
 
-line_group( ::Recipe, ::Type{<: ForbiddenLine}) = :NarrowLines
-line_group( ::Recipe, ::Type{<: NarrowLine})    = :NarrowLines
-line_group( ::Recipe, ::Type{<: BroadLine})     = :BroadLines
-line_group( ::Recipe, ::Type{<: VeryBroadLine}) = :VeryBroadLines
-line_group( ::Recipe, ::Type{<: NuisanceLine})  = :NuisanceLines
+line_group( ::Recipe, ::Type{<: ForbiddenLine})     = :NarrowLines
+line_group( ::Recipe, ::Type{<: SemiForbiddenLine}) = :BroadLines
+line_group( ::Recipe, ::Type{<: NarrowLine})        = :NarrowLines
+line_group( ::Recipe, ::Type{<: BroadLine})         = :BroadLines
+line_group( ::Recipe, ::Type{<: VeryBroadLine})     = :VeryBroadLines
+line_group( ::Recipe, ::Type{<: NuisanceLine})      = :NuisanceLines
 
 line_component(::Recipe{<: AbstractRecipeSpec}, ::Type{<: LineTemplate}, center::Float64) = SpecLineGauss(center)
 
@@ -40,7 +41,7 @@ function line_component(recipe::Recipe, template::Type{<: ForbiddenLine}, t::ATL
 end
 
 function line_component(recipe::Recipe, template::Type{<: SemiForbiddenLine}, t::ATL.AbstractTransition)
-    return line_component(recipe, template, BroadLine, t)
+    return line_component(recipe, BroadLine, t)
 end
 
 function line_component(recipe::Recipe, template::Type{<: NarrowLine}, t::ATL.AbstractTransition)
@@ -108,4 +109,12 @@ end
 function get_lines_dict(recipe::Recipe{<: AbstractRecipeSpec})
     (:lines in propertynames(recipe))  ||  (recipe.lines = OrderedDict{Symbol, SpectralLine}())
     return recipe.lines
+end
+
+function set_lines_dict!(recipe::Recipe{<: AbstractRecipeSpec})
+    recipe.lines = OrderedDict{Symbol, SpectralLine}()
+    for tid in ATL.get_transition_ids()
+        add_line!(recipe, tid)
+    end
+    return get_lines_dict(recipe)
 end
