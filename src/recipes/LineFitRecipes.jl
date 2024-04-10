@@ -68,7 +68,7 @@ function analyze(recipe::Recipe{<: LineFit}, spec::QSFit.Spectrum, resid::GModel
 end
 
 
-function analyze(_recipe::Recipe{<: InteractiveLineFit}, _spec::Spectrum) where T <: AbstractRecipeSpec
+function analyze(_recipe::Recipe{<: InteractiveLineFit}, _spec::Spectrum)
     recipe = deepcopy(_recipe)
     spec = deepcopy(_spec)
     preprocess_spec!(recipe, spec)

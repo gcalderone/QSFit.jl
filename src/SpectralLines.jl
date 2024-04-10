@@ -88,8 +88,8 @@ function show(io::IO, line::SpectralLine)
 end
 
 add_line!(recipe::Recipe{<: AbstractRecipeSpec}, tid::Symbol) = add_line!(recipe, get_transition(tid))
-add_line!(recipe::Recipe{<: AbstractRecipeSpec}, t::ATL.AbstractTransition) = add_line!(recipe, t, default_line_templates(recipe, t))
-add_line!(recipe::Recipe{<: AbstractRecipeSpec}, tid::Symbol, templates::Vararg{DataType, N}) where N = add_line!(recipe, get_transition(tid), templates)
+add_line!(recipe::Recipe{<: AbstractRecipeSpec}, t::ATL.AbstractTransition) = add_line!(recipe, t, default_line_templates(recipe, t)...)
+add_line!(recipe::Recipe{<: AbstractRecipeSpec}, tid::Symbol, templates::Vararg{DataType, N}) where N = add_line!(recipe, get_transition(tid), templates...)
 
 function add_line!(recipe::Recipe{<: AbstractRecipeSpec}, t::ATL.AbstractTransition, templates::Vararg{DataType, N}) where N
     @assert N > 0

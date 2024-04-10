@@ -68,7 +68,7 @@ get_label(t::UnidentifiedTransition) = replace("l$(t.lambda)", "." => "p")
 get_label(id::Symbol) = get_label(get_transition(id))
 
 get_id(t::AbstractTransition) = Symbol(replace(get_label(t), "[" => "", "]" => "", "λ" => "_",
-                                               Pair.(string.('α' .+ (0:4)), string.('a' .+ (0:4)))...))
+                                               "α" => "a", "β" => "b", "γ" => "g", "δ" => "d"))
 get_id(id::Symbol) = get_id(get_transition(id))
 
 get_wavelength(t::Transition) = t.lambda

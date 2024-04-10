@@ -21,16 +21,10 @@ using QSFit, QSFit.LineFitRecipes
 
 filename = download("http://dr10.sdss3.org/sas/dr10/sdss/spectro/redux/26/spectra/0752/spec-0752-52251-0323.fits")
 spec = Spectrum(Val(:SDSS_DR10), filename)
-recipe = Recipe(LineFit)
-recipe.redshift = 0.3806
-recipe.Av = missing
-recipe.wavelength_range = [4532.52088596136, 5254.15348271789]
-recipe.line_profiles = :gauss
-recipe.lines = [
-     LineDescriptor(4864.68, NarrowLine, BroadLine)
-     LineDescriptor(5009.03, ForbiddenLine)
-]
-
+recipe = Recipe(LineFit, redshift=0.3806)
+recipe.wavelength_range = [4610.1157888384, 5130.00163811462]
+add_line!(recipe, QSFit.ATL.UnidentifiedTransition(4866.45), NarrowLine,BroadLine)
+add_line!(recipe, QSFit.ATL.UnidentifiedTransition(5008.98), ForbiddenLine)
 res = analyze(recipe, spec)
 ```
 

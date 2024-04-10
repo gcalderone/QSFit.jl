@@ -18,43 +18,41 @@ function init_recipe!(recipe::Recipe{T}) where T <: Type1
     recipe.use_ironuv = true;      recipe.Ironuv_fwhm    = 3000.
     recipe.use_ironopt = true;     recipe.Ironoptbr_fwhm = 3000.;  recipe.Ironoptna_fwhm =  500.
 
-    recipe.lines = [
-        LineDescriptor(:Lyb        , NarrowLine, BroadLine),
-        # LineDescriptor(:OV_1213   , ForbiddenLine)  # 1213.8A, Ferland+92, Shields+95,
-        LineDescriptor(:Lya        , NarrowLine, BroadLine),
-        # LineDescriptor(:OV_1218   , ForbiddenLine)  # 1218.3A, Ferland+92, Shields+95,
-        LineDescriptor(:NV_1241    , ForbiddenLine),
-        LineDescriptor(:OI_1306    , BroadLine),
-        LineDescriptor(:CII_1335   , BroadLine),
-        LineDescriptor(:SiIV_1400  , BroadLine),
-        LineDescriptor(:CIV_1549   , NarrowLine, BroadLine),
-        LineDescriptor(:HeII_1640  , BroadLine),
-        LineDescriptor(:OIII_1664  , BroadLine),
-        LineDescriptor(:AlIII_1858 , BroadLine),
-        LineDescriptor(:CIII_1909  , BroadLine),
-        LineDescriptor(:CII_2326   , BroadLine),
-        LineDescriptor(2420.0      , BroadLine),
-        LineDescriptor(:MgII_2798  , NarrowLine, MgIIBroadLine),
-        LineDescriptor(:NeV_3345   , ForbiddenLine),
-        LineDescriptor(:NeV_3426   , ForbiddenLine),
-        LineDescriptor(:OII_3727   , ForbiddenLine),
-        LineDescriptor(:NeIII_3869 , ForbiddenLine),
-        LineDescriptor(:Hd         , BroadLine),
-        LineDescriptor(:Hg         , BroadLine),
-        LineDescriptor(:OIII_4363  , ForbiddenLine),
-        LineDescriptor(:HeII_4686  , BroadLine),
-        LineDescriptor(:Hb         , NarrowLine, BroadLine),
-        LineDescriptor(:OIII_4959  , ForbiddenLine),
-        LineDescriptor(:OIII_5007  , ForbiddenLine, BlueWing),
-        LineDescriptor(:HeI_5876   , BroadLine),
-        LineDescriptor(:OI_6300    , ForbiddenLine),
-        LineDescriptor(:OI_6364    , ForbiddenLine),
-        LineDescriptor(:NII_6549   , ForbiddenLine),
-        LineDescriptor(:Ha         , NarrowLine, BroadLine, VeryBroadLine),
-        LineDescriptor(:NII_6583   , ForbiddenLine),
-        LineDescriptor(:SII_6716   , ForbiddenLine),
-        LineDescriptor(:SII_6731   , ForbiddenLine)
-    ]    
+    add_line!(recipe, :Lyb),
+    # add_line!(recipe, :OV_1213)  # 1213.8A, Ferland+92, Shields+95,
+    add_line!(recipe, :Lya),
+    # add_line!(recipe, :OV_1218)  # 1218.3A, Ferland+92, Shields+95,
+    add_line!(recipe, :NV_1241),
+    add_line!(recipe, :OI_1306    , BroadLine),
+    add_line!(recipe, :CII_1335   , BroadLine),
+    add_line!(recipe, :SiIV_1400  , BroadLine),
+    add_line!(recipe, :CIV_1549   , NarrowLine, BroadLine),
+    add_line!(recipe, :HeII_1640  , BroadLine),
+    add_line!(recipe, :OIII_1664  , BroadLine),
+    add_line!(recipe, :AlIII_1858 , BroadLine),
+    add_line!(recipe, :CIII_1909  , BroadLine),
+    add_line!(recipe, :CII_2326   , BroadLine),
+    add_line!(recipe, QSFit.ATL.UnidentifiedTransition(2420.0), BroadLine),
+    add_line!(recipe, :MgII_2798  , NarrowLine, MgIIBroadLine),
+    add_line!(recipe, :NeV_3345),
+    add_line!(recipe, :NeV_3426),
+    add_line!(recipe, :OII_3727),
+    add_line!(recipe, :NeIII_3869),
+    add_line!(recipe, :Hd         , BroadLine),
+    add_line!(recipe, :Hg         , BroadLine),
+    add_line!(recipe, :OIII_4363),
+    add_line!(recipe, :HeII_4686  , BroadLine),
+    add_line!(recipe, :Hb),
+    add_line!(recipe, :OIII_4959),
+    add_line!(recipe, :OIII_5007  , ForbiddenLine, BlueWing),
+    add_line!(recipe, :HeI_5876   , BroadLine),
+    add_line!(recipe, :OI_6300),
+    add_line!(recipe, :OI_6364),
+    add_line!(recipe, :NII_6549),
+    add_line!(recipe, :Ha         , NarrowLine, BroadLine, VeryBroadLine),
+    add_line!(recipe, :NII_6583),
+    add_line!(recipe, :SII_6716),
+    add_line!(recipe, :SII_6731)
 end
 
 
@@ -221,7 +219,7 @@ function analyze(recipe::Recipe{<: Type1}, spec::Spectrum, resid::GModelFit.Resi
     add_patch_functs!(recipe, resid)
 
     fit!(recipe, resid)
-    for cname in keys(recipe.lcs)
+    for cname in keys(recipe.lines)
         freeze!(model, cname)
     end
 
@@ -235,7 +233,7 @@ function analyze(recipe::Recipe{<: Type1}, spec::Spectrum, resid::GModelFit.Resi
     haskey(model, :Ironuv   )  &&  thaw!(model, :Ironuv)
     haskey(model, :Ironoptbr)  &&  thaw!(model, :Ironoptbr)
     haskey(model, :Ironoptna)  &&  thaw!(model, :Ironoptna)
-    for cname in keys(recipe.lcs)
+    for cname in keys(recipe.lines)
         thaw!(model, cname)
     end
     for j in 1:recipe.n_nuisance

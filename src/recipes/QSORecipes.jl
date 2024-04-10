@@ -4,7 +4,7 @@ using Printf, DataStructures, Statistics
 using Dierckx
 using ..QSFit, ..QSFit.ATL, GModelFit
 
-import QSFit: init_recipe!, preprocess_spec!, line_profile, line_suffix, set_constraints!, analyze, reduce
+import QSFit: init_recipe!, preprocess_spec!, line_suffix, line_component, analyze, reduce
 
 abstract type QSOGeneric <: AbstractRecipeSpec end
 
@@ -28,14 +28,10 @@ function init_recipe!(recipe::Recipe{T}) where T <: QSOGeneric
     recipe.use_host_template = true
     recipe.host_template_range = [4000., 7000.]
 
-    recipe.line_profiles = :gauss
-
     recipe.n_nuisance = 10
     recipe.nuisance_avoid = [4863 .+ [-1,1] .* 50,    # Angstrom
                              6565 .+ [-1,1] .* 150]
     recipe.nuisance_maxoffset_from_guess = 1e3  # km/s
-
-    recipe.lines = LineDescriptor[]
 end
 
 
@@ -141,7 +137,7 @@ function add_emission_lines!(recipe::Recipe{<: QSOGeneric}, resid::GModelFit.Res
     groups = OrderedDict{Symbol, Vector{Symbol}}()
 
     # Create model components
-    for (cname, line) in recipe.lcs
+    for (cname, line) in recipe.lines
         resid.meval.model[cname] = line.comp
         haskey(groups, line.group)  ||  (groups[line.group] = Vector{Symbol}())
         push!(groups[line.group], cname)
@@ -171,10 +167,10 @@ function add_nuisance_lines!(recipe::Recipe{<: QSOGeneric}, resid::GModelFit.Res
 
     # Prepare nuisance line components
     for i in 1:recipe.n_nuisance
-        resid.meval.model[Symbol(:nuisance, i)] = line_component(recipe, NuisanceLine, 3000.)
+        resid.meval.model[Symbol(:nuisance, i)] = line_component(recipe, NuisanceLine, QSFit.ATL.UnidentifiedTransition(3000.))
     end
-    resid.meval.model[line_group(recipe, NuisanceLine)] = SumReducer([Symbol(:nuisance, i) for i in 1:recipe.n_nuisance])
-    push!(resid.meval.model[:main].list, line_group(recipe, NuisanceLine))
+    resid.meval.model[QSFit.line_group(recipe, NuisanceLine)] = SumReducer([Symbol(:nuisance, i) for i in 1:recipe.n_nuisance])
+    push!(resid.meval.model[:main].list, QSFit.line_group(recipe, NuisanceLine))
     GModelFit.update!(resid.meval)
     for j in 1:recipe.n_nuisance
         freeze!(resid.meval.model, Symbol(:nuisance, j))
@@ -272,8 +268,7 @@ function preprocess_spec!(recipe::Recipe{T}, spec::QSFit.Spectrum) where T <: QS
     worsening the fit due to missing model components. =#
     println("Good samples before line coverage filter: ", count(spec.good) , " / ", length(spec.good))
 
-    # Collect line components (neglecting the ones with insufficent coverage)
-    lcs = dict_line_instances(recipe, recipe.lines)
+    # Collect line components
     for loop in 1:2
         # The second pass is required to neglect lines whose coverage
         # has been affected by the neglected spectral samples.
@@ -281,7 +276,7 @@ function preprocess_spec!(recipe::Recipe{T}, spec::QSFit.Spectrum) where T <: QS
             println()
             println("Updated coverage:")
         end
-        for (cname, line) in lcs
+        for (cname, line) in recipe.lines
             threshold = get(recipe.min_spectral_coverage, cname, recipe.min_spectral_coverage[:default])
             (λmin, λmax, coverage) = QSFit.spectral_coverage(spec.x[findall(spec.good)],
                                                              spec.resolution, line.comp)
@@ -289,7 +284,7 @@ function preprocess_spec!(recipe::Recipe{T}, spec::QSFit.Spectrum) where T <: QS
             if coverage < threshold
             @printf(", threshold is < %5.3f, neglecting...", threshold)
                 spec.good[λmin .<= spec.x .< λmax] .= false
-                delete!(lcs, cname)
+                delete!(recipe.lines, cname)
             end
             println()
         end
@@ -297,10 +292,10 @@ function preprocess_spec!(recipe::Recipe{T}, spec::QSFit.Spectrum) where T <: QS
     println("Good samples after line coverage filter: ", count(spec.good) , " / ", length(spec.good))
 
     # Sort lines according to center wavelength, and save list in recipe
-    kk = collect(keys(lcs))
-    vv = collect(values(lcs))
+    kk = collect(keys(  recipe.lines))
+    vv = collect(values(recipe.lines))
     ii = sortperm(getfield.(getfield.(getfield.(vv, :comp), :center), :val))
-    recipe.lcs = OrderedDict(Pair.(kk[ii], vv[ii]))
+    recipe.lines = OrderedDict(Pair.(kk[ii], vv[ii]))
 end
 
 
@@ -308,12 +303,12 @@ function reduce(recipe::Recipe{<: QSOGeneric}, resid::GModelFit.Residuals)
     EW = OrderedDict{Symbol, Float64}()
 
     cont = deepcopy(GModelFit.last_evaluation(resid.meval))
-    for cname in keys(recipe.lcs)
+    for cname in keys(recipe.lines)
         haskey(resid.meval.model, cname) || continue
         cont .-= GModelFit.last_evaluation(resid.meval, cname)
     end
     @assert all(cont .> 0) "Continuum model is zero or negative"
-    for cname in keys(recipe.lcs)
+    for cname in keys(recipe.lines)
         haskey(resid.meval.model, cname) || continue
         EW[cname] = QSFit.int_tabulated(coords(resid.meval.domain),
                                         GModelFit.last_evaluation(resid.meval, cname) ./ cont)[1]

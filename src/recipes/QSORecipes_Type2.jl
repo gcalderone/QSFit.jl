@@ -10,27 +10,25 @@ function init_recipe!(recipe::Recipe{T}) where T <: Type2
           4959 .+ [-1,1] .* 25,
           5008 .+ [-1,1] .* 25)
 
-    recipe.lines = [
-        LineDescriptor(:Lya       , NarrowLine),
-        LineDescriptor(:NV_1241   , ForbiddenLine),
-        LineDescriptor(:CIV_1549  , NarrowLine),
-        LineDescriptor(:CIII_1909 , NarrowLine),
-        LineDescriptor(:MgII_2798 , NarrowLine),
-        LineDescriptor(:NeV_3426  , ForbiddenLine),
-        LineDescriptor(:OII_3727  , ForbiddenLine),
-        LineDescriptor(:NeIII_3869, ForbiddenLine),
-        LineDescriptor(:Hg        , NarrowLine),
-        LineDescriptor(:Hb        , NarrowLine),
-        LineDescriptor(:OIII_4959 , ForbiddenLine, BlueWing),
-        LineDescriptor(:OIII_5007 , ForbiddenLine, BlueWing),
-        LineDescriptor(:OI_6300   , ForbiddenLine),
-        LineDescriptor(:OI_6364   , ForbiddenLine),
-        LineDescriptor(:NII_6549  , ForbiddenLine),
-        LineDescriptor(:Ha        , NarrowLine),
-        LineDescriptor(:NII_6583  , ForbiddenLine),
-        LineDescriptor(:SII_6716  , ForbiddenLine),
-        LineDescriptor(:SII_6731  , ForbiddenLine)
-    ]
+    add_line!(recipe, :Lya       , NarrowLine)
+    add_line!(recipe, :NV_1241   , ForbiddenLine)
+    add_line!(recipe, :CIV_1549  , NarrowLine)
+    add_line!(recipe, :CIII_1909 , NarrowLine)
+    add_line!(recipe, :MgII_2798 , NarrowLine)
+    add_line!(recipe, :NeV_3426  , ForbiddenLine)
+    add_line!(recipe, :OII_3727  , ForbiddenLine)
+    add_line!(recipe, :NeIII_3869, ForbiddenLine)
+    add_line!(recipe, :Hg        , NarrowLine)
+    add_line!(recipe, :Hb        , NarrowLine)
+    add_line!(recipe, :OIII_4959 , ForbiddenLine, BlueWing)
+    add_line!(recipe, :OIII_5007 , ForbiddenLine, BlueWing)
+    add_line!(recipe, :OI_6300   , ForbiddenLine)
+    add_line!(recipe, :OI_6364   , ForbiddenLine)
+    add_line!(recipe, :NII_6549  , ForbiddenLine)
+    add_line!(recipe, :Ha        , NarrowLine)
+    add_line!(recipe, :NII_6583  , ForbiddenLine)
+    add_line!(recipe, :SII_6716  , ForbiddenLine)
+    add_line!(recipe, :SII_6731  , ForbiddenLine)
 end
 
 
@@ -107,7 +105,7 @@ function analyze(recipe::Recipe{<: Type2}, spec::Spectrum, resid::GModelFit.Resi
     add_patch_functs!(recipe, resid)
 
     fit!(recipe, resid)
-    for cname in keys(recipe.lcs)
+    for cname in keys(recipe.lines)
         freeze!(model, cname)
     end
 
@@ -117,7 +115,7 @@ function analyze(recipe::Recipe{<: Type2}, spec::Spectrum, resid::GModelFit.Resi
     println("\nLast run with all parameters free...")
     thaw!(model, :QSOcont)
     haskey(model, :Galaxy   )  &&  thaw!(model, :Galaxy)
-    for cname in keys(recipe.lcs)
+    for cname in keys(recipe.lines)
         thaw!(model, cname)
     end
     for j in 1:recipe.n_nuisance
