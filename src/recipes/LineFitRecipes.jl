@@ -1,9 +1,9 @@
 module LineFitRecipes
 
 using Statistics
-using ..QSFit, GModelFit, Gnuplot
+using ..QSFit, ..QSFit.ATL, GModelFit, Gnuplot
 
-import QSFit: init_recipe!, preprocess_spec!, line_profile, analyze
+import QSFit: init_recipe!, preprocess_spec!, line_component, analyze
 
 export LineFit, InteractiveLineFit
 
@@ -16,14 +16,21 @@ function wait_mouse(sid=Gnuplot.options.default)
 end
 
 
-line_profile(recipe::Recipe{<: LineFit}, ::Type{<: AbstractLine}, id::Val) = recipe.line_profiles
-line_profile(recipe::Recipe{<: LineFit}, ::Type{<: AbstractLine})          = recipe.line_profiles
+function line_component(recipe::Recipe{<: LineFit}, ::Type{<: QSFit.LineTemplate}, center::Float64)
+    if recipe.line_profiles == :gauss
+        return QSFit.SpecLineGauss(center)
+    elseif recipe.line_profiles == :lorentz
+        return QSFit.SpecLineLorentz(center)
+    elseif recipe.line_profiles == :voigt
+        return QSFit.SpecLineVoigt(center)
+    end
+end
+
 
 function init_recipe!(recipe::Recipe{T}) where T <: LineFit
     @invoke init_recipe!(recipe::Recipe{<: AbstractRecipeSpec})
     recipe.wavelength_range = [1215, 7.3e3]
     recipe.line_profiles = :gauss
-    recipe.lines = LineDescriptor[]
 end
 
 
@@ -47,19 +54,13 @@ function analyze(recipe::Recipe{<: LineFit}, spec::QSFit.Spectrum, resid::GModel
     model[:main] = SumReducer(:QSOcont)
     select_maincomp!(model, :main)
 
-    for ld in recipe.:lines
-        for T in ld.types
-            cname = line_cname(recipe, T, ld.id)
-            @assert !(cname in keys(model)) "Duplicate component name: $cname"
-            model[cname] = line_component(recipe, T, ld.id)
-
-            group = line_group(recipe, T)
-            if !(group in keys(model))
-                model[group] = SumReducer(cname)
-                push!(model[:main].list, group)
-            else
-                push!(model[group].list, cname)
-            end
+    for (cname, line) in recipe.lines
+        model[cname] = line.comp
+        if !(line.group in keys(model))
+            model[line.group] = SumReducer(cname)
+            push!(model[:main].list, line.group)
+        else
+            push!(model[line.group].list, cname)
         end
     end
 
@@ -67,15 +68,12 @@ function analyze(recipe::Recipe{<: LineFit}, spec::QSFit.Spectrum, resid::GModel
 end
 
 
-function analyze(recipe::Recipe{<: InteractiveLineFit}, spec::QSFit.Spectrum, resid::GModelFit.Residuals)
-    ld = Vector{LineDescriptor}()
-    linetypes = [ForbiddenLine,
-                 NarrowLine,
-                 BroadLine,
-                 VeryBroadLine,
-                 NuisanceLine]
-
+function analyze(_recipe::Recipe{<: InteractiveLineFit}, _spec::Spectrum) where T <: AbstractRecipeSpec
+    recipe = deepcopy(_recipe)
+    spec = deepcopy(_spec)
+    preprocess_spec!(recipe, spec)
     @gp :LineFit spec
+
     println()
     printstyled("Interactive emission line fit\n", color=:green)
     printstyled("Step 1: ", color=:green);  println("zoom on the desired range")
@@ -84,62 +82,46 @@ function analyze(recipe::Recipe{<: InteractiveLineFit}, spec::QSFit.Spectrum, re
     readline()
     vars = gpvars(:LineFit)
     range = [vars.X_MIN, vars.X_MAX]
+    recipe.wavelength_range = range
 
+    linetemplates = [ForbiddenLine,
+                     NarrowLine,
+                     BroadLine,
+                     NuisanceLine]
     println()
     printstyled("Step 2: ", color=:green);  println("Identify emission lines by click on the peaks (CTRL+left click to stop)")
+    accum_lines = String[]
     while true
         print("Waiting for a click...")
         vars = wait_mouse(:LineFit)
         (vars.MOUSE_CTRL != 0)  &&  break
         print("\r")
-        if length(ld) == 0
-            for i in 1:length(linetypes)
-                println("$(i): ", linetypes[i])
+        λ = round(vars.MOUSE_X * 1e2) / 1e2
+        if length(get_lines_dict(recipe)) == 0
+            for i in 1:length(linetemplates)
+                println("$(i): ", linetemplates[i])
             end
             println("0: skip this line")
         end
-        λ = round(vars.MOUSE_X * 1e2) / 1e2
         print("Insert space separated list of line type(s) for the emission line at $λ ", spec.unit_x, ": ")
         i = Int.(Meta.parse.(string.(split(readline()))))
         (0 in i)  &&  continue
-        @assert all(1 .<= i .<= length(linetypes))
-        push!(ld, LineDescriptor(λ, linetypes[i]...))
+        @assert all(1 .<= i .<= length(linetemplates))
+        add_line!(recipe, ATL.UnidentifiedTransition(λ), linetemplates[i]...)
+        push!(accum_lines, "add_line!(recipe, QSFit.ATL.UnidentifiedTransition($(λ)), " * join(string.(linetemplates[i]), ",") * ")")
     end
     println()
     Gnuplot.quit(:LineFit)
 
-    recipe.wavelength_range = range
-    recipe.lines = ld
-
     println()
-    printstyled("Step 3: ", color=:green);  println("choose line profile:")
-    println("1: Gaussian")
-    println("2: Lorentzian")
-    println("3: Voigt")
-    print("Insert line profile: ")
-    i = Int(Meta.parse(readline()))
-    @assert (1 <= i <= 3)
-    if i == 1
-        recipe.line_profiles = :gauss
-    elseif i == 2
-        recipe.line_profiles = :lorentz
-    else
-        recipe.line_profiles = :voigt
-    end
-
-    println()
-    println("recipe = Recipe(LineFit)")
-    println("recipe.redshift = ", recipe.redshift)
-    println("recipe.Av = ", recipe.Av)
+    printstyled("Reproduce analysis with:\n", color=:green)
     println("recipe.wavelength_range = ", recipe.wavelength_range)
     println("recipe.line_profiles = :", recipe.line_profiles)
-    println("recipe.lines = [")
-    for i in 1:length(ld)
-        println("     LineDescriptor(", ld[i].id, ", ", join(string.(ld[i].types), ", "), ")")
+    for l in accum_lines
+        println(l)
     end
-    println("]")
-
-    return @invoke analyze(recipe::Recipe{<: LineFit}, spec, resid)
+    println()
+    return @invoke analyze(recipe::Recipe{<: LineFit}, _spec)
 end
 
 end

@@ -1,172 +1,111 @@
-export AbstractLine, ForbiddenLine, NarrowLine, BroadLine, VeryBroadLine, NuisanceLine, LineDescriptor
+include("ATL.jl")
 
-export line_group, line_cname, line_component
+using .ATL
 
-# ====================================================================
-struct SpectralTransition
-    id::Symbol
-    label::String
-    λ::Float64  # vacuum wavelength in Angstrom
-    element::String
-    ttype::String
-    config::String
-    term::String
-    JJ::String
-    levels::NTuple{2, Float64}
-    notes::String
-end
+export ForbiddenLine, SemiForbiddenLine, NarrowLine, BroadLine, VeryBroadLine, NuisanceLine
+export get_lines_dict, add_line!
 
 
-struct Multiplet
-    list::Vector{SpectralTransition}
-end
+abstract type LineTemplate end
+abstract type ForbiddenLine     <: LineTemplate  end
+abstract type SemiForbiddenLine <: LineTemplate  end
+abstract type NarrowLine        <: LineTemplate  end
+abstract type BroadLine         <: LineTemplate  end
+abstract type VeryBroadLine     <: LineTemplate  end
+abstract type NuisanceLine      <: LineTemplate  end
 
+default_line_templates(::Recipe, ::ATL.AbstractTransition{<: ATL.Forbidden})     = [ForbiddenLine]
+default_line_templates(::Recipe, ::ATL.AbstractTransition{<: ATL.SemiForbidden}) = [SemiForbiddenLine]
+default_line_templates(::Recipe, ::ATL.AbstractTransition{<: ATL.Permitted})     = [BroadLine, NarrowLine]
+default_line_templates(::Recipe, ::ATL.UnidentifiedTransition)                   = [NuisanceLine]
 
-const known_transitions = OrderedDict{Symbol, Vector{SpectralTransition}}()
-function transitions(tid::Symbol)
-    global known_transitions
+line_suffix(::Recipe, ::Type{<: LineTemplate})  = ""
+line_suffix(::Recipe, ::Type{<: NarrowLine})    = "_na"
+line_suffix(::Recipe, ::Type{<: BroadLine})     = "_br"
+line_suffix(::Recipe, ::Type{<: VeryBroadLine}) = "_bb"
 
-    if length(known_transitions) == 0
-        d, c = csvread(joinpath(@__DIR__, "atomic_line_list.vac"), '|', commentchar='#', header_exists=true)
-        for i in 1:length(d)
-            isa(d[i][1], AbstractString)  ||  continue
-            d[i] .= strip.(d[i])
-        end
+line_group( ::Recipe, ::Type{<: ForbiddenLine}) = :NarrowLines
+line_group( ::Recipe, ::Type{<: NarrowLine})    = :NarrowLines
+line_group( ::Recipe, ::Type{<: BroadLine})     = :BroadLines
+line_group( ::Recipe, ::Type{<: VeryBroadLine}) = :VeryBroadLines
+line_group( ::Recipe, ::Type{<: NuisanceLine})  = :NuisanceLines
 
-        db = Vector{SpectralTransition}()
-        for i in 1:length(d[1])
-            ll = split(d[9][i], '-')
-            tt = SpectralTransition(Symbol(d[1][i]),
-                                    d[2][i], d[3][i], d[4][i],
-                                    d[5][i], d[6][i], d[7][i], d[8][i],
-                                    (Meta.parse(ll[1]), Meta.parse(ll[2])),
-                                    d[10][i])
-            push!(db, tt)
-        end
-        db = db[sortperm(getfield.(db, :λ))]
+line_component(::Recipe{<: AbstractRecipeSpec}, ::Type{<: LineTemplate}, center::Float64) = SpecLineGauss(center)
 
-        for tt in db
-            if haskey(known_transitions, tt.id)
-                push!(known_transitions[tt.id], tt)
-            else
-                known_transitions[tt.id] = [tt]
-            end
-        end
-    end
-
-    @assert haskey(known_transitions, tid) "Unknown transition identifier: $tid"
-    out = known_transitions[tid]
-
-    if length(out) == 1
-        return out[1]
-    end
-    @warn "$tid is a multiplet"
-    return Multiplet(out)
-end
-
-
-vacuum_wavelength(t::SpectralTransition) = t.λ
-vacuum_wavelength(t::Multiplet) = mean(vacuum_wavelength.(t.list))
-vacuum_wavelength(tid::Symbol) = vacuum_wavelength(transitions(tid))
-
-
-# ====================================================================
-abstract type AbstractLine end
-abstract type ForbiddenLine <: AbstractLine  end
-abstract type PermittedLine <: AbstractLine  end
-abstract type NarrowLine    <: PermittedLine end
-abstract type BroadLine     <: PermittedLine end
-abstract type VeryBroadLine <: BroadLine     end
-abstract type NuisanceLine  <: AbstractLine  end
-
-
-struct LineDescriptor{T}
-    id::T
-    types::Vector{DataType}
-    function LineDescriptor(id::Symbol, types::Vararg{DataType, N}) where N
-        @assert N > 0
-        @assert all(isa.(types, Type{<: AbstractLine}))
-        new{Symbol}(id, [types...])
-    end
-    function LineDescriptor(λ::Real, types::Vararg{DataType, N}) where N
-        @assert N > 0
-        @assert all(isa.(types, Type{<: AbstractLine}))
-        new{Float64}(float(λ), [types...])
-    end
-end
-
-
-replace_descriptor!(ld::Vector{<: LineDescriptor}, id::T, type::DataType) where T = replace_descriptor!(ld, id, [type])
-function replace_descriptor!(ld::Vector{<: LineDescriptor}, id::T, types::Vector{DataType}) where T
-    for i in 1:length(ld)
-        if isa(ld[i], LineDescriptor{T})
-            if ld[i].id == id
-                ld[i] = LineDescriptor(id, types...)
-                return nothing
-            end
-        end
-    end
-end
-
-
-line_suffix(recipe::Recipe{<: AbstractRecipeSpec}, ::Type{<: AbstractLine})  = ""
-line_suffix(recipe::Recipe{<: AbstractRecipeSpec}, ::Type{<: NarrowLine})    = "_na"
-line_suffix(recipe::Recipe{<: AbstractRecipeSpec}, ::Type{<: BroadLine})     = "_br"
-line_suffix(recipe::Recipe{<: AbstractRecipeSpec}, ::Type{<: VeryBroadLine}) = "_bb"
-
-line_group( recipe::Recipe{<: AbstractRecipeSpec}, ::Type{<: ForbiddenLine}) = :NarrowLines
-line_group( recipe::Recipe{<: AbstractRecipeSpec}, ::Type{<: NarrowLine})    = :NarrowLines
-line_group( recipe::Recipe{<: AbstractRecipeSpec}, ::Type{<: BroadLine})     = :BroadLines
-line_group( recipe::Recipe{<: AbstractRecipeSpec}, ::Type{<: VeryBroadLine}) = :VeryBroadLines
-line_group( recipe::Recipe{<: AbstractRecipeSpec}, ::Type{<: NuisanceLine}) =  :NuisanceLines
-
-line_profile(::Recipe{<: AbstractRecipeSpec}, ::Type{<: AbstractLine}, id::Val) = :gauss
-line_profile(::Recipe{<: AbstractRecipeSpec}, ::Type{<: AbstractLine})          = :gauss
-
-line_cname(recipe::Recipe{<: AbstractRecipeSpec}, ::Type{T}, id::Symbol) where T <: AbstractLine = Symbol(   id    , line_suffix(recipe, T))
-line_cname(recipe::Recipe{<: AbstractRecipeSpec}, ::Type{T}, λ::Float64) where T <: AbstractLine = Symbol(:l, λ, :A, line_suffix(recipe, T))
-
-function set_constraints!(recipe::Recipe{<: AbstractRecipeSpec}, ::Type{<: ForbiddenLine}, comp::AbstractSpecLineComp)
+function line_component(recipe::Recipe, template::Type{<: ForbiddenLine}, t::ATL.AbstractTransition)
+    comp = line_component(recipe, template, get_wavelength(t))
     comp.fwhm.low, comp.fwhm.val, comp.fwhm.high = 100, 5e2, 2e3
     comp.voff.low, comp.voff.val, comp.voff.high = -1e3, 0, 1e3
+    return comp
 end
 
-function set_constraints!(recipe::Recipe{<: AbstractRecipeSpec}, ::Type{<: NarrowLine}, comp::AbstractSpecLineComp)
+function line_component(recipe::Recipe, template::Type{<: SemiForbiddenLine}, t::ATL.AbstractTransition)
+    return line_component(recipe, template, BroadLine, t)
+end
+
+function line_component(recipe::Recipe, template::Type{<: NarrowLine}, t::ATL.AbstractTransition)
+    comp = line_component(recipe, template, get_wavelength(t))
     comp.fwhm.low, comp.fwhm.val, comp.fwhm.high = 100, 5e2, 1e3 # avoid confusion with the broad component
     comp.voff.low, comp.voff.val, comp.voff.high = -1e3, 0, 1e3
+    return comp
 end
 
-function set_constraints!(recipe::Recipe{<: AbstractRecipeSpec}, ::Type{<: BroadLine}, comp::AbstractSpecLineComp)
+function line_component(recipe::Recipe, template::Type{<: BroadLine}, t::ATL.AbstractTransition)
+    comp = line_component(recipe, template, get_wavelength(t))
     comp.fwhm.low, comp.fwhm.val, comp.fwhm.high = 900, 5e3, 1.5e4
     comp.voff.low, comp.voff.val, comp.voff.high = -3e3, 0, 3e3
+    return comp
 end
 
-function set_constraints!(recipe::Recipe{<: AbstractRecipeSpec}, ::Type{<: VeryBroadLine}, comp::AbstractSpecLineComp)
+function line_component(recipe::Recipe, template::Type{<: VeryBroadLine}, t::ATL.AbstractTransition)
+    comp = line_component(recipe, template, get_wavelength(t))
     comp.fwhm.low, comp.fwhm.val, comp.fwhm.high = 1e4, 2e4, 3e4
     comp.voff.fixed = true
+    return comp
 end
 
-function set_constraints!(recipe::Recipe{<: AbstractRecipeSpec}, ::Type{<: NuisanceLine}, comp::AbstractSpecLineComp)
+function line_component(recipe::Recipe, template::Type{<: NuisanceLine}, t::ATL.AbstractTransition)
+    comp = line_component(recipe, template, get_wavelength(t))
     comp.norm.val = 0.
-    comp.center.fixed = false;  comp.voff.fixed = true
+    comp.center.fixed = false
+    comp.voff.fixed = true
     comp.fwhm.low, comp.fwhm.val, comp.fwhm.high = 600, 5e3, 1e4
-end
-
-line_component(::Val{:gauss}  , λ::Float64) = SpecLineGauss(λ)
-line_component(::Val{:lorentz}, λ::Float64) = SpecLineLorentz(λ)
-line_component(::Val{:voigt}  , λ::Float64) = SpecLineVoigt(λ)
-
-function line_component(recipe::Recipe{<: AbstractRecipeSpec}, ::Type{T}, id::Symbol) where T <: AbstractLine
-    λ = vacuum_wavelength(id)
-    profile = line_profile(recipe, T, Val(id))
-    comp = line_component(Val(profile), λ)
-    set_constraints!(recipe, T, comp)
     return comp
 end
 
-function line_component(recipe::Recipe{<: AbstractRecipeSpec}, ::Type{T}, λ::Float64) where T <: AbstractLine
-    profile = line_profile(recipe, T)
-    comp = line_component(Val(profile), λ)
-    set_constraints!(recipe, T, comp)
-    return comp
+
+# ====================================================================
+struct SpectralLine{T <: LineTemplate}
+    tid::Symbol
+    t::ATL.AbstractTransition
+    group::Symbol
+    comp::AbstractSpecLineComp
+end
+
+function show(io::IO, line::SpectralLine)
+    println(io, line.tid, " (", string(typeof(line.t)))
+    show(io, line.comp)
+end
+
+add_line!(recipe::Recipe{<: AbstractRecipeSpec}, tid::Symbol) = add_line!(recipe, get_transition(tid))
+add_line!(recipe::Recipe{<: AbstractRecipeSpec}, t::ATL.AbstractTransition) = add_line!(recipe, t, default_line_templates(recipe, t))
+add_line!(recipe::Recipe{<: AbstractRecipeSpec}, tid::Symbol, templates::Vararg{DataType, N}) where N = add_line!(recipe, get_transition(tid), templates)
+
+function add_line!(recipe::Recipe{<: AbstractRecipeSpec}, t::ATL.AbstractTransition, templates::Vararg{DataType, N}) where N
+    @assert N > 0
+    dict = get_lines_dict(recipe)
+    for template in templates
+        @assert template <: LineTemplate  # isa(typeof(template), Type{:< LineTemplate})
+        cname = Symbol(get_id(t), line_suffix(recipe, template))
+        @assert !(cname in keys(dict)) "Duplicated component name: $cname"
+        group = line_group(recipe, template)
+        comp = line_component(recipe, template, t)
+        dict[cname] = SpectralLine{template}(get_id(t), t, group, comp)
+    end
+    return dict
+end
+
+function get_lines_dict(recipe::Recipe{<: AbstractRecipeSpec})
+    (:lines in propertynames(recipe))  ||  (recipe.lines = OrderedDict{Symbol, SpectralLine}())
+    return recipe.lines
 end

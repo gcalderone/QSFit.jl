@@ -2,20 +2,19 @@ module QSORecipes
 
 using Printf, DataStructures, Statistics
 using Dierckx
-using ..QSFit, GModelFit
+using ..QSFit, ..QSFit.ATL, GModelFit
 
 import QSFit: init_recipe!, preprocess_spec!, line_profile, line_suffix, set_constraints!, analyze, reduce
 
 abstract type QSOGeneric <: AbstractRecipeSpec end
 
-line_profile(recipe::Recipe{<: QSOGeneric}, ::Type{<: AbstractLine}, id::Val) = recipe.line_profiles
-line_profile(recipe::Recipe{<: QSOGeneric}, ::Type{<: AbstractLine})          = recipe.line_profiles
-
-
 abstract type BlueWing <: NarrowLine end
 line_suffix(recipe::Recipe{<: QSOGeneric}, ::Type{BlueWing}) = :_bw
-function set_constraints!(recipe::Recipe{<: QSOGeneric}, ::Type{<: BlueWing}, comp::QSFit.AbstractSpecLineComp)
+
+function line_component(recipe::Recipe, ::Type{<: BlueWing}, t::ATL.AbstractTransition)
+    comp = line_component(recipe, NarrowLine, t)
     comp.voff.low, comp.voff.val, comp.voff.high = 0, 0, 2e3
+    return comp
 end
 
 
@@ -37,27 +36,6 @@ function init_recipe!(recipe::Recipe{T}) where T <: QSOGeneric
     recipe.nuisance_maxoffset_from_guess = 1e3  # km/s
 
     recipe.lines = LineDescriptor[]
-end
-
-
-struct LineInstance{T}
-    id::T
-    type::DataType
-    group::Symbol
-    comp::GModelFit.AbstractComponent
-end
-
-
-function dict_line_instances(recipe::Recipe{<: QSOGeneric}, linedescrs::Vector{<: LineDescriptor})
-    out = OrderedDict{Symbol, LineInstance}()
-    for ld in linedescrs
-        for T in ld.types
-            cname = line_cname(recipe, T, ld.id)
-            @assert !(cname in keys(out)) "Duplicate component name: $cname"
-            out[cname] = LineInstance(ld.id, T, line_group(recipe, T), line_component(recipe, T, ld.id))
-        end
-    end
-    return out
 end
 
 
