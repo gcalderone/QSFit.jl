@@ -8,6 +8,9 @@ import QSFit: init_recipe!, preprocess_spec!, line_suffix, line_component, set_l
 
 abstract type QSOGeneric <: AbstractRecipeSpec end
 
+
+line_component(recipe::Recipe{<: QSOGeneric}, center::Float64) = recipe.line_component(center)
+
 abstract type BlueWing <: NarrowLine end
 line_suffix(recipe::Recipe{<: QSOGeneric}, ::Type{BlueWing}) = :_bw
 
@@ -32,6 +35,7 @@ function init_recipe!(recipe::Recipe{T}) where T <: QSOGeneric
     recipe.nuisance_avoid = [4863 .+ [-1,1] .* 50,    # Angstrom
                              6565 .+ [-1,1] .* 150]
     recipe.nuisance_maxoffset_from_guess = 1e3  # km/s
+    recipe.line_component = QSFit.SpecLineGauss
 end
 
 

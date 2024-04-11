@@ -15,22 +15,12 @@ function wait_mouse(sid=Gnuplot.options.default)
     return gpvars(sid, "MOUSE")
 end
 
-
-function line_component(recipe::Recipe{<: LineFit}, ::Type{<: QSFit.LineTemplate}, center::Float64)
-    if recipe.line_profiles == :gauss
-        return QSFit.SpecLineGauss(center)
-    elseif recipe.line_profiles == :lorentz
-        return QSFit.SpecLineLorentz(center)
-    elseif recipe.line_profiles == :voigt
-        return QSFit.SpecLineVoigt(center)
-    end
-end
-
+line_component(recipe::Recipe{<: LineFit}, center::Float64) = recipe.line_component(center)
 
 function init_recipe!(recipe::Recipe{T}) where T <: LineFit
     @invoke init_recipe!(recipe::Recipe{<: AbstractRecipeSpec})
     recipe.wavelength_range = [1215, 7.3e3]
-    recipe.line_profiles = :gauss
+    recipe.line_component = QSFit.SpecLineGauss
 end
 
 
@@ -98,12 +88,14 @@ function analyze(_recipe::Recipe{<: InteractiveLineFit}, _spec::Spectrum)
         print("\r")
         λ = round(vars.MOUSE_X * 1e2) / 1e2
         if length(get_lines_dict(recipe)) == 0
+            println()
+            println("List of line templates:")
             for i in 1:length(linetemplates)
                 println("$(i): ", linetemplates[i])
             end
             println("0: skip this line")
         end
-        print("Insert space separated list of line type(s) for the emission line at $λ ", spec.unit_x, ": ")
+        print("Insert space separated list of line template(s) for the emission line at $λ ", spec.unit_x, ": ")
         i = Int.(Meta.parse.(string.(split(readline()))))
         (0 in i)  &&  continue
         @assert all(1 .<= i .<= length(linetemplates))
@@ -114,9 +106,10 @@ function analyze(_recipe::Recipe{<: InteractiveLineFit}, _spec::Spectrum)
     Gnuplot.quit(:LineFit)
 
     println()
-    printstyled("Reproduce analysis with:\n", color=:green)
+    printstyled("Reproduce analysis with the LineFit recipe:\n", color=:green)
+    println("recipe = Recipe(LineFit, ... keywords ...)")
+    println("... set recipe properties ...")
     println("recipe.wavelength_range = ", recipe.wavelength_range)
-    println("recipe.line_profiles = :", recipe.line_profiles)
     for l in accum_lines
         println(l)
     end

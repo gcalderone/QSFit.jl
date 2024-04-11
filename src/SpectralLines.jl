@@ -31,7 +31,8 @@ line_group( ::Recipe, ::Type{<: BroadLine})         = :BroadLines
 line_group( ::Recipe, ::Type{<: VeryBroadLine})     = :VeryBroadLines
 line_group( ::Recipe, ::Type{<: NuisanceLine})      = :NuisanceLines
 
-line_component(::Recipe{<: AbstractRecipeSpec}, ::Type{<: LineTemplate}, center::Float64) = SpecLineGauss(center)
+line_component(::Recipe{<: AbstractRecipeSpec}, center::Float64) = SpecLineGauss(center)
+line_component(recipe::Recipe{<: AbstractRecipeSpec}, ::Type{<: LineTemplate}, center::Float64) = line_component(recipe, center)
 
 function line_component(recipe::Recipe, template::Type{<: ForbiddenLine}, t::ATL.AbstractTransition)
     comp = line_component(recipe, template, get_wavelength(t))
