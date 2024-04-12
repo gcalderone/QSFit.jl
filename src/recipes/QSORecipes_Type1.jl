@@ -22,40 +22,40 @@ end
 
 function set_lines_dict!(recipe::Recipe{T}) where T <: Type1
     (:lines in propertynames(recipe))  &&  (return get_lines_dict(recipe))
-    add_line!(recipe, :Lyb),
-    # add_line!(recipe, :OV_1213)  # 1213.8A, Ferland+92, Shields+95,
-    add_line!(recipe, :Lya),
-    # add_line!(recipe, :OV_1218)  # 1218.3A, Ferland+92, Shields+95,
-    add_line!(recipe, :NV_1241),
-    add_line!(recipe, :OI_1306    , BroadLine),
-    add_line!(recipe, :CII_1335   , BroadLine),
-    add_line!(recipe, :SiIV_1400  , BroadLine),
-    add_line!(recipe, :CIV_1549   , NarrowLine, BroadLine),
-    add_line!(recipe, :HeII_1640  , BroadLine),
-    add_line!(recipe, :OIII_1664  , BroadLine),
-    add_line!(recipe, :AlIII_1858 , BroadLine),
-    add_line!(recipe, :CIII_1909  , BroadLine),
-    add_line!(recipe, :CII_2326   , BroadLine),
-    add_line!(recipe, QSFit.ATL.UnidentifiedTransition(2420.0), BroadLine),
-    add_line!(recipe, :MgII_2798  , NarrowLine, MgIIBroadLine),
-    add_line!(recipe, :NeV_3345),
-    add_line!(recipe, :NeV_3426),
-    add_line!(recipe, :OII_3727),
-    add_line!(recipe, :NeIII_3869),
-    add_line!(recipe, :Hd         , BroadLine),
-    add_line!(recipe, :Hg         , BroadLine),
-    add_line!(recipe, :OIII_4363),
-    add_line!(recipe, :HeII_4686  , BroadLine),
-    add_line!(recipe, :Hb),
-    add_line!(recipe, :OIII_4959),
-    add_line!(recipe, :OIII_5007  , ForbiddenLine, BlueWing),
-    add_line!(recipe, :HeI_5876   , BroadLine),
-    add_line!(recipe, :OI_6300),
-    add_line!(recipe, :OI_6364),
-    add_line!(recipe, :NII_6549),
-    add_line!(recipe, :Ha         , NarrowLine, BroadLine, VeryBroadLine),
-    add_line!(recipe, :NII_6583),
-    add_line!(recipe, :SII_6716),
+    add_line!(recipe, :Lyb)
+    # add_line!(recipe, :OV_1213)  # 1213.8A, Ferland+92, Shields+95
+    add_line!(recipe, :Lya)
+    # add_line!(recipe, :OV_1218)  # 1218.3A, Ferland+92, Shields+95
+    add_line!(recipe, :NV_1241)
+    add_line!(recipe, :OI_1306    , BroadLine)
+    add_line!(recipe, :CII_1335   , BroadLine)
+    add_line!(recipe, :SiIV_1400  , BroadLine)
+    add_line!(recipe, :CIV_1549   , NarrowLine, BroadLine)
+    add_line!(recipe, :HeII_1640  , BroadLine)
+    add_line!(recipe, :OIII_1664  , BroadLine)
+    add_line!(recipe, :AlIII_1858 , BroadLine)
+    add_line!(recipe, :CIII_1909  , BroadLine)
+    add_line!(recipe, :CII_2326   , BroadLine)
+    add_line!(recipe, QSFit.ATL.UnidentifiedTransition(2420.0), BroadLine)
+    add_line!(recipe, :MgII_2798  , NarrowLine, MgIIBroadLine)
+    add_line!(recipe, :NeV_3345)
+    add_line!(recipe, :NeV_3426)
+    add_line!(recipe, :OII_3727)
+    add_line!(recipe, :NeIII_3869)
+    add_line!(recipe, :Hd         , BroadLine)
+    add_line!(recipe, :Hg         , BroadLine)
+    add_line!(recipe, :OIII_4363)
+    add_line!(recipe, :HeII_4686  , BroadLine)
+    add_line!(recipe, :Hb)
+    add_line!(recipe, :OIII_4959)
+    add_line!(recipe, :OIII_5007  , ForbiddenLine, BlueWing)
+    add_line!(recipe, :HeI_5876   , BroadLine)
+    add_line!(recipe, :OI_6300)
+    add_line!(recipe, :OI_6364)
+    add_line!(recipe, :NII_6549)
+    add_line!(recipe, :Ha         , NarrowLine, BroadLine, VeryBroadLine)
+    add_line!(recipe, :NII_6583)
+    add_line!(recipe, :SII_6716)
     add_line!(recipe, :SII_6731)
     return get_lines_dict(recipe)
 end

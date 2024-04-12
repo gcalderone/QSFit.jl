@@ -14,8 +14,8 @@ line_component(recipe::Recipe{<: QSOGeneric}, center::Float64) = recipe.line_com
 abstract type BlueWing <: NarrowLine end
 line_suffix(recipe::Recipe{<: QSOGeneric}, ::Type{BlueWing}) = :_bw
 
-function line_component(recipe::Recipe, ::Type{<: BlueWing}, t::ATL.AbstractTransition)
-    comp = line_component(recipe, NarrowLine, t)
+function line_component(recipe::Recipe, center::Float64, ::Type{<: BlueWing})
+    comp = line_component(recipe, center, NarrowLine)
     comp.voff.low, comp.voff.val, comp.voff.high = 0, 0, 2e3
     return comp
 end
@@ -171,7 +171,7 @@ function add_nuisance_lines!(recipe::Recipe{<: QSOGeneric}, resid::GModelFit.Res
 
     # Prepare nuisance line components
     for i in 1:recipe.n_nuisance
-        resid.meval.model[Symbol(:nuisance, i)] = line_component(recipe, NuisanceLine, QSFit.ATL.UnidentifiedTransition(3000.))
+        resid.meval.model[Symbol(:nuisance, i)] = line_component(recipe, 3000., NuisanceLine)
     end
     resid.meval.model[QSFit.line_group(recipe, NuisanceLine)] = SumReducer([Symbol(:nuisance, i) for i in 1:recipe.n_nuisance])
     push!(resid.meval.model[:main].list, QSFit.line_group(recipe, NuisanceLine))

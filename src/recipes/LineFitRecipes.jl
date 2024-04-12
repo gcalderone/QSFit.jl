@@ -1,7 +1,7 @@
 module LineFitRecipes
 
 using Statistics
-using ..QSFit, ..QSFit.ATL, GModelFit, Gnuplot
+using ..QSFit, GModelFit, Gnuplot
 
 import QSFit: init_recipe!, preprocess_spec!, line_component, analyze
 
@@ -99,8 +99,8 @@ function analyze(_recipe::Recipe{<: InteractiveLineFit}, _spec::Spectrum)
         i = Int.(Meta.parse.(string.(split(readline()))))
         (0 in i)  &&  continue
         @assert all(1 .<= i .<= length(linetemplates))
-        add_line!(recipe, ATL.UnidentifiedTransition(λ), linetemplates[i]...)
-        push!(accum_lines, "add_line!(recipe, QSFit.ATL.UnidentifiedTransition($(λ)), " * join(string.(linetemplates[i]), ",") * ")")
+        add_line!(recipe, λ, linetemplates[i]...)
+        push!(accum_lines, "add_line!(recipe, $λ, " * join(string.(linetemplates[i]), ",") * ")")
     end
     println()
     Gnuplot.quit(:LineFit)
