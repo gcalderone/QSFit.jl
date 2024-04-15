@@ -16,6 +16,7 @@ line_suffix(recipe::Recipe{<: QSOGeneric}, ::Type{BlueWing}) = :_bw
 
 function line_component(recipe::Recipe, center::Float64, ::Type{<: BlueWing})
     comp = line_component(recipe, center, NarrowLine)
+    comp.fwhm.low, comp.fwhm.val, comp.fwhm.high = 0, 3e3, 5e3
     comp.voff.low, comp.voff.val, comp.voff.high = 0, 0, 2e3
     return comp
 end

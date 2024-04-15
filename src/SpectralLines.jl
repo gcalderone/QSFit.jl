@@ -16,7 +16,7 @@ abstract type NuisanceLine      <: LineTemplate  end
 
 default_line_templates(::Recipe, ::ATL.AbstractTransition{<: ATL.Forbidden})     = [ForbiddenLine]
 default_line_templates(::Recipe, ::ATL.AbstractTransition{<: ATL.SemiForbidden}) = [SemiForbiddenLine]
-default_line_templates(::Recipe, ::ATL.AbstractTransition{<: ATL.Permitted})     = [BroadLine, NarrowLine]
+default_line_templates(::Recipe, ::ATL.AbstractTransition{<: ATL.Permitted})     = [NarrowLine, BroadLine]
 default_line_templates(::Recipe, ::ATL.UnidentifiedTransition)                   = [NuisanceLine]
 
 line_suffix(::Recipe, ::Type{<: LineTemplate})  = ""

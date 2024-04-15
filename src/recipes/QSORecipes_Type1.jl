@@ -4,8 +4,11 @@ abstract type Type1 <: QSOGeneric end
 
 # Special cases for emission lines
 abstract type MgIIBroadLine <: BroadLine end
-function set_constraints!(recipe::Recipe{<: Type1}, ::Type{MgIIBroadLine}, comp::QSFit.AbstractSpecLineComp)
+function line_component(recipe::Recipe{<: Type1}, center::Float64, ::Type{<: MgIIBroadLine})
+    comp = line_component(recipe, center, BroadLine)
+    comp.fwhm.val = 3000
     comp.voff.low, comp.voff.val, comp.voff.high = -1e3, 0, 1e3
+    return comp
 end
 
 
@@ -26,7 +29,7 @@ function set_lines_dict!(recipe::Recipe{T}) where T <: Type1
     # add_line!(recipe, :OV_1213)  # 1213.8A, Ferland+92, Shields+95
     add_line!(recipe, :Lya)
     # add_line!(recipe, :OV_1218)  # 1218.3A, Ferland+92, Shields+95
-    add_line!(recipe, :NV_1241)
+    add_line!(recipe, :NV_1241    , NarrowLine)
     add_line!(recipe, :OI_1306    , BroadLine)
     add_line!(recipe, :CII_1335   , BroadLine)
     add_line!(recipe, :SiIV_1400  , BroadLine)
