@@ -8,16 +8,10 @@ res = analyze(recipe, spec)</code></pre><p>After interactive selection the above
 
 filename = download(&quot;http://dr10.sdss3.org/sas/dr10/sdss/spectro/redux/26/spectra/0752/spec-0752-52251-0323.fits&quot;)
 spec = Spectrum(Val(:SDSS_DR10), filename)
-recipe = Recipe(LineFit)
-recipe.redshift = 0.3806
-recipe.Av = missing
-recipe.wavelength_range = [4532.52088596136, 5254.15348271789]
-recipe.line_profiles = :gauss
-recipe.lines = [
-     LineDescriptor(4864.68, NarrowLine, BroadLine)
-     LineDescriptor(5009.03, ForbiddenLine)
-]
-
+recipe = Recipe(LineFit, redshift=0.3806)
+recipe.wavelength_range = [4610.1157888384, 5130.00163811462]
+add_line!(recipe, QSFit.ATL.UnidentifiedTransition(4866.45), NarrowLine,BroadLine)
+add_line!(recipe, QSFit.ATL.UnidentifiedTransition(5008.98), ForbiddenLine)
 res = analyze(recipe, spec)</code></pre><h3 id="Type1"><a class="docs-heading-anchor" href="#Type1"><code>Type1</code></a><a id="Type1-1"></a><a class="docs-heading-anchor-permalink" href="#Type1" title="Permalink"></a></h3><p>Automatic spectral analysis of Type1 AGN and QSO at redshifts &lt;~ 2.1.  Example:</p><pre><code class="nohighlight hljs">using QSFit, QSFit.QSORecipes
 filename = download(&quot;http://dr10.sdss3.org/sas/dr10/sdss/spectro/redux/26/spectra/0752/spec-0752-52251-0323.fits&quot;)
 spec = Spectrum(Val(:SDSS_DR10), filename)
@@ -67,4 +61,4 @@ function analyze(recipe::Recipe{T}, spec::QSFit.Spectrum, resid::GModelFit.Resid
     resid.mzer.config.ftol = 1.e-6
     model = resid.meval.model
     return GModelFit.minimize!(resid)
-end</code></pre></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../components/">« Components</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.3.0 on <span class="colophon-date" title="Wednesday 27 March 2024 14:48">Wednesday 27 March 2024</span>. Using Julia version 1.10.2.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+end</code></pre></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../components/">« Components</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.4.0 on <span class="colophon-date" title="Monday 29 April 2024 17:07">Monday 29 April 2024</span>. Using Julia version 1.10.2.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
