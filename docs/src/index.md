@@ -32,11 +32,10 @@ In the Julia REPL type:
 using Pkg
 Pkg.add("GModelFit")
 Pkg.add("GModelFitViewer")
-Pkg.add(url="https://github.com/gcalderone/QSFit.jl", rev="v0.1.0")
+Pkg.add("QSFit")
 ```
 
 To test the package type `Pkg.test("QSFit")`.
-
 
 ## Basic usage
 
@@ -78,4 +77,17 @@ or [GModelFitViewer.jl](https://github.com/lnicastro/GModelFitViewer.jl) (to dis
 using GModelFitViewer
 viewer(res)
 println() # hide
+```
+
+Also, the best fit parameter values can be accessed for any component with (e.g.):
+```@example abc
+println("Hb integrated luminosity: ",
+        res.bestfit[:Hb_br].norm.val, " +/- ",
+        res.bestfit[:Hb_br].norm.unc, " 10^42 erg s^-1")
+println("Hb full width at half maximum: ",
+        res.bestfit[:Hb_br].fwhm.val, " +/- ",
+        res.bestfit[:Hb_br].fwhm.unc, " km/s")
+println("Host galaxy lum. density at 5500A: ",
+        res.bestfit[:Galaxy].norm.val, " +/- ",
+        res.bestfit[:Galaxy].norm.unc, " 10^42 erg s^-1 A^-1")
 ```
