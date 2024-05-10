@@ -41,6 +41,7 @@ end
 
 
 function fit!(recipe::Recipe{<: QSOGeneric}, resid::GModelFit.Residuals)
+    # GModelFit.update!(resid.meval)
     resid.mzer.config.ftol = 1.e-6
     bestfit, stats = GModelFit.minimize!(resid)
     show(stats)
@@ -282,7 +283,7 @@ function preprocess_spec!(recipe::Recipe{T}, spec::QSFit.Spectrum) where T <: QS
             println()
             println("Updated coverage:")
         end
-        for (cname, line) in recipe.lines
+        for (cname, line) in get_lines_dict(recipe)
             threshold = get(recipe.min_spectral_coverage, cname, recipe.min_spectral_coverage[:default])
             (λmin, λmax, coverage) = QSFit.spectral_coverage(spec.x[findall(spec.good)],
                                                              spec.resolution, line.comp)

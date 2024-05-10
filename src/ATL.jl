@@ -43,7 +43,9 @@ const transition_list = OrderedDict{Symbol, AbstractTransition}()
 function register(t::AbstractTransition)
     global transition_list
     k = get_id(t)
-    @assert !(k in keys(transition_list)) "$k is already registered"
+    if k in keys(transition_list)
+        @warn "$k is already registered, overwriting previous values..."
+    end
     transition_list[k] = t
     nothing
 end

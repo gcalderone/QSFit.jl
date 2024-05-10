@@ -32,7 +32,7 @@ function set_lines_dict!(recipe::Recipe{T}) where T <: Type2
     add_line!(recipe, :NII_6583  , ForbiddenLine)
     add_line!(recipe, :SII_6716  , ForbiddenLine)
     add_line!(recipe, :SII_6731  , ForbiddenLine)
-    return get_lines_dict(recipe)
+    nothing
 end
 
 
@@ -104,13 +104,15 @@ function analyze(recipe::Recipe{<: Type2}, spec::Spectrum, resid::GModelFit.Resi
     haskey(model, :Galaxy)  &&  freeze!(model, :Galaxy)
     GModelFit.update!(resid.meval)
 
-    println("\nFit known emission lines...")
-    add_emission_lines!(recipe, resid)
-    add_patch_functs!(recipe, resid)
+    if (:lines in propertynames(recipe))  &&  (length(recipe.lines) > 0)
+        println("\nFit known emission lines...")
+        add_emission_lines!(recipe, resid)
+        add_patch_functs!(recipe, resid)
 
-    fit!(recipe, resid)
-    for cname in keys(recipe.lines)
-        freeze!(model, cname)
+        fit!(recipe, resid)
+        for cname in keys(recipe.lines)
+            freeze!(model, cname)
+        end
     end
 
     println("\nFit nuisance emission lines...")
