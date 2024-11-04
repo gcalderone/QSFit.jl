@@ -1,6 +1,6 @@
 module QSFit
 
-export Recipe, AbstractRecipeSpec, analyze
+export Recipe, RecipeBehaviour, analyze, @print_current_function
 
 import GModelFit: Domain, CompEval, Residuals,
     Parameter, AbstractComponent, dependencies, prepare!, evaluate!
@@ -47,12 +47,17 @@ include("Spectrum.jl")
 qsfit_data() = artifact"qsfit_data"
 
 
-# ====================================================================
-abstract type AbstractRecipeSpec end
+macro print_current_function()
+    return :(printstyled("* ", stacktrace()[1], "\n", color=:light_black))
+end
 
-struct Recipe{T <: AbstractRecipeSpec}
+# ====================================================================
+abstract type RecipeBehaviour end
+
+struct Recipe{T <: RecipeBehaviour}
     dict::OrderedDict{Symbol, Any}
-    function Recipe(::Type{T}; kws...) where T <: AbstractRecipeSpec
+    function Recipe(::Type{T}; kws...) where T <: RecipeBehaviour
+        @print_current_function
         out = new{T}(OrderedDict{Symbol, Any}())
         init_recipe!(out)
         for (key, value) in kws  # set options provided as keywords
@@ -66,6 +71,7 @@ propertynames(recipe::Recipe) = collect(keys(getfield(recipe, :dict)))
 getproperty(recipe::Recipe, key::Symbol) = getfield(recipe, :dict)[key]
 setproperty!(recipe::Recipe, key::Symbol, value) = getfield(recipe, :dict)[key] = value
 function show(io::IO, recipe::Recipe)
+    @print_current_function
     println(io, typeof(recipe))
     tmp = IOBuffer()
     show(tmp, "text/plain", getfield(recipe, :dict))
@@ -74,7 +80,8 @@ function show(io::IO, recipe::Recipe)
     println(io, s)
 end
 
-function init_recipe!(recipe::Recipe{T}) where T <: AbstractRecipeSpec
+function init_recipe!(recipe::Recipe{T}) where T <: RecipeBehaviour
+    @print_current_function
     recipe.cosmology = cosmology(h=0.70, OmegaM=0.3)
     recipe.redshift = missing
     recipe.extlaw = OD94(Rv=3.1)
@@ -103,7 +110,8 @@ end
 
 
 # ====================================================================
-function preprocess_spec!(recipe::Recipe{<: AbstractRecipeSpec}, spec::Spectrum)
+function preprocess_spec!(recipe::Recipe{<: RecipeBehaviour}, spec::Spectrum)
+    @print_current_function
     show(spec)
     if !ismissing(recipe.Av)
         @printf "      Av: %8.3f  (%s)\n" recipe.Av join(split(string(recipe.extlaw), "\n"), ",")
@@ -120,9 +128,10 @@ function preprocess_spec!(recipe::Recipe{<: AbstractRecipeSpec}, spec::Spectrum)
 end
 
 
-reduce(recipe::Recipe{<: AbstractRecipeSpec}, resid::Residuals) = OrderedDict{Symbol, Any}()
+reduce(recipe::Recipe{<: RecipeBehaviour}, resid::Residuals) = OrderedDict{Symbol, Any}()
 
-function analyze(_recipe::Recipe{T}, _spec::Spectrum) where T <: AbstractRecipeSpec
+function analyze(_recipe::Recipe{T}, _spec::Spectrum) where T <: RecipeBehaviour
+    @print_current_function
     timestamp = now()
     starttime = time()
 

@@ -31,10 +31,11 @@ line_group( ::Recipe, ::Type{<: BroadLine})         = :BroadLines
 line_group( ::Recipe, ::Type{<: VeryBroadLine})     = :VeryBroadLines
 line_group( ::Recipe, ::Type{<: NuisanceLine})      = :NuisanceLines
 
-line_component(::Recipe{<: AbstractRecipeSpec}, center::Float64) = SpecLineGauss(center)
-line_component(recipe::Recipe{<: AbstractRecipeSpec}, t::ATL.AbstractTransition, template::Type{<: LineTemplate}) = line_component(recipe, get_wavelength(t), template)
+line_component(::Recipe{<: RecipeBehaviour}, center::Float64) = SpecLineGauss(center)
+line_component(recipe::Recipe{<: RecipeBehaviour}, t::ATL.AbstractTransition, template::Type{<: LineTemplate}) = line_component(recipe, get_wavelength(t), template)
 
 function line_component(recipe::Recipe, center::Float64, template::Type{<: ForbiddenLine})
+    @print_current_function
     comp = line_component(recipe, center)
     comp.fwhm.low, comp.fwhm.val, comp.fwhm.high = 100, 5e2, 2e3
     comp.voff.low, comp.voff.val, comp.voff.high = -1e3, 0, 1e3
@@ -42,10 +43,12 @@ function line_component(recipe::Recipe, center::Float64, template::Type{<: Forbi
 end
 
 function line_component(recipe::Recipe, center::Float64, template::Type{<: SemiForbiddenLine})
+    @print_current_function
     return line_component(recipe, BroadLine, t)
 end
 
 function line_component(recipe::Recipe, center::Float64, template::Type{<: NarrowLine})
+    @print_current_function
     comp = line_component(recipe, center)
     comp.fwhm.low, comp.fwhm.val, comp.fwhm.high = 100, 5e2, 1e3 # avoid confusion with the broad component
     comp.voff.low, comp.voff.val, comp.voff.high = -1e3, 0, 1e3
@@ -53,6 +56,7 @@ function line_component(recipe::Recipe, center::Float64, template::Type{<: Narro
 end
 
 function line_component(recipe::Recipe, center::Float64, template::Type{<: BroadLine})
+    @print_current_function
     comp = line_component(recipe, center)
     comp.fwhm.low, comp.fwhm.val, comp.fwhm.high = 900, 5e3, 1.5e4
     comp.voff.low, comp.voff.val, comp.voff.high = -3e3, 0, 3e3
@@ -60,6 +64,7 @@ function line_component(recipe::Recipe, center::Float64, template::Type{<: Broad
 end
 
 function line_component(recipe::Recipe, center::Float64, template::Type{<: VeryBroadLine})
+    @print_current_function
     comp = line_component(recipe, center)
     comp.fwhm.low, comp.fwhm.val, comp.fwhm.high = 1e4, 2e4, 3e4
     comp.voff.fixed = true
@@ -67,6 +72,7 @@ function line_component(recipe::Recipe, center::Float64, template::Type{<: VeryB
 end
 
 function line_component(recipe::Recipe, center::Float64, template::Type{<: NuisanceLine})
+    @print_current_function
     comp = line_component(recipe, center)
     comp.norm.val = 0.
     comp.center.fixed = false
@@ -89,14 +95,15 @@ function show(io::IO, line::SpectralLine)
     show(io, line.comp)
 end
 
-add_line!(recipe::Recipe{<: AbstractRecipeSpec}, tid::Symbol) = add_line!(recipe, get_transition(tid))
-add_line!(recipe::Recipe{<: AbstractRecipeSpec}, tid::Symbol, templates::Vararg{DataType, N}) where N = add_line!(recipe, get_transition(tid), templates...)
+add_line!(recipe::Recipe{<: RecipeBehaviour}, tid::Symbol) = add_line!(recipe, get_transition(tid))
+add_line!(recipe::Recipe{<: RecipeBehaviour}, tid::Symbol, templates::Vararg{DataType, N}) where N = add_line!(recipe, get_transition(tid), templates...)
 
-add_line!(recipe::Recipe{<: AbstractRecipeSpec}, center::Float64) = add_line!(recipe, ATL.UnidentifiedTransition(center))
-add_line!(recipe::Recipe{<: AbstractRecipeSpec}, center::Float64, templates::Vararg{DataType, N}) where N = add_line!(recipe, ATL.UnidentifiedTransition(center), templates...)
+add_line!(recipe::Recipe{<: RecipeBehaviour}, center::Float64) = add_line!(recipe, ATL.UnidentifiedTransition(center))
+add_line!(recipe::Recipe{<: RecipeBehaviour}, center::Float64, templates::Vararg{DataType, N}) where N = add_line!(recipe, ATL.UnidentifiedTransition(center), templates...)
 
-add_line!(recipe::Recipe{<: AbstractRecipeSpec}, t::ATL.AbstractTransition) = add_line!(recipe, t, default_line_templates(recipe, t)...)
-function add_line!(recipe::Recipe{<: AbstractRecipeSpec}, t::ATL.AbstractTransition, templates::Vararg{DataType, N}) where N
+add_line!(recipe::Recipe{<: RecipeBehaviour}, t::ATL.AbstractTransition) = add_line!(recipe, t, default_line_templates(recipe, t)...)
+function add_line!(recipe::Recipe{<: RecipeBehaviour}, t::ATL.AbstractTransition, templates::Vararg{DataType, N}) where N
+    @print_current_function
     @assert N > 0
     dict = get_lines_dict(recipe)
     for template in templates
@@ -110,12 +117,13 @@ function add_line!(recipe::Recipe{<: AbstractRecipeSpec}, t::ATL.AbstractTransit
     return dict
 end
 
-function get_lines_dict(recipe::Recipe{<: AbstractRecipeSpec})
+function get_lines_dict(recipe::Recipe{<: RecipeBehaviour})
     (:lines in propertynames(recipe))  ||  (recipe.lines = OrderedDict{Symbol, SpectralLine}())
     return recipe.lines
 end
 
-function set_lines_dict!(recipe::Recipe{<: AbstractRecipeSpec})
+function set_lines_dict!(recipe::Recipe{<: RecipeBehaviour})
+    @print_current_function
     recipe.lines = OrderedDict{Symbol, SpectralLine}()
     for tid in ATL.get_transition_ids()
         add_line!(recipe, tid)

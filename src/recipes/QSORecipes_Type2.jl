@@ -3,6 +3,7 @@ export Type2
 abstract type Type2 <: QSOGeneric end
 
 function init_recipe!(recipe::Recipe{T}) where T <: Type2
+    @print_current_function
     @invoke init_recipe!(recipe::Recipe{<: QSOGeneric})
 
     recipe.n_nuisance = 2
@@ -12,6 +13,7 @@ function init_recipe!(recipe::Recipe{T}) where T <: Type2
 end
 
 function set_lines_dict!(recipe::Recipe{T}) where T <: Type2
+    @print_current_function
     (:lines in propertynames(recipe))  &&  (return get_lines_dict(recipe))
     add_line!(recipe, :Lya       , NarrowLine)
     add_line!(recipe, :NV_1241   , ForbiddenLine)
@@ -37,6 +39,7 @@ end
 
 
 function add_qso_continuum!(recipe::Recipe{<: Type2}, resid::GModelFit.Residuals)
+    @print_current_function
     @invoke add_qso_continuum!(recipe::Recipe{<: QSOGeneric}, resid)
     resid.meval.model[:QSOcont].alpha.val = -1.8
     GModelFit.update!(resid.meval)
@@ -44,18 +47,21 @@ end
 
 
 function set_constraints!(recipe::Recipe{<: Type2}, ::Type{NarrowLine}, comp::QSFit.AbstractSpecLineComp)
+    @print_current_function
     @invoke set_constraints!(recipe::Recipe{<: QSOGeneric}, NarrowLine, comp)
     comp.fwhm.low = 10
 end
 
 
 function set_constraints!(recipe::Recipe{<: Type2}, ::Type{NuisanceLine}, comp::QSFit.AbstractSpecLineComp)
+    @print_current_function
     @invoke set_constraints!(recipe::Recipe{<: QSOGeneric}, NuisanceLine, comp)
     comp.fwhm.low, comp.fwhm.val, comp.fwhm.high = 10, 500, 2e3
 end
 
 
 function add_patch_functs!(recipe::Recipe{<: Type2}, resid::GModelFit.Residuals)
+    @print_current_function
     model = resid.meval.model
     # Patch parameters
     if haskey(model, :OIII_4959) && haskey(model, :OIII_5007)
@@ -88,6 +94,7 @@ end
 
 
 function analyze(recipe::Recipe{<: Type2}, spec::Spectrum, resid::GModelFit.Residuals)
+    @print_current_function
     recipe.spec = spec  # TODO: remove
     model = resid.meval.model
     model[:main] = SumReducer()

@@ -5,6 +5,7 @@ abstract type Type1 <: QSOGeneric end
 # Special cases for emission lines
 abstract type MgIIBroadLine <: BroadLine end
 function line_component(recipe::Recipe{<: Type1}, center::Float64, ::Type{<: MgIIBroadLine})
+    @print_current_function
     comp = line_component(recipe, center, BroadLine)
     comp.fwhm.val = 3000
     comp.voff.low, comp.voff.val, comp.voff.high = -1e3, 0, 1e3
@@ -13,6 +14,7 @@ end
 
 
 function init_recipe!(recipe::Recipe{T}) where T <: Type1
+    @print_current_function
     @invoke init_recipe!(recipe::Recipe{<: QSOGeneric})
     recipe.min_spectral_coverage[:Ironuv]  = 0.3
     recipe.min_spectral_coverage[:Ironopt] = 0.3
@@ -24,6 +26,7 @@ end
 
 
 function set_lines_dict!(recipe::Recipe{T}) where T <: Type1
+    @print_current_function
     (:lines in propertynames(recipe))  &&  (return get_lines_dict(recipe))
     add_line!(recipe, :Lyb)
     # add_line!(recipe, :OV_1213)  # 1213.8A, Ferland+92, Shields+95
@@ -65,6 +68,7 @@ end
 
 
 function add_balmer_cont!(recipe::Recipe{<: Type1}, resid::GModelFit.Residuals)
+    @print_current_function
     if recipe.use_balmer
         resid.meval.model[:Balmer] = QSFit.balmercont(0.1, 0.5)
         push!(resid.meval.model[:Continuum].list, :Balmer)
@@ -83,6 +87,7 @@ end
 
 
 function add_iron_uv!(recipe::Recipe{<: Type1}, resid::GModelFit.Residuals)
+    @print_current_function
     λ = coords(resid.meval.domain)
     if recipe.use_ironuv
         fwhm = recipe.Ironuv_fwhm
@@ -104,6 +109,7 @@ end
 
 
 function add_iron_opt!(recipe::Recipe{<: Type1}, resid::GModelFit.Residuals)
+    @print_current_function
     λ = coords(resid.meval.domain)
     if recipe.use_ironopt
         fwhm = recipe.Ironoptbr_fwhm
@@ -130,6 +136,7 @@ end
 
 
 function add_patch_functs!(recipe::Recipe{<: Type1}, resid::GModelFit.Residuals)
+    @print_current_function
     model = resid.meval.model
     # Patch parameters
     if haskey(model, :OIII_4959)  &&  haskey(model, :OIII_5007)
@@ -190,6 +197,7 @@ end
 
 
 function analyze(recipe::Recipe{<: Type1}, spec::Spectrum, resid::GModelFit.Residuals)
+    @print_current_function
     recipe.spec = spec  # TODO: remove
     model = resid.meval.model
     model[:main] = SumReducer()

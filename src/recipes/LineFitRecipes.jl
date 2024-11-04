@@ -7,7 +7,7 @@ import QSFit: init_recipe!, preprocess_spec!, line_component, analyze
 
 export LineFit, InteractiveLineFit
 
-abstract type LineFit <: AbstractRecipeSpec end
+abstract type LineFit <: RecipeBehaviour end
 abstract type InteractiveLineFit <: LineFit end
 
 function wait_mouse(sid=Gnuplot.options.default)
@@ -18,14 +18,14 @@ end
 line_component(recipe::Recipe{<: LineFit}, center::Float64) = recipe.line_component(center)
 
 function init_recipe!(recipe::Recipe{T}) where T <: LineFit
-    @invoke init_recipe!(recipe::Recipe{<: AbstractRecipeSpec})
+    @invoke init_recipe!(recipe::Recipe{<: RecipeBehaviour})
     recipe.wavelength_range = [1215, 7.3e3]
     recipe.line_component = QSFit.SpecLineGauss
 end
 
 
 function preprocess_spec!(recipe::Recipe{T}, spec::QSFit.Spectrum) where T <: LineFit
-    @invoke preprocess_spec!(recipe::Recipe{<: AbstractRecipeSpec}, spec)
+    @invoke preprocess_spec!(recipe::Recipe{<: RecipeBehaviour}, spec)
     spec.good[findall(spec.x .< recipe.wavelength_range[1])] .= false
     spec.good[findall(spec.x .> recipe.wavelength_range[2])] .= false
 end

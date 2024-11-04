@@ -4,34 +4,34 @@ using Statistics, DataStructures
 
 export get_transition_ids, get_transition, get_label, get_id, get_wavelength
 
-abstract type Forbiddenness end
-abstract type     Forbidden <: Forbiddenness  end
-abstract type SemiForbidden <: Forbiddenness  end
-abstract type     Permitted <: Forbiddenness  end
+abstract type TransitionBehaviour end
+abstract type     Forbidden <: TransitionBehaviour  end
+abstract type SemiForbidden <: TransitionBehaviour  end
+abstract type     Permitted <: TransitionBehaviour  end
 
-abstract type AbstractTransition{T <: Forbiddenness} end
+abstract type AbstractTransition{T <: TransitionBehaviour} end
 
-struct Transition{T <: Forbiddenness} <: AbstractTransition{T}
+struct Transition{T <: TransitionBehaviour} <: AbstractTransition{T}
     label::String
     lambda::Float64 # Angstrom (vacuum)
     energy_levels::NTuple{2, Float64}  # eV
 end
 
-struct Multiplet{N, T <: Forbiddenness} <: AbstractTransition{T}
+struct Multiplet{N, T <: TransitionBehaviour} <: AbstractTransition{T}
     label::String
     t::NTuple{N,Transition{T}}
-    function Multiplet(t::NTuple{N, Transition{T}}) where {N, T <: Forbiddenness}
+    function Multiplet(t::NTuple{N, Transition{T}}) where {N, T <: TransitionBehaviour}
         @assert N > 1
         label = t[1].label
         return new{N,T}(label, t)
     end
-    function Multiplet(label::String, t::NTuple{N, Transition{T}}) where {N, T <: Forbiddenness}
+    function Multiplet(label::String, t::NTuple{N, Transition{T}}) where {N, T <: TransitionBehaviour}
         @assert N > 1
         return new{N,T}(label, t)
     end
 end
 
-struct UnidentifiedTransition <: AbstractTransition{Forbiddenness}
+struct UnidentifiedTransition <: AbstractTransition{TransitionBehaviour}
     label::String
     lambda::Float64 # Angstrom (vacuum)
     UnidentifiedTransition(lambda::Float64) = new("λ$(lambda)", lambda)
