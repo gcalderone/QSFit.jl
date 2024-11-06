@@ -1,64 +1,114 @@
 <!DOCTYPE html>
-<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Recipes · QSFit.jl</title><meta name="title" content="Recipes · QSFit.jl"/><meta property="og:title" content="Recipes · QSFit.jl"/><meta property="twitter:title" content="Recipes · QSFit.jl"/><meta name="description" content="Documentation for QSFit.jl."/><meta property="og:description" content="Documentation for QSFit.jl."/><meta property="twitter:description" content="Documentation for QSFit.jl."/><script data-outdated-warner src="../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL=".."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../assets/documenter.js"></script><script src="../search_index.js"></script><script src="../siteinfo.js"></script><script src="../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><a class="docs-logo" href="../"><img src="../assets/logo.png" alt="QSFit.jl logo"/></a><div class="docs-package-name"><span class="docs-autofit"><a href="../">QSFit.jl</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../">QSFit</a></li><li><a class="tocitem" href="../components/">Components</a></li><li class="is-active"><a class="tocitem" href>Recipes</a><ul class="internal"><li><a class="tocitem" href="#Customizing-built-in-recipes"><span>Customizing built-in recipes</span></a></li><li><a class="tocitem" href="#Define-new-recipes"><span>Define new recipes</span></a></li></ul></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li class="is-active"><a href>Recipes</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Recipes</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/gcalderone/QSFit.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/gcalderone/QSFit.jl/blob/master/docs/src/recipes.md" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="Recipes"><a class="docs-heading-anchor" href="#Recipes">Recipes</a><a id="Recipes-1"></a><a class="docs-heading-anchor-permalink" href="#Recipes" title="Permalink"></a></h1><p><strong>QSFit.jl</strong> provides the following ready-to-use recipes:</p><h3 id="InteractiveLineFit"><a class="docs-heading-anchor" href="#InteractiveLineFit"><code>InteractiveLineFit</code></a><a id="InteractiveLineFit-1"></a><a class="docs-heading-anchor-permalink" href="#InteractiveLineFit" title="Permalink"></a></h3><p>Interactive emission line fitting. The user is asked to provide the initial guess wavelengths of emission lines by clicking on a plot (provided by the <a href="https://gcalderone.github.io/Gnuplot.jl/stable/index.html">Gnuplot.jl</a> package), as well as to decide the line profile to be used. Example:</p><pre><code class="language-julia hljs">using QSFit, QSFit.LineFitRecipes
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Recipes · QSFit.jl</title><meta name="title" content="Recipes · QSFit.jl"/><meta property="og:title" content="Recipes · QSFit.jl"/><meta property="twitter:title" content="Recipes · QSFit.jl"/><meta name="description" content="Documentation for QSFit.jl."/><meta property="og:description" content="Documentation for QSFit.jl."/><meta property="twitter:description" content="Documentation for QSFit.jl."/><script data-outdated-warner src="../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL=".."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../assets/documenter.js"></script><script src="../search_index.js"></script><script src="../siteinfo.js"></script><script src="../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/catppuccin-mocha.css" data-theme-name="catppuccin-mocha"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/catppuccin-macchiato.css" data-theme-name="catppuccin-macchiato"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/catppuccin-frappe.css" data-theme-name="catppuccin-frappe"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/catppuccin-latte.css" data-theme-name="catppuccin-latte"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><a class="docs-logo" href="../"><img src="../assets/logo.png" alt="QSFit.jl logo"/></a><div class="docs-package-name"><span class="docs-autofit"><a href="../">QSFit.jl</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../">QSFit</a></li><li><a class="tocitem" href="../components/">Components</a></li><li class="is-active"><a class="tocitem" href>Recipes</a><ul class="internal"><li><a class="tocitem" href="#Introduction"><span>Introduction</span></a></li><li><a class="tocitem" href="#Built-in-recipes"><span>Built-in recipes</span></a></li><li><a class="tocitem" href="#Define-new-recipes"><span>Define new recipes</span></a></li></ul></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li class="is-active"><a href>Recipes</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Recipes</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/gcalderone/QSFit.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/gcalderone/QSFit.jl/blob/master/docs/src/recipes.md" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="Recipes"><a class="docs-heading-anchor" href="#Recipes">Recipes</a><a id="Recipes-1"></a><a class="docs-heading-anchor-permalink" href="#Recipes" title="Permalink"></a></h1><h2 id="Introduction"><a class="docs-heading-anchor" href="#Introduction">Introduction</a><a id="Introduction-1"></a><a class="docs-heading-anchor-permalink" href="#Introduction" title="Permalink"></a></h2><p>The essential steps to analyze a QSO spectrum typically involve the identification of relevant features (such as emission lines, continuum emission, host galaxy emission, etc.) and their association with a corresponding <em>component</em> in a model<sup class="footnote-reference"><a id="citeref-1" href="#footnote-1">[1]</a></sup> to fit the empirical data.  The resulting best fit parameter values (and associated uncertainties) will allow further analysis.</p><p>While the above steps are always the same, the finer details of the analysis depend on several aspects such as the spectrograph being used, its spectral resolution, the wavelength coverage, the target redshift, the peculiar features in the spectrum, the accuracy required in the outcomes, etc.</p><p>To address such complexity <strong>QSFit.jl</strong> provides a few built-in <em>analysis recipes</em>, namely a sequence of steps aimed to build a spectral <a href="https://gcalderone.github.io/GModelFit.jl/concepts/">model</a>, and to fit it against an empirical 1D spectrum.  Each recipe comes with a number of pre-defined options which can easily be customized to address specific cases.  E.g., to check default options for the <code>Type1</code> recipe:</p><pre><code class="language-julia hljs">using QSFit, QSFit.QSORecipes
+recipe = CRecipe{Type1}()</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">CRecipe{QSFit.QSORecipes.Type1}
+  :cosmology =&gt; FlatLCDM{Float64}(0.7, 0.699915, 0.3, 8.5307e-5)
+  :redshift =&gt; missing
+  :extlaw =&gt; OD94(3.1)
+  :Av =&gt; missing
+  :unit_x =&gt; 1.0 Å
+  :unit_flux =&gt; 1.0e-17 erg Å^-1 cm^-2 s^-1
+  :unit_lum =&gt; 1.0e42 erg Å^-1 s^-1
+  :wavelength_range =&gt; [1215.0, 7300.0]
+  :min_spectral_coverage =&gt; Dict(:default=&gt;0.6, :Ironuv=&gt;0.3, :Ironopt=&gt;0.3)
+  :host_template =&gt; Dict{Symbol, Any}(:library=&gt;&quot;swire&quot;, :ref_wavelength=&gt;5500.0, :template=&gt;&quot;Ell5&quot;)
+  :use_host_template =&gt; true
+  :host_template_range =&gt; [4000.0, 7000.0]
+  :n_nuisance =&gt; 10
+  :nuisance_avoid =&gt; [[4813, 4913], [6415, 6715]]
+  :nuisance_maxoffset_from_guess =&gt; 1000.0
+  :line_component =&gt; SpecLineGauss
+  :use_balmer =&gt; true
+  :use_ironuv =&gt; true
+  :Ironuv_fwhm =&gt; 3000.0
+  :use_ironopt =&gt; true
+  :Ironoptbr_fwhm =&gt; 3000.0
+  :Ironoptna_fwhm =&gt; 500.0
+</code></pre><p>You can modify any option with (e.g.):</p><pre><code class="language-julia hljs">recipe.use_host_template = false</code></pre><p>In case the customization via options is not enought, it is possible to <a href="#Define-new-recipes">Define new recipes</a> by extending the built-in ones.</p><h2 id="Built-in-recipes"><a class="docs-heading-anchor" href="#Built-in-recipes">Built-in recipes</a><a id="Built-in-recipes-1"></a><a class="docs-heading-anchor-permalink" href="#Built-in-recipes" title="Permalink"></a></h2><p>The built-in recipes are defined in the <code>QSFit.LineFitRecipes</code> and <code>QSFit.QSORecipes</code> submodules.</p><h3 id="InteractiveLineFit"><a class="docs-heading-anchor" href="#InteractiveLineFit"><code>InteractiveLineFit</code></a><a id="InteractiveLineFit-1"></a><a class="docs-heading-anchor-permalink" href="#InteractiveLineFit" title="Permalink"></a></h3><p>Interactive emission line fitting. The user is asked to provide the initial guess wavelengths of emission lines by clicking on a plot (provided by the <a href="https://gcalderone.github.io/Gnuplot.jl/stable/index.html">Gnuplot.jl</a> package), as well as to decide the line profile to be used. Example:</p><pre><code class="language-julia hljs">using QSFit, QSFit.LineFitRecipes
 
 filename = download(&quot;http://dr10.sdss3.org/sas/dr10/sdss/spectro/redux/26/spectra/0752/spec-0752-52251-0323.fits&quot;)
 spec = Spectrum(Val(:SDSS_DR10), filename)
-recipe = Recipe(InteractiveLineFit, redshift=0.3806)
-res = analyze(recipe, spec)</code></pre><p>After interactive selection the above code will print the relevant options to replicate the same analysis using the <code>LineFit</code> recipe (see below);</p><h3 id="LineFit"><a class="docs-heading-anchor" href="#LineFit"><code>LineFit</code></a><a id="LineFit-1"></a><a class="docs-heading-anchor-permalink" href="#LineFit" title="Permalink"></a></h3><p>Non-interactive line fitting.  The user should provide the relevant options such as the redshift, the wavelength range, the guess wavelengths of the emission lines, etc.  The latter can be obtained using the above mentioned <code>InteractiveLineFit</code> recipe.  Example:</p><pre><code class="language-julia hljs">using QSFit, QSFit.LineFitRecipes
+recipe = CRecipe{InteractiveLineFit}(redshift=0.3806)
+res = analyze(recipe, spec)</code></pre><p>After interactive selection the above code will print the relevant options to replicate the same analysis using the <code>LineFit</code> recipe (see below);</p><h3 id="LineFit"><a class="docs-heading-anchor" href="#LineFit"><code>LineFit</code></a><a id="LineFit-1"></a><a class="docs-heading-anchor-permalink" href="#LineFit" title="Permalink"></a></h3><p>Non-interactive line fitting.  The user should provide the relevant options such as the redshift, the wavelength range, the guess wavelengths of the emission lines, etc.  The latter can be obtained using the above mentioned <code>InteractiveLineFit</code> recipe.</p><p>Example:</p><pre><code class="language-julia hljs">using QSFit, QSFit.LineFitRecipes
 
 filename = download(&quot;http://dr10.sdss3.org/sas/dr10/sdss/spectro/redux/26/spectra/0752/spec-0752-52251-0323.fits&quot;)
 spec = Spectrum(Val(:SDSS_DR10), filename)
-recipe = Recipe(LineFit, redshift=0.3806)
+recipe = CRecipe{LineFit}(redshift=0.3806)
 recipe.wavelength_range = [4610.1157888384, 5130.00163811462]
 add_line!(recipe, QSFit.ATL.UnidentifiedTransition(4866.45), NarrowLine,BroadLine)
 add_line!(recipe, QSFit.ATL.UnidentifiedTransition(5008.98), ForbiddenLine)
-res = analyze(recipe, spec)</code></pre><h3 id="Type1"><a class="docs-heading-anchor" href="#Type1"><code>Type1</code></a><a id="Type1-1"></a><a class="docs-heading-anchor-permalink" href="#Type1" title="Permalink"></a></h3><p>Automatic spectral analysis of Type1 AGN and QSO at redshifts &lt;~ 2.1.  Example:</p><pre><code class="nohighlight hljs">using QSFit, QSFit.QSORecipes
+res = analyze(recipe, spec)</code></pre><h3 id="Type1"><a class="docs-heading-anchor" href="#Type1"><code>Type1</code></a><a id="Type1-1"></a><a class="docs-heading-anchor-permalink" href="#Type1" title="Permalink"></a></h3><p>Automatic spectral analysis of Type1 AGN and QSO at redshifts &lt;~ 2.1. </p><p>Example:</p><pre><code class="language-julia hljs">using QSFit, QSFit.QSORecipes
 filename = download(&quot;http://dr10.sdss3.org/sas/dr10/sdss/spectro/redux/26/spectra/0752/spec-0752-52251-0323.fits&quot;)
 spec = Spectrum(Val(:SDSS_DR10), filename)
-recipe = Recipe(Type1, redshift=0.3806, Av=0.21)
-res = analyze(recipe, spec)</code></pre><h2 id="Customizing-built-in-recipes"><a class="docs-heading-anchor" href="#Customizing-built-in-recipes">Customizing built-in recipes</a><a id="Customizing-built-in-recipes-1"></a><a class="docs-heading-anchor-permalink" href="#Customizing-built-in-recipes" title="Permalink"></a></h2><p>To be written.</p><pre><code class="language-julia hljs">using GModelFit
-abstract type MyRecipe &lt;: Type1 end
-import QSFit.QSORecipes.add_qso_continuum!
-function add_qso_continuum!(recipe::Recipe{T}, resid::GModelFit.Residuals) where T &lt;: MyRecipe
-    @invoke add_qso_continuum!(recipe::Recipe{&lt;: supertype(T)}, resid)
-    resid.meval.model[:QSOcont].alpha.fixed = true
+recipe = CRecipe{Type1}(redshift=0.3806, Av=0.21)
+res = analyze(recipe, spec)</code></pre><h2 id="Define-new-recipes"><a class="docs-heading-anchor" href="#Define-new-recipes">Define new recipes</a><a id="Define-new-recipes-1"></a><a class="docs-heading-anchor-permalink" href="#Define-new-recipes" title="Permalink"></a></h2><p>As anticipated, <em>recipes</em> are essentially a sequence of steps to carry out the spectral analysis.  They are implemented adopting a pattern which allows to easily define new recipes by inheriting the functionalities of the existiung ones, and overriding only the specific steps which needs to be customized or improved.</p><p>From the implementation point of view a <em>recipe</em> is an abstract type inheriting from <code>AbstractRecipe</code>, and the steps are functions accepting that type as an argument.  Consider the following example where we define a recipe <code>A</code>, a few steps and substeps, as well as a main <code>analyze</code> function triggering execution of steps in the proper order:</p><pre><code class="language-julia hljs">abstract type A &lt;: AbstractRecipe end
+
+step1(t::Type{T}) where T &lt;: A = println(&quot;Invoked step1 from recipe A&quot;)
+
+substep2a(::Type{T}) where T &lt;: A = println(&quot;  Invoked substep2a from recipe A&quot;)
+substep2b(::Type{T}) where T &lt;: A = println(&quot;  Invoked substep2b from recipe A&quot;)
+
+function step2(::Type{T}) where T &lt;: A
+    println(&quot;Invoked step2 from recipe A&quot;)
+    substep2a(T)
+    substep2b(T)
 end
-spec = Spectrum(Val(:SDSS_DR10), &quot;spec-0752-52251-0323.fits&quot;, label=&quot;My SDSS source&quot;)
-recipe = Recipe(MyRecipe, redshift=0.3806)
-res = analyze(recipe, spec)
-display(res.bestfit)
 
+function analyze(t::Type{T}) where T &lt;: A
+    println(&quot;Invoked analyze from recipe A&quot;)
+    step1(t)
+    step2(t)
+end
 
-using GModelFit, Statistics
-function add_qso_continuum!(recipe::Recipe{T}, resid::GModelFit.Residuals) where T &lt;: MyRecipe
-    λ = coords(domain(resid.data))
+analyze(A)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">Invoked analyze from recipe A
+Invoked step1 from recipe A
+Invoked step2 from recipe A
+  Invoked substep2a from recipe A
+  Invoked substep2b from recipe A</code></pre><p>Suppose we want to reimplement <code>step1</code>, and to reuse <code>substep2b</code> by performing some extra operation after it has been executed.  We&#39;ll need to define a new recipe <code>B</code> inheriting from <code>A</code>, and implement new methods for the <code>step1</code> and <code>substep2b</code> functions:</p><pre><code class="language-julia hljs">abstract type B &lt;: A end
+
+step1(t::Type{T}) where T &lt;: B = println(&quot;Invoked step1 from recipe B&quot;)
+
+function substep2b(t::Type{T}) where T &lt;: B
+    @invoke substep2b(t::Type{&lt;: supertype(T)})
+    println(&quot;  Additional operation performed in substep2b from recipe B&quot;)
+end
+
+analyze(B)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">Invoked analyze from recipe A
+Invoked step1 from recipe B
+Invoked step2 from recipe A
+  Invoked substep2a from recipe A
+  Invoked substep2b from recipe A
+  Additional operation performed in substep2b from recipe B</code></pre><p>The above pattern allows to maximize code reuse (i.e., avoid reinventing the wheel), as well as avoiding conditional branches (<code>if-then-else</code>) since the identification of the steps to be executed is performed via multiple dispatch.</p><p>The actual recipes code follows the above pattern except for two details:</p><ul><li>we use the <code>CRecipe{}</code> type in place of <code>::Type{}</code> since the latter is just an abstract type and can not contain any data, while the fomer is a concrete one and can store the recipe options;</li><li>by convention, each recipe step should invoke the <code>@track_recipe</code> macro as first statement.  This way it is possible to track down which method is actually being executed (this requires setting <code>QSFit._track_recipe = true</code>);</li></ul><p>In the following example we will define a new recipe named <code>MyRecipe</code> inheriting from <code>Type1</code> and</p><ul><li>replace the power law continuum component with a smoothly broken power law;</li><li>smooth the host galaxy template with a 50 points boxcar average;</li></ul><pre><code class="language-julia hljs">using GModelFit, QSFit, QSFit.QSORecipes, Statistics
+
+abstract type MyRecipe &lt;: Type1 end
+
+import QSFit.QSORecipes.add_qso_continuum!
+function add_qso_continuum!(recipe::CRecipe{T}, resid::GModelFit.Residuals) where T &lt;: MyRecipe
+    @track_recipe
+    λ = coords(resid.meval.domain)
+
     comp = QSFit.sbpl(3000)
     comp.x0.val = median(λ)
     comp.norm.val = median(values(resid.data))
     comp.norm.low = comp.norm.val / 1000.  # ensure contiuum remains positive (needed to estimate EWs)
+    comp.delta.val = 0.001
+    comp.delta.fixed = true
     resid.meval.model[:QSOcont] = comp
     push!(resid.meval.model[:Continuum].list, :QSOcont)
     GModelFit.update!(resid.meval)
 end
-spec = Spectrum(Val(:SDSS_DR10), &quot;spec-0752-52251-0323.fits&quot;, label=&quot;My SDSS source&quot;)
-recipe = Recipe(MyRecipe, redshift=0.3806)
+
+import QSFit.QSORecipes.add_host_galaxy!
+function add_host_galaxy!(recipe::CRecipe{T}, resid::GModelFit.Residuals) where T &lt;: MyRecipe
+    @invoke add_host_galaxy!(recipe::CRecipe{&lt;: Type1}, resid)
+    t = resid.meval.model[:Galaxy].template
+    n = 50
+    resid.meval.model[:Galaxy].template[1+n:length(t)-n] .= [mean(t[i-n:i+n]) for i in 1+n:length(t)-n]
+    GModelFit.update!(resid.meval)
+end
+
+QSFit._track_recipe = true
+filename = download(&quot;http://dr10.sdss3.org/sas/dr10/sdss/spectro/redux/26/spectra/0752/spec-0752-52251-0323.fits&quot;)
+spec = Spectrum(Val(:SDSS_DR10), filename)
+recipe = CRecipe{MyRecipe}(redshift=0.3806, Av=0.21)
 res = analyze(recipe, spec)
-display(res.bestfit)</code></pre><h2 id="Define-new-recipes"><a class="docs-heading-anchor" href="#Define-new-recipes">Define new recipes</a><a id="Define-new-recipes-1"></a><a class="docs-heading-anchor-permalink" href="#Define-new-recipes" title="Permalink"></a></h2><p>To be written.</p><pre><code class="language-julia hljs">using GModelFit, QSFit
-import QSFit: init_recipe!, preprocess_spec!, analyze
-
-abstract type MyRecipe &lt;: AbstractRecipeSpec end
-
-function init_recipe!(recipe::Recipe{T}) where T &lt;: MyRecipe
-    @invoke init_recipe!(recipe::Recipe{&lt;: AbstractRecipeSpec})
-    recipe.wavelength_range = [1215, 7.3e3]
-end
-
-function preprocess_spec!(recipe::Recipe{T}, spec::QSFit.Spectrum) where T &lt;: MyRecipe
-    @invoke preprocess_spec!(recipe::Recipe{&lt;: AbstractRecipeSpec}, spec)
-end
-
-function analyze(recipe::Recipe{T}, spec::QSFit.Spectrum, resid::GModelFit.Residuals) where T &lt;: MyRecipe
-    resid.mzer.config.ftol = 1.e-6
-    model = resid.meval.model
-    return GModelFit.minimize!(resid)
-end</code></pre></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../components/">« Components</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.4.0 on <span class="colophon-date" title="Monday 29 April 2024 17:07">Monday 29 April 2024</span>. Using Julia version 1.10.2.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+display(res.bestfit)</code></pre><section class="footnotes is-size-7"><ul><li class="footnote" id="footnote-1"><a class="tag is-link" href="#citeref-1">1</a>Note: the terms <em>component</em> and <em>model</em> used here have the same meaning as in the <a href="https://gcalderone.github.io/GModelFit.jl/concepts/"><strong>GmodelFit.jl</strong></a> documentation.</li></ul></section></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../components/">« Components</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.7.0 on <span class="colophon-date" title="Thursday 7 November 2024 00:19">Thursday 7 November 2024</span>. Using Julia version 1.11.1.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
