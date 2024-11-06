@@ -23,20 +23,20 @@ mutable struct hostgalaxy <: AbstractComponent
     norm::Parameter
     refwl::Float64
     library::String
-    template::String
+    template_name::String
     filename::String
-    base::Vector{Float64}
+    template::Vector{Float64}
 
-    function hostgalaxy(template::String; library="swire", refwl=5500.)
+    function hostgalaxy(template_name::String; library="swire", refwl=5500.)
         if library == "swire"
-            filename = template * "_template_norm.sed"
+            filename = template_name * "_template_norm.sed"
         end
         if library == "ILBERT2009"
-            filename = template * ".sed"
+            filename = template_name * ".sed"
         end
         filename = joinpath(qsfit_data(), library, filename)
         @assert isfile(filename) "File $filename do not exists"
-        out = new(Parameter(1), refwl, library, template, filename, Vector{Float64}())
+        out = new(Parameter(1), refwl, library, template_name, filename, Vector{Float64}())
         out.norm.val = 1
         out.norm.low = 0
         out.refwl = refwl
@@ -60,14 +60,14 @@ function prepare!(comp::hostgalaxy, domain::Domain{1})
     x = x[i]
     y = y[i]
     itp = Dierckx.Spline1D(x, y, k=1, bc="error")
-    comp.base = fill(0., length(domain))
+    comp.template = fill(0., length(domain))
     i = findall(minimum(x) .< coords(domain) .< maximum(x))
-    comp.base[i] = itp(coords(domain)[i])
-    comp.base ./= itp(comp.refwl)
+    comp.template[i] = itp(coords(domain)[i])
+    comp.template ./= itp(comp.refwl)
     return fill(NaN, length(domain))
 end
 
 function evaluate!(ceval::CompEval{hostgalaxy, Domain{1}},
                    norm)
-    ceval.buffer .= norm .* ceval.comp.base
+    ceval.buffer .= norm .* ceval.comp.template
 end
