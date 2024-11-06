@@ -42,7 +42,7 @@ To test the package type `Pkg.test("QSFit")`.
 The most important types used in **QSFit.jl** are:
 - `Spectrum`: it represent an observed spectrum of a AGN or QSO.  It contains both the observed wavelengths and flux densities (with associated undertainties), as well as a map of "good" (i.e. reliable) spectral bins and an indication of spectral resolution.  The `Spectrum` object can operate on spectra taken from any instrument (not only SDSS);
 
-- `Recipe`: it is a container for a specific *recipe* to be used to analyze a `Spectrum`, and for all recipe-specific options.  **QSFit.jl** provides a few ready-to-use recipes to analyze the spectrum, which can optionally be customized by the user.  New recipes can also be implemented.
+- `CRecipe`: it is a container for a specific *recipe* to be used to analyze a `Spectrum`, and for all recipe-specific options.  **QSFit.jl** provides a few [Built-in recipes](@ref) to analyze the spectrum, which can optionally be customized by the user.  New recipes can also be implemented, either extending the built-in ones or starting from scratch.
 
 The typical workflow for a spectral analysis is as follows:
 ```@example abc
@@ -53,8 +53,8 @@ filename = download("http://dr10.sdss3.org/sas/dr10/sdss/spectro/redux/26/spectr
 # Read spectrum into a Spectrum Object
 spec = Spectrum(Val(:SDSS_DR10), filename, label="My SDSS source")
 
-# Create a Recipe object based on the Type1 recipe to analyze the spectrum
-recipe = Recipe(Type1, redshift=0.3806, Av=0.21)
+# Create a CRecipe object based on the Type1 recipe to analyze the spectrum
+recipe = CRecipe{Type1}(redshift=0.3806, Av=0.21)
 
 # Analyze the spectrum with the above recipe
 res = analyze(recipe, spec)
