@@ -7,7 +7,7 @@ import QSFit: init_recipe!, preprocess_spec!, line_component, analyze
 
 export LineFit, InteractiveLineFit
 
-abstract type LineFit <: RecipeBehaviour end
+abstract type LineFit <: AbstractRecipe end
 abstract type InteractiveLineFit <: LineFit end
 
 function wait_mouse(sid=Gnuplot.options.default)
@@ -15,23 +15,23 @@ function wait_mouse(sid=Gnuplot.options.default)
     return gpvars(sid, "MOUSE")
 end
 
-line_component(recipe::Recipe{<: LineFit}, center::Float64) = recipe.line_component(center)
+line_component(recipe::CRecipe{<: LineFit}, center::Float64) = recipe.line_component(center)
 
-function init_recipe!(recipe::Recipe{T}) where T <: LineFit
-    @invoke init_recipe!(recipe::Recipe{<: RecipeBehaviour})
+function init_recipe!(recipe::CRecipe{T}) where T <: LineFit
+    @invoke init_recipe!(recipe::CRecipe{<: AbstractRecipe})
     recipe.wavelength_range = [1215, 7.3e3]
     recipe.line_component = QSFit.SpecLineGauss
 end
 
 
-function preprocess_spec!(recipe::Recipe{T}, spec::QSFit.Spectrum) where T <: LineFit
-    @invoke preprocess_spec!(recipe::Recipe{<: RecipeBehaviour}, spec)
+function preprocess_spec!(recipe::CRecipe{T}, spec::QSFit.Spectrum) where T <: LineFit
+    @invoke preprocess_spec!(recipe::CRecipe{<: AbstractRecipe}, spec)
     spec.good[findall(spec.x .< recipe.wavelength_range[1])] .= false
     spec.good[findall(spec.x .> recipe.wavelength_range[2])] .= false
 end
 
 
-function analyze(recipe::Recipe{<: LineFit}, spec::QSFit.Spectrum, resid::GModelFit.Residuals)
+function analyze(recipe::CRecipe{<: LineFit}, spec::QSFit.Spectrum, resid::GModelFit.Residuals)
     resid.mzer.config.ftol = 1.e-6
     model = resid.meval.model
     model[:QSOcont] = QSFit.powerlaw(median(coords(domain(resid.data))))
@@ -58,7 +58,7 @@ function analyze(recipe::Recipe{<: LineFit}, spec::QSFit.Spectrum, resid::GModel
 end
 
 
-function analyze(_recipe::Recipe{<: InteractiveLineFit}, _spec::Spectrum)
+function analyze(_recipe::CRecipe{<: InteractiveLineFit}, _spec::Spectrum)
     recipe = deepcopy(_recipe)
     spec = deepcopy(_spec)
     preprocess_spec!(recipe, spec)
@@ -107,14 +107,14 @@ function analyze(_recipe::Recipe{<: InteractiveLineFit}, _spec::Spectrum)
 
     println()
     printstyled("Reproduce analysis with the LineFit recipe:\n", color=:green)
-    println("recipe = Recipe(LineFit, ... keywords ...)")
+    println("recipe = CRecipe(LineFit, ... keywords ...)")
     println("... set recipe properties ...")
     println("recipe.wavelength_range = ", recipe.wavelength_range)
     for l in accum_lines
         println(l)
     end
     println()
-    return @invoke analyze(recipe::Recipe{<: LineFit}, _spec)
+    return @invoke analyze(recipe::CRecipe{<: LineFit}, _spec)
 end
 
 end

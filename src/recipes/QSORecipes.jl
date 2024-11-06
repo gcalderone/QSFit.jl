@@ -6,16 +6,16 @@ using ..QSFit, ..QSFit.ATL, GModelFit
 
 import QSFit: init_recipe!, preprocess_spec!, line_suffix, line_component, set_lines_dict!, analyze, reduce
 
-abstract type QSOGeneric <: RecipeBehaviour end
+abstract type QSOGeneric <: AbstractRecipe end
 
 
-line_component(recipe::Recipe{<: QSOGeneric}, center::Float64) = recipe.line_component(center)
+line_component(recipe::CRecipe{<: QSOGeneric}, center::Float64) = recipe.line_component(center)
 
 abstract type BlueWing <: NarrowLine end
-line_suffix(recipe::Recipe{<: QSOGeneric}, ::Type{BlueWing}) = :_bw
+line_suffix(recipe::CRecipe{<: QSOGeneric}, ::Type{BlueWing}) = :_bw
 
-function line_component(recipe::Recipe, center::Float64, ::Type{<: BlueWing})
-    @print_current_function
+function line_component(recipe::CRecipe, center::Float64, ::Type{<: BlueWing})
+    @track_recipe
     comp = line_component(recipe, center, NarrowLine)
     comp.fwhm.low, comp.fwhm.val, comp.fwhm.high = 0, 3e3, 5e3
     comp.voff.low, comp.voff.val, comp.voff.high = 0, 0, 2e3
@@ -23,9 +23,9 @@ function line_component(recipe::Recipe, center::Float64, ::Type{<: BlueWing})
 end
 
 
-function init_recipe!(recipe::Recipe{T}) where T <: QSOGeneric
-    @print_current_function
-    @invoke init_recipe!(recipe::Recipe{<: RecipeBehaviour})
+function init_recipe!(recipe::CRecipe{T}) where T <: QSOGeneric
+    @track_recipe
+    @invoke init_recipe!(recipe::CRecipe{<: AbstractRecipe})
     recipe.wavelength_range = [1215, 7.3e3]
     recipe.min_spectral_coverage = Dict(:default => 0.6)
 
@@ -42,8 +42,8 @@ function init_recipe!(recipe::Recipe{T}) where T <: QSOGeneric
 end
 
 
-function fit!(recipe::Recipe{<: QSOGeneric}, resid::GModelFit.Residuals)
-    @print_current_function
+function fit!(recipe::CRecipe{<: QSOGeneric}, resid::GModelFit.Residuals)
+    @track_recipe
     # GModelFit.update!(resid.meval)
     resid.mzer.config.ftol = 1.e-6
     bestfit, stats = GModelFit.minimize!(resid)
@@ -53,8 +53,8 @@ function fit!(recipe::Recipe{<: QSOGeneric}, resid::GModelFit.Residuals)
 end
 
 
-function add_qso_continuum!(recipe::Recipe{<: QSOGeneric}, resid::GModelFit.Residuals)
-    @print_current_function
+function add_qso_continuum!(recipe::CRecipe{<: QSOGeneric}, resid::GModelFit.Residuals)
+    @track_recipe
     λ = coords(resid.meval.domain)
 
     comp = QSFit.powerlaw(3000)
@@ -71,8 +71,8 @@ function add_qso_continuum!(recipe::Recipe{<: QSOGeneric}, resid::GModelFit.Resi
 end
 
 
-function add_host_galaxy!(recipe::Recipe{<: QSOGeneric}, resid::GModelFit.Residuals)
-    @print_current_function
+function add_host_galaxy!(recipe::CRecipe{<: QSOGeneric}, resid::GModelFit.Residuals)
+    @track_recipe
     λ = coords(resid.meval.domain)
     if recipe.use_host_template  &&
         (recipe.host_template_range[1] .< maximum(λ))  &&
@@ -98,8 +98,8 @@ function add_host_galaxy!(recipe::Recipe{<: QSOGeneric}, resid::GModelFit.Residu
 end
 
 
-function renorm_cont!(recipe::Recipe{<: QSOGeneric}, resid::GModelFit.Residuals)
-    @print_current_function
+function renorm_cont!(recipe::CRecipe{<: QSOGeneric}, resid::GModelFit.Residuals)
+    @track_recipe
     freeze!(resid.meval.model, :QSOcont)
     c = resid.meval.model[:QSOcont]
     d = resid.meval.cevals[:QSOcont]
@@ -123,7 +123,7 @@ function renorm_cont!(recipe::Recipe{<: QSOGeneric}, resid::GModelFit.Residuals)
 end
 
 
-function guess_norm_factor!(recipe::Recipe{<: QSOGeneric}, resid::GModelFit.Residuals, name::Symbol; quantile=0.95)
+function guess_norm_factor!(recipe::CRecipe{<: QSOGeneric}, resid::GModelFit.Residuals, name::Symbol; quantile=0.95)
     @assert resid.meval.model[name].norm.val != 0
     m = GModelFit.last_evaluation(resid.meval, name)
     c = cumsum(m)
@@ -145,8 +145,8 @@ function guess_norm_factor!(recipe::Recipe{<: QSOGeneric}, resid::GModelFit.Resi
 end
 
 
-function add_emission_lines!(recipe::Recipe{<: QSOGeneric}, resid::GModelFit.Residuals)
-    @print_current_function
+function add_emission_lines!(recipe::CRecipe{<: QSOGeneric}, resid::GModelFit.Residuals)
+    @track_recipe
     groups = OrderedDict{Symbol, Vector{Symbol}}()
 
     # Create model components
@@ -175,8 +175,8 @@ function add_emission_lines!(recipe::Recipe{<: QSOGeneric}, resid::GModelFit.Res
 end
 
 
-function add_nuisance_lines!(recipe::Recipe{<: QSOGeneric}, resid::GModelFit.Residuals)
-    @print_current_function
+function add_nuisance_lines!(recipe::CRecipe{<: QSOGeneric}, resid::GModelFit.Residuals)
+    @track_recipe
     (recipe.n_nuisance > 0)  ||  (return nothing)
 
     # Prepare nuisance line components
@@ -246,8 +246,8 @@ function add_nuisance_lines!(recipe::Recipe{<: QSOGeneric}, resid::GModelFit.Res
 end
 
 
-function neglect_weak_features!(recipe::Recipe{<: QSOGeneric}, resid::GModelFit.Residuals)
-    @print_current_function
+function neglect_weak_features!(recipe::CRecipe{<: QSOGeneric}, resid::GModelFit.Residuals)
+    @track_recipe
     # Disable "nuisance" lines whose normalization uncertainty is larger
     # than X times the normalization
     needs_fitting = false
@@ -269,9 +269,9 @@ function neglect_weak_features!(recipe::Recipe{<: QSOGeneric}, resid::GModelFit.
 end
 
 
-function preprocess_spec!(recipe::Recipe{T}, spec::QSFit.Spectrum) where T <: QSOGeneric
-    @print_current_function
-    @invoke preprocess_spec!(recipe::Recipe{<: RecipeBehaviour}, spec)
+function preprocess_spec!(recipe::CRecipe{T}, spec::QSFit.Spectrum) where T <: QSOGeneric
+    @track_recipe
+    @invoke preprocess_spec!(recipe::CRecipe{<: AbstractRecipe}, spec)
     set_lines_dict!(recipe)
 
     spec.good[findall(spec.x .< recipe.wavelength_range[1])] .= false
@@ -316,8 +316,8 @@ function preprocess_spec!(recipe::Recipe{T}, spec::QSFit.Spectrum) where T <: QS
 end
 
 
-function reduce(recipe::Recipe{<: QSOGeneric}, resid::GModelFit.Residuals)
-    @print_current_function
+function reduce(recipe::CRecipe{<: QSOGeneric}, resid::GModelFit.Residuals)
+    @track_recipe
     EW = OrderedDict{Symbol, Float64}()
 
     cont = deepcopy(GModelFit.last_evaluation(resid.meval))

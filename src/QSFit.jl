@@ -1,6 +1,6 @@
 module QSFit
 
-export Recipe, RecipeBehaviour, analyze, @print_current_function
+export CRecipe, AbstractRecipe, analyze, @track_recipe
 
 import GModelFit: Domain, CompEval, Residuals,
     Parameter, AbstractComponent, dependencies, prepare!, evaluate!
@@ -46,18 +46,18 @@ include("Spectrum.jl")
 
 qsfit_data() = artifact"qsfit_data"
 
-
-macro print_current_function()
-    return :(printstyled("* ", stacktrace()[1], "\n", color=:light_black))
+global _track_recipe = false
+macro track_recipe()
+    return :(QSFit._track_recipe  &&  printstyled("* ", stacktrace()[1], "\n", color=:light_black))
 end
 
 # ====================================================================
-abstract type RecipeBehaviour end
+abstract type AbstractRecipe end
 
-struct Recipe{T <: RecipeBehaviour}
+struct CRecipe{T <: AbstractRecipe}
     dict::OrderedDict{Symbol, Any}
-    function Recipe(::Type{T}; kws...) where T <: RecipeBehaviour
-        @print_current_function
+    function CRecipe(::Type{T}; kws...) where T <: AbstractRecipe
+        @track_recipe
         out = new{T}(OrderedDict{Symbol, Any}())
         init_recipe!(out)
         for (key, value) in kws  # set options provided as keywords
@@ -67,11 +67,11 @@ struct Recipe{T <: RecipeBehaviour}
     end
 end
 
-propertynames(recipe::Recipe) = collect(keys(getfield(recipe, :dict)))
-getproperty(recipe::Recipe, key::Symbol) = getfield(recipe, :dict)[key]
-setproperty!(recipe::Recipe, key::Symbol, value) = getfield(recipe, :dict)[key] = value
-function show(io::IO, recipe::Recipe)
-    @print_current_function
+propertynames(recipe::CRecipe) = collect(keys(getfield(recipe, :dict)))
+getproperty(recipe::CRecipe, key::Symbol) = getfield(recipe, :dict)[key]
+setproperty!(recipe::CRecipe, key::Symbol, value) = getfield(recipe, :dict)[key] = value
+function show(io::IO, recipe::CRecipe)
+    @track_recipe
     println(io, typeof(recipe))
     tmp = IOBuffer()
     show(tmp, "text/plain", getfield(recipe, :dict))
@@ -80,8 +80,8 @@ function show(io::IO, recipe::Recipe)
     println(io, s)
 end
 
-function init_recipe!(recipe::Recipe{T}) where T <: RecipeBehaviour
-    @print_current_function
+function init_recipe!(recipe::CRecipe{T}) where T <: AbstractRecipe
+    @track_recipe
     recipe.cosmology = cosmology(h=0.70, OmegaM=0.3)
     recipe.redshift = missing
     recipe.extlaw = OD94(Rv=3.1)
@@ -110,8 +110,8 @@ end
 
 
 # ====================================================================
-function preprocess_spec!(recipe::Recipe{<: RecipeBehaviour}, spec::Spectrum)
-    @print_current_function
+function preprocess_spec!(recipe::CRecipe{<: AbstractRecipe}, spec::Spectrum)
+    @track_recipe
     show(spec)
     if !ismissing(recipe.Av)
         @printf "      Av: %8.3f  (%s)\n" recipe.Av join(split(string(recipe.extlaw), "\n"), ",")
@@ -128,10 +128,10 @@ function preprocess_spec!(recipe::Recipe{<: RecipeBehaviour}, spec::Spectrum)
 end
 
 
-reduce(recipe::Recipe{<: RecipeBehaviour}, resid::Residuals) = OrderedDict{Symbol, Any}()
+reduce(recipe::CRecipe{<: AbstractRecipe}, resid::Residuals) = OrderedDict{Symbol, Any}()
 
-function analyze(_recipe::Recipe{T}, _spec::Spectrum) where T <: RecipeBehaviour
-    @print_current_function
+function analyze(_recipe::CRecipe{T}, _spec::Spectrum) where T <: AbstractRecipe
+    @track_recipe
     timestamp = now()
     starttime = time()
 
