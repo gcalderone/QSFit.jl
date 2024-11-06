@@ -29,8 +29,7 @@ function init_recipe!(recipe::CRecipe{T}) where T <: QSOGeneric
     recipe.wavelength_range = [1215, 7.3e3]
     recipe.min_spectral_coverage = Dict(:default => 0.6)
 
-    recipe.host_template = Dict(:library=>"swire", :template=>"Ell5")
-    recipe.host_template_ref_wavelength = 5500. # A
+    recipe.host_template = Dict(:library=>"swire", :template=>"Ell5", :ref_wavelength => 5500.) # wavelength is in Angstrom
     recipe.use_host_template = true
     recipe.host_template_range = [4000., 7000.]
 
@@ -79,11 +78,11 @@ function add_host_galaxy!(recipe::CRecipe{<: QSOGeneric}, resid::GModelFit.Resid
         (recipe.host_template_range[2] .> minimum(λ))
         resid.meval.model[:Galaxy] = QSFit.hostgalaxy(recipe.host_template[:template],
                                                       library=recipe.host_template[:library],
-                                                      refwl=recipe.host_template_ref_wavelength)
+                                                      refwl=recipe.host_template[:ref_wavelength])
         push!(resid.meval.model[:Continuum].list, :Galaxy)
 
         # Split total flux between continuum and host galaxy
-        refwl = recipe.host_template_ref_wavelength
+        refwl = recipe.host_template[:ref_wavelength]
         vv = Dierckx.Spline1D(λ, values(resid.data), k=1, bc="extrapolate")(refwl)
         @assert !isnan(vv) "Predicted L_λ at $(refwl)A is NaN"
         if vv <= 0

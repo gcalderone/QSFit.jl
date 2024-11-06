@@ -56,7 +56,7 @@ abstract type AbstractRecipe end
 
 struct CRecipe{T <: AbstractRecipe}
     dict::OrderedDict{Symbol, Any}
-    function CRecipe(::Type{T}; kws...) where T <: AbstractRecipe
+    function CRecipe{T}(; kws...) where T <: AbstractRecipe
         @track_recipe
         out = new{T}(OrderedDict{Symbol, Any}())
         init_recipe!(out)
