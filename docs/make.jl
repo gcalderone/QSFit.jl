@@ -1,5 +1,7 @@
 using Revise, Documenter, GModelFit, Gnuplot, QSFit
 
+QSFit._track_recipe = false
+
 makedocs(sitename="QSFit.jl",
          authors = "Giorgio Calderone",
          # format = Documenter.HTML(prettyurls = false),  # uncomment for local use, comment for deployment
