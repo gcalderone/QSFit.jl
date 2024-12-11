@@ -166,6 +166,7 @@ include("SpectralLines.jl")
 include("recipes/LineFitRecipes.jl")
 include("recipes/QSORecipes.jl")
 include("viewer.jl")
+include("serialize.jl")
 include("gnuplot.jl")
 
 end  # module
