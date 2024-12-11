@@ -2,7 +2,7 @@
 
 **QSO spectral fitting made easy !!**
 
-> [!WARNING]
-> The code is still in a pre-release state, and breaking changes may be implemented without notice.
+> [!NOTE]
+> The code is in a pre-release state, and breaking changes may be implemented without notice.
 
-Preliminary documentation available at: https://gcalderone.github.io/QSFit.jl/
+Documentation available at: https://gcalderone.github.io/QSFit.jl/
