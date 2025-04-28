@@ -9,7 +9,7 @@ mutable struct Spectrum
     err::Vector{Float64}
     good::Vector{Bool}
     resolution::Float64
-    isrestframe::Bool
+    localtorestfactor::Float64
     meta::Dict{Symbol, Any}
     function Spectrum(x::Vector{T}, y::Vector{T}, err::Vector{T};
                       good::Union{Nothing, Vector{Bool}}=nothing,
@@ -41,7 +41,7 @@ mutable struct Spectrum
         return new(label,
                    1. * unit_x, 1. * unit_y,
                    x[ii], y[ii], err[ii], good[ii],
-                   resolution, false,
+                   resolution, NaN,
                    Dict{Symbol, Any}(:sampling_resolution => Rsampling))
     end
 end
@@ -58,16 +58,16 @@ end
 
 
 function torestframe!(spec::Spectrum, cosmology::Cosmology.AbstractCosmology, z::Float64)
-    @assert !spec.isrestframe
+    @assert isnan(spec.localtorestfactor)
     @assert !isnothing(z > 0)
     @assert dimension(spec.unit_x) == dimension(u"cm")
+    spec.x ./= (1 + z)
+
     @assert dimension(spec.unit_y) == dimension(u"erg" / u"s" / u"cm"^2 / u"angstrom")
     ld = uconvert(u"cm", luminosity_dist(cosmology, z))
-    spec.unit_y *= 4pi * ld^2
-    spec.x    ./= (1 + z)
-    spec.y    .*= (1 + z)
-    spec.err  .*= (1 + z)
-    spec.isrestframe = true
+    n = 4pi * ld^2 * (1 + z)
+    spec.unit_y *= n
+    spec.localtorestfactor = 1.
     return spec
 end
 
@@ -82,8 +82,11 @@ function convert_units!(spec::Spectrum, newunit_x::Quantity, newunit_y::Quantity
     end
     spec.x   = ustrip.(uconvert.(unit(newunit_x), spec.x .* spec.unit_x)) ./ ustrip(newunit_x)
     spec.unit_x = newunit_x
-    spec.y   = ustrip.(uconvert.(unit(newunit_y), spec.y   .* spec.unit_y)) ./ ustrip(newunit_y)
-    spec.err = ustrip.(uconvert.(unit(newunit_y), spec.err .* spec.unit_y)) ./ ustrip(newunit_y)
+
+    n = ustrip.(uconvert.(unit(newunit_y), spec.unit_y)) ./ ustrip(newunit_y)
+    spec.y   .*= n
+    spec.err .*= n
+    spec.localtorestfactor *= n
     spec.unit_y = newunit_y
     return spec
 end

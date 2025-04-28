@@ -3,7 +3,7 @@ import Gnuplot.recipe
 
 function Gnuplot.recipe(spec::T) where T <: Spectrum
     i = findall(spec.good)
-    xlabel = (spec.isrestframe  ?  "Rest frame "  :  "") * "wavelenth "
+    xlabel = (isnan(spec.localtorestfactor)  ?  ""  :  "Rest frame ") * "wavelenth "
     return Gnuplot.parseSpecs("set bars 0", title=spec.label,
                               xlabel=xlabel * "[x" * string(spec.unit_x) * "]",
                               ylabel="[x" * string(spec.unit_y) * "]",
