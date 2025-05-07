@@ -31,7 +31,7 @@ function preprocess_spec!(recipe::CRecipe{T}, spec::QSFit.Spectrum) where T <: L
 end
 
 
-function analyze(recipe::CRecipe{<: LineFit}, spec::QSFit.Spectrum, data::Measures)
+function analyze(recipe::CRecipe{<: LineFit}, spec::QSFit.Spectrum, data::Measures{1})
     model = Model()
     model[:QSOcont] = QSFit.powerlaw(median(coords(domain(data))))
     model[:QSOcont].norm.val = median(values(data))
