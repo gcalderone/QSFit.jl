@@ -31,12 +31,11 @@ function preprocess_spec!(recipe::CRecipe{T}, spec::QSFit.Spectrum) where T <: L
 end
 
 
-function analyze(recipe::CRecipe{<: LineFit}, spec::QSFit.Spectrum, resid::GModelFit.Residuals)
-    resid.mzer.config.ftol = 1.e-6
-    model = resid.meval.model
-    model[:QSOcont] = QSFit.powerlaw(median(coords(domain(resid.data))))
-    model[:QSOcont].norm.val = median(values(resid.data))
-    model[:QSOcont].norm.low = median(values(resid.data)) / 1000.  # ensure contiuum remains positive (needed to estimate EWs)
+function analyze(recipe::CRecipe{<: LineFit}, spec::QSFit.Spectrum, data::Measures)
+    model = Model()
+    model[:QSOcont] = QSFit.powerlaw(median(coords(domain(data))))
+    model[:QSOcont].norm.val = median(values(data))
+    model[:QSOcont].norm.low = median(values(data)) / 1000.  # ensure contiuum remains positive (needed to estimate EWs)
     model[:QSOcont].alpha.val  = -1.5
     model[:QSOcont].alpha.low  = -3
     model[:QSOcont].alpha.high =  1
@@ -54,7 +53,9 @@ function analyze(recipe::CRecipe{<: LineFit}, spec::QSFit.Spectrum, resid::GMode
         end
     end
 
-    return GModelFit.minimize!(resid)
+    mzer = GModelFit.cmpfit()
+    mzer.config.ftol = 1.e-6
+    return GModelFit.fit!(model, data, mzer)
 end
 
 

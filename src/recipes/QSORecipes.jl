@@ -315,7 +315,7 @@ function preprocess_spec!(recipe::CRecipe{T}, spec::QSFit.Spectrum) where T <: Q
 end
 
 
-function reduce(recipe::CRecipe{<: QSOGeneric}, resid::GModelFit.Residuals)
+function reduce(recipe::CRecipe{<: QSOGeneric}, bestfit::GModelFit.ModelSnapshot)
     @track_recipe
     EW = OrderedDict{Symbol, Float64}()
 

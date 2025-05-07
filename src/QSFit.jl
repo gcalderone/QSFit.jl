@@ -2,7 +2,7 @@ module QSFit
 
 export CRecipe, AbstractRecipe, analyze, @track_recipe
 
-import GModelFit: Domain, CompEval, Residuals,
+import GModelFit: Domain, CompEval,
     Parameter, AbstractComponent, dependencies, prepare!, evaluate!
 
 import Base: propertynames, getproperty, setproperty!, show
@@ -99,12 +99,12 @@ struct Results
     spec::Spectrum
     data::Measures{1}
     bestfit::GModelFit.ModelSnapshot
-    fitstats::GModelFit.FitStats
+    fitres::GModelFit.FitSummary
     reduced::OrderedDict{Symbol, Any}
 end
 
 function show(io::IO, res::Results)
-    show(io, res.fitstats)
+    show(io, res.fitres)
     println(io)
 end
 
@@ -128,7 +128,7 @@ function preprocess_spec!(recipe::CRecipe{<: AbstractRecipe}, spec::Spectrum)
 end
 
 
-reduce(recipe::CRecipe{<: AbstractRecipe}, resid::Residuals) = OrderedDict{Symbol, Any}()
+reduce(recipe::CRecipe{<: AbstractRecipe}, bestfit::GModelFit.ModelSnapshot) = OrderedDict{Symbol, Any}()
 
 function analyze(_recipe::CRecipe{T}, _spec::Spectrum) where T <: AbstractRecipe
     @track_recipe
@@ -147,16 +147,13 @@ function analyze(_recipe::CRecipe{T}, _spec::Spectrum) where T <: AbstractRecipe
     ii = findall(spec.good)
     domain = Domain(spec.x[ii])
     data = Measures(domain, spec.y[ii], spec.err[ii])
-    meval = GModelFit.ModelEval(Model(), domain)
-    resid = Residuals(meval, data, GModelFit.cmpfit())
-
-    bestfit, stats = analyze(recipe, spec, resid)
-    reduced = reduce(recipe, resid)
+    bestfit, summary = analyze(recipe, spec, data)
+    reduced = reduce(recipe, bestfit)
 
     out = Results(timestamp,
                   time() - starttime,
                   spec, data,
-                  bestfit, stats, reduced)
+                  bestfit, summary, reduced)
 
     println("\nTotal elapsed time: $(out.elapsed) s")
     return out
