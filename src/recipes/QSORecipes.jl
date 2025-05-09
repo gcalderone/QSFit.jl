@@ -43,7 +43,7 @@ end
 
 function fit!(recipe::CRecipe{<: QSOGeneric}, meval::GModelFit.ModelEval, data::Measures{1})
     @track_recipe
-    # GModelFit.update!(meval)
+    GModelFit.update!(meval)
     mzer = GModelFit.cmpfit()
     mzer.config.ftol = 1.e-6
     bestfit, stats = GModelFit.fit!(GModelFit.FitProblem(meval, data), mzer)
