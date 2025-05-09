@@ -131,7 +131,6 @@ function prepare!(comp::balmercont, domain::Domain{1})
     comp.c2 = Dierckx.Spline1D(λ2, c2, k=1, bc="extrapolate")(coords(domain))
     comp.c1[findall(comp.c1 .< 0.)] .= 0.
     comp.c2[findall(comp.c2 .< 0.)] .= 0.
-    return fill(NaN, length(domain))
 end
 
 function evaluate!(ceval::CompEval{balmercont, Domain{1}},

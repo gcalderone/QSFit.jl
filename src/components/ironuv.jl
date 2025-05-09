@@ -43,7 +43,6 @@ function prepare!(comp::ironuv, domain::Domain{1})
     L = gauss_broadening(λ, L, sqrt(comp.fwhm^2. - 900^2) / 2.355)
     L ./= int_tabulated(λ, L)[1]
     comp.L = Dierckx.Spline1D(λ, L, k=1, bc="zero")(coords(domain))
-    return fill(NaN, length(domain))
 end
 
 

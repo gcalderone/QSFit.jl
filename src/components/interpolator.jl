@@ -14,8 +14,9 @@ end
 function prepare!(comp::Interpolator, domain::AbstractDomain{1})
     itp = Dierckx.Spline1D(comp.orig_x, comp.orig_y, bc="error")
     append!(comp.interp_y, itp(coords(domain)))
-    return fill(NaN, length(comp.interp_y)) # buffer for evaluations
 end
+
+result_length(comp::Interpolator, domain::AbstractDomain{1}) = length(comp.interp_y)
 
 # Component evaluation (apply scaling factor)
 function evaluate!(ceval::GModelFit.CompEval{Interpolator, <: AbstractDomain{1}},

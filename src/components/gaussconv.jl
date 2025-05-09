@@ -21,7 +21,6 @@ function prepare!(comp::GaussConv, domain::Domain{1})
     Rsampling = mean(Rsampling)
     @assert Rsampling > comp.R "Sampling resolution is too small for the required broadening"
     comp.kernel = gauss_kernel(Rsampling, 3e5/comp.R)
-    return fill(NaN, length(domain))
 end
 
 function evaluate!(ceval::CompEval{GaussConv, Domain{1}})

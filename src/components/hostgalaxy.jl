@@ -64,7 +64,6 @@ function prepare!(comp::hostgalaxy, domain::Domain{1})
     i = findall(minimum(x) .< coords(domain) .< maximum(x))
     comp.template[i] = itp(coords(domain)[i])
     comp.template ./= itp(comp.refwl)
-    return fill(NaN, length(domain))
 end
 
 function evaluate!(ceval::CompEval{hostgalaxy, Domain{1}},

@@ -60,8 +60,6 @@ function prepare!(comp::ironopt, domain::Domain{1})
         comp.L .+= df[:wht][i] .* gauss(x, λ, comp.fwhm / 2.355 / 3e5 * λ)
     end
     comp.L ./= int_tabulated(x, comp.L)
-
-    return fill(NaN, length(domain))
 end
 
 
