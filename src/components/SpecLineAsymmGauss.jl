@@ -25,14 +25,14 @@ mutable struct SpecLineAsymmGauss <: AbstractSpecLineComp
 end
 
 
-function evaluate!(ceval::CompEval{SpecLineAsymmGauss, Domain{1}},
+function evaluate!(::SpecLineAsymmGauss, domain::Domain{1}, output::Vector,
                    norm, center, fwhm, voff, asymm)
-    x = coords(ceval.domain)
+    x = coords(domain)
     x0 = center - (voff / 3.e5) * center
     hwhm = fwhm / 3.e5 * center / 2  # Note: this is in `center` units
 
     sigma0 = hwhm / (2.355 / 2)
     sigma = 2. * sigma0 ./ (1 .+ exp.(asymm .* (x .- x0) ./ 2 ./ sigma0))
     X = (x .- x0) ./ sigma
-    ceval.buffer .= norm * exp.(-X.^2 ./ 2) ./ sqrt(2pi) * sigma0
+    output .= norm * exp.(-X.^2 ./ 2) ./ sqrt(2pi) * sigma0
 end

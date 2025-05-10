@@ -66,7 +66,7 @@ function prepare!(comp::hostgalaxy, domain::Domain{1})
     comp.template ./= itp(comp.refwl)
 end
 
-function evaluate!(ceval::CompEval{hostgalaxy, Domain{1}},
+function evaluate!(comp::hostgalaxy, domain::Domain{1}, output::Vector,
                    norm)
-    ceval.buffer .= norm .* ceval.comp.template
+    output .= norm .* comp.template
 end

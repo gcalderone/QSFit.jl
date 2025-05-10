@@ -46,7 +46,7 @@ function prepare!(comp::ironuv, domain::Domain{1})
 end
 
 
-function evaluate!(ceval::CompEval{ironuv, Domain{1}},
+function evaluate!(comp::ironuv, domain::Domain{1}, output::Vector,
                    norm)
-    ceval.buffer .= norm .* ceval.comp.L
+    output .= norm .* comp.L
 end

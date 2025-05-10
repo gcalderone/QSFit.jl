@@ -23,8 +23,8 @@ function prepare!(comp::GaussConv, domain::Domain{1})
     comp.kernel = gauss_kernel(Rsampling, 3e5/comp.R)
 end
 
-function evaluate!(ceval::CompEval{GaussConv, Domain{1}})
-    direct_conv1d!(ceval.buffer, ceval.deps[1], ceval.comp.kernel, Val(:edge_mirror))
+function evaluate!(comp::GaussConv, domain::Domain{1}, output::Vector, deps)
+    direct_conv1d!(output, deps[1], comp.kernel, Val(:edge_mirror))
 end
 
 #=

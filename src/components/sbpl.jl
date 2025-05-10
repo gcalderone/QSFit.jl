@@ -24,7 +24,7 @@ mutable struct sbpl <: AbstractComponent
     end
 end
 
-function evaluate!(ceval::CompEval{sbpl, Domain{1}},
+function evaluate!(::sbpl, domain::Domain{1}, output::Vector,
                    norm, x0, alpha1, alpha2, delta)
     xx = coords(ceval.domain) ./ x0
 
@@ -36,19 +36,19 @@ function evaluate!(ceval::CompEval{sbpl, Domain{1}},
     threshold = 30  # corresponding to exp(30) ~ 1e13
     i = findall(logt .> threshold)
     if length(i) > 0
-        ceval.buffer[i] .= norm .* xx[i].^alpha2 .*
+        output[i] .= norm .* xx[i].^alpha2 .*
             (0.5 .^((alpha2 - alpha1) * delta))
     end
 
     i = findall(logt .< -threshold)
     if length(i) > 0
-        ceval.buffer[i] .= norm .* xx[i].^alpha1 .*
+        output[i] .= norm .* xx[i].^alpha1 .*
             (0.5 .^((alpha2 - alpha1) * delta))
     end
     
     i = findall(abs.(logt) .< threshold)
     if length(i) > 0
-        ceval.buffer[i] .= norm .* xx[i].^alpha1 .*
+        output[i] .= norm .* xx[i].^alpha1 .*
             ((0.5 .* (1 .+ xx[i].^(1/delta))) .^((alpha2 - alpha1) * delta))
     end
 end

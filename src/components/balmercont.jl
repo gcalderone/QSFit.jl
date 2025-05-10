@@ -133,7 +133,7 @@ function prepare!(comp::balmercont, domain::Domain{1})
     comp.c2[findall(comp.c2 .< 0.)] .= 0.
 end
 
-function evaluate!(ceval::CompEval{balmercont, Domain{1}},
+function evaluate!(comp::balmercont, domain::Domain{1}, output::Vector,
                    norm, ratio)
-    ceval.buffer .= norm .* (ceval.comp.c1 .+ ratio .* ceval.comp.c2)
+    output .= norm .* (comp.c1 .+ ratio .* comp.c2)
 end

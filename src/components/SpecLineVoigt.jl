@@ -65,17 +65,17 @@ mutable struct SpecLineVoigt <: AbstractSpecLineComp
     end
 end
 
-function evaluate!(ceval::CompEval{SpecLineVoigt, Domain{1}},
+function evaluate!(comp::SpecLineVoigt, domain::Domain{1}, output::Vector,
                    norm, center, fwhm, log_a, voff)
     x0 = center -  (voff / 3.e5) * center
     σ, γ = voigt_σγ(fwhm / 3.e5  * center, log_a)
-    x = coords(ceval.domain)
+    x = coords(domain)
     for i in 1:length(x)
         X = x[i] - x0
-        if abs(X) < ceval.comp.span * (σ + γ)
-            ceval.buffer[i] = norm * voigt(X, σ, γ)
+        if abs(X) < comp.span * (σ + γ)
+            output[i] = norm * voigt(X, σ, γ)
         else
-            ceval.buffer[i] = 0.
+            output[i] = 0.
         end
     end
 end

@@ -24,18 +24,18 @@ mutable struct SpecLineGauss <: AbstractSpecLineComp
     end
 end
 
-function evaluate!(ceval::CompEval{SpecLineGauss, Domain{1}},
+function evaluate!(comp::SpecLineGauss, domain::Domain{1}, output::Vector,
                    norm, center, fwhm, voff)
     x0 = center - (voff / 3.e5) * center
     σ  = fwhm   / 2.355 / 3.e5  * center
-    x = coords(ceval.domain)
+    x = coords(domain)
 
     for i in 1:length(x)
         X = x[i] - x0
-        if abs(X) < ceval.comp.span * σ
-            ceval.buffer[i] = norm * exp(-(X / σ)^2 / 2) / sqrt(2pi) / σ
+        if abs(X) < comp.span * σ
+            output[i] = norm * exp(-(X / σ)^2 / 2) / sqrt(2pi) / σ
         else
-            ceval.buffer[i] = 0.
+            output[i] = 0.
         end
     end
 end

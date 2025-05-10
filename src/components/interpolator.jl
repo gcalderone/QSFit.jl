@@ -19,7 +19,7 @@ end
 result_length(comp::Interpolator, domain::AbstractDomain{1}) = length(comp.interp_y)
 
 # Component evaluation (apply scaling factor)
-function evaluate!(ceval::GModelFit.CompEval{Interpolator, <: AbstractDomain{1}},
+function evaluate!(comp::Interpolator, domain::AbstractDomain{1}, output::Vector,
                    norm)
-    ceval.buffer .= norm .* ceval.comp.interp_y
+    output .= norm .* comp.interp_y
 end

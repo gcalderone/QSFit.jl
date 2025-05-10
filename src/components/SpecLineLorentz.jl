@@ -24,17 +24,17 @@ mutable struct SpecLineLorentz <: AbstractSpecLineComp
     end
 end
 
-function evaluate!(ceval::CompEval{SpecLineLorentz, Domain{1}},
+function evaluate!(comp::SpecLineLorentz, domain::Domain{1}, output::Vector,
                    norm, center, fwhm, voff)
     x0 = center - (voff / 3.e5) * center
     γ  = fwhm / 2       / 3.e5  * center
-    x = coords(ceval.domain)
+    x = coords(domain)
     for i in 1:length(x)
         X = x[i] - x0
-        if abs(X) < ceval.comp.span * γ
-            ceval.buffer[i] = norm * γ / (pi * (X^2. + γ^2.))
+        if abs(X) < comp.span * γ
+            output[i] = norm * γ / (pi * (X^2. + γ^2.))
         else
-            ceval.buffer[i] = 0.
+            output[i] = 0.
         end
     end
 end

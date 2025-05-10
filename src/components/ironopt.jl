@@ -63,9 +63,9 @@ function prepare!(comp::ironopt, domain::Domain{1})
 end
 
 
-function evaluate!(ceval::CompEval{ironopt, Domain{1}},
+function evaluate!(comp::ironopt, domain::Domain{1}, output::Vector,
                    norm)
-    ceval.buffer .= norm .* ceval.comp.L
+    output .= norm .* comp.L
 end
 
 ironopt_broad( fwhm) = ironopt(joinpath(qsfit_data(), "VC2004", "TabA1"), fwhm)
