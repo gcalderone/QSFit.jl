@@ -42,7 +42,7 @@ function add_qso_continuum!(recipe::CRecipe{<: Type2}, meval::GModelFit.ModelEva
     @track_recipe
     @invoke add_qso_continuum!(recipe::CRecipe{<: QSOGeneric}, meval, data)
     meval.model[:QSOcont].alpha.val = -1.8
-    GModelFit.update!(meval)
+    GModelFit.scan_model!(meval)
 end
 
 
@@ -109,7 +109,7 @@ function analyze(recipe::CRecipe{<: Type2}, spec::Spectrum, data::Measures{1})
     renorm_cont!(recipe, meval, data)
     freeze!(model, :QSOcont)
     haskey(model, :Galaxy)  &&  freeze!(model, :Galaxy)
-    GModelFit.update!(meval)
+    GModelFit.scan_model!(meval)
 
     if (:lines in propertynames(recipe))  &&  (length(recipe.lines) > 0)
         println("\nFit known emission lines...")

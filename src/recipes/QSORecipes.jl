@@ -43,7 +43,7 @@ end
 
 function fit!(recipe::CRecipe{<: QSOGeneric}, meval::GModelFit.ModelEval, data::Measures{1})
     @track_recipe
-    GModelFit.update!(meval)
+    GModelFit.scan_model!(meval)
     mzer = GModelFit.cmpfit()
     mzer.config.ftol = 1.e-6
     bestfit, stats = GModelFit.fit!(GModelFit.FitProblem(meval, data), mzer)
@@ -66,7 +66,7 @@ function add_qso_continuum!(recipe::CRecipe{<: QSOGeneric}, meval::GModelFit.Mod
 
     meval.model[:QSOcont] = comp
     push!(meval.model[:Continuum].list, :QSOcont)
-    GModelFit.update!(meval)
+    GModelFit.scan_model!(meval)
 end
 
 
@@ -90,9 +90,9 @@ function add_host_galaxy!(recipe::CRecipe{<: QSOGeneric}, meval::GModelFit.Model
             meval.model[:Galaxy].norm.val   = 0.
         else
             meval.model[:Galaxy].norm.val   = 1/2 * vv
-            meval.model[:QSOcont].norm.val *= 1/2 * vv / Dierckx.Spline1D(λ, GModelFit.last_evaluation(meval, :QSOcont), k=1, bc="extrapolate")(refwl)
+            meval.model[:QSOcont].norm.val *= 1/2 * vv / Dierckx.Spline1D(λ, GModelFit.evaluate(meval, :QSOcont), k=1, bc="extrapolate")(refwl)
         end
-        GModelFit.update!(meval)
+        GModelFit.scan_model!(meval)
     end
 end
 
@@ -107,24 +107,24 @@ function renorm_cont!(recipe::CRecipe{<: QSOGeneric}, meval::GModelFit.ModelEval
         println("Cont. norm. (before): ", c.norm.val)
         scaling = 0.99
         while c.norm.val * scaling > c.norm.low
-            residuals = (GModelFit.last_evaluation(meval) - values(data)) ./ uncerts(data)
+            residuals = (GModelFit.evaluate(meval) - values(data)) ./ uncerts(data)
             ratio = count(residuals .< 0) / length(residuals)
             (ratio > 0.9)  &&  break
             (c.norm.val < (initialnorm / 5))  &&  break # give up
             c.norm.val *= scaling
-            GModelFit.update!(meval)
+            GModelFit.scan_model!(meval)
         end
         println("Cont. norm. (after) : ", c.norm.val)
     else
         println("Skipping cont. renormalization")
     end
-    GModelFit.update!(meval)
+    GModelFit.scan_model!(meval)
 end
 
 
 function guess_norm_factor!(recipe::CRecipe{<: QSOGeneric}, meval::GModelFit.ModelEval, data::Measures{1}, name::Symbol; quantile=0.95)
     @assert meval.model[name].norm.val != 0
-    m = GModelFit.last_evaluation(meval, name)
+    m = GModelFit.evaluate(meval, name)
     c = cumsum(m)
     @assert maximum(c) != 0. "Model for $name evaluates to zero over the whole domain"
     c ./= maximum(c)
@@ -133,7 +133,7 @@ function guess_norm_factor!(recipe::CRecipe{<: QSOGeneric}, meval::GModelFit.Mod
     if i1 >= i2
         return #Can't calculate normalization for component
     end
-    r = values(data) - GModelFit.last_evaluation(meval)
+    r = values(data) - GModelFit.evaluate(meval)
     ratio = meval.model[name].norm.val / sum(m[i1:i2])
     off = sum(r[i1:i2]) * ratio
     meval.model[name].norm.val += off
@@ -161,7 +161,7 @@ function add_emission_lines!(recipe::CRecipe{<: QSOGeneric}, meval::GModelFit.Mo
         meval.model[group] = SumReducer(lnames)
         push!(meval.model[:main].list, group)
     end
-    GModelFit.update!(meval)
+    GModelFit.scan_model!(meval)
 
     # Guess normalizations
     for group in [:BroadLines, :NarrowLines, :VeryBroadLines]  # Note: order is important
@@ -184,11 +184,11 @@ function add_nuisance_lines!(recipe::CRecipe{<: QSOGeneric}, meval::GModelFit.Mo
     end
     meval.model[QSFit.line_group(recipe, NuisanceLine)] = SumReducer([Symbol(:nuisance, i) for i in 1:recipe.n_nuisance])
     push!(meval.model[:main].list, QSFit.line_group(recipe, NuisanceLine))
-    GModelFit.update!(meval)
+    GModelFit.scan_model!(meval)
     for j in 1:recipe.n_nuisance
         freeze!(meval.model, Symbol(:nuisance, j))
     end
-    GModelFit.update!(meval)
+    GModelFit.scan_model!(meval)
 
     # Set "nuisance" line center wavelength where there is a maximum in
     # the fit residuals, and re-run a fit.
@@ -196,8 +196,8 @@ function add_nuisance_lines!(recipe::CRecipe{<: QSOGeneric}, meval::GModelFit.Mo
     λnuisance = Vector{Float64}()
     while true
         (length(λnuisance) >= recipe.n_nuisance)  &&  break
-        GModelFit.update!(meval)
-        Δ = (values(data) - GModelFit.last_evaluation(meval)) ./ uncerts(data)
+        GModelFit.scan_model!(meval)
+        Δ = (values(data) - GModelFit.evaluate(meval)) ./ uncerts(data)
 
         # Avoid considering again the same region (within 1A) TODO: within resolution
         for l in λnuisance
@@ -237,11 +237,11 @@ function add_nuisance_lines!(recipe::CRecipe{<: QSOGeneric}, meval::GModelFit.Mo
             end
         end
 
-        thaw!(meval.model, cname);     GModelFit.update!(meval)
+        thaw!(meval.model, cname);     GModelFit.scan_model!(meval)
         fit!(recipe, meval, data)
-        freeze!(meval.model, cname);   GModelFit.update!(meval)
+        freeze!(meval.model, cname);   GModelFit.scan_model!(meval)
     end
-    GModelFit.update!(meval)
+    GModelFit.scan_model!(meval)
 end
 
 

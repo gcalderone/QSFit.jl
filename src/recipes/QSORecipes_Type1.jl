@@ -81,7 +81,7 @@ function add_balmer_cont!(recipe::CRecipe{<: Type1}, meval::GModelFit.ModelEval,
         c.ratio.low  = 0.1
         c.ratio.high = 1
         meval.model[:Balmer].norm.patch = @fd (m, v) -> v * m[:QSOcont].norm
-        GModelFit.update!(meval)
+        GModelFit.scan_model!(meval)
     end
 end
 
@@ -98,9 +98,9 @@ function add_iron_uv!(recipe::CRecipe{<: Type1}, meval::GModelFit.ModelEval, dat
             meval.model[:Ironuv] = comp
             meval.model[:Ironuv].norm.val = 1.
             push!(meval.model[:Iron].list, :Ironuv)
-            GModelFit.update!(meval)
+            GModelFit.scan_model!(meval)
             guess_norm_factor!(recipe, meval, data, :Ironuv)
-            GModelFit.update!(meval)
+            GModelFit.scan_model!(meval)
         else
             println("Ignoring ironuv component (threshold: $threshold)")
         end
@@ -125,9 +125,9 @@ function add_iron_opt!(recipe::CRecipe{<: Type1}, meval::GModelFit.ModelEval, da
             meval.model[:Ironoptna].norm.fixed = false
             push!(meval.model[:Iron].list, :Ironoptbr)
             push!(meval.model[:Iron].list, :Ironoptna)
-            GModelFit.update!(meval)
+            GModelFit.scan_model!(meval)
             guess_norm_factor!(recipe, meval, data, :Ironoptbr)
-            GModelFit.update!(meval)
+            GModelFit.scan_model!(meval)
         else
             println("Ignoring ironopt component (threshold: $threshold)")
         end
@@ -214,7 +214,7 @@ function analyze(recipe::CRecipe{<: Type1}, spec::Spectrum, data::Measures{1})
     freeze!(model, :QSOcont)
     haskey(model, :Galaxy)  &&  freeze!(model, :Galaxy)
     haskey(model, :Balmer)  &&  freeze!(model, :Balmer)
-    GModelFit.update!(meval)
+    GModelFit.scan_model!(meval)
 
     println("\nFit iron templates...")
     model[:Iron] = SumReducer()
@@ -228,7 +228,7 @@ function analyze(recipe::CRecipe{<: Type1}, spec::Spectrum, data::Measures{1})
         haskey(model, :Ironoptbr)  &&  freeze!(model, :Ironoptbr)
         haskey(model, :Ironoptna)  &&  freeze!(model, :Ironoptna)
     end
-    GModelFit.update!(meval)
+    GModelFit.scan_model!(meval)
 
     println("\nFit known emission lines...")
     if (:lines in propertynames(recipe))  &&  (length(recipe.lines) > 0)
@@ -262,7 +262,7 @@ function analyze(recipe::CRecipe{<: Type1}, spec::Spectrum, data::Measures{1})
             freeze!(model, cname)
         end
     end
-    GModelFit.update!(meval)
+    GModelFit.scan_model!(meval)
     bestfit, stats = fit!(recipe, meval, data)
 
     if neglect_weak_features!(recipe, meval, data)
