@@ -90,7 +90,7 @@ function add_host_galaxy!(recipe::CRecipe{<: QSOGeneric}, meval::GModelFit.Model
             meval.model[:Galaxy].norm.val   = 0.
         else
             meval.model[:Galaxy].norm.val   = 1/2 * vv
-            meval.model[:QSOcont].norm.val *= 1/2 * vv / Dierckx.Spline1D(λ, GModelFit.evaluate(meval, :QSOcont), k=1, bc="extrapolate")(refwl)
+            meval.model[:QSOcont].norm.val *= 1/2 * vv / Dierckx.Spline1D(λ, GModelFit.last_eval(meval, :QSOcont), k=1, bc="extrapolate")(refwl)
         end
         GModelFit.scan_model!(meval)
     end
@@ -107,7 +107,7 @@ function renorm_cont!(recipe::CRecipe{<: QSOGeneric}, meval::GModelFit.ModelEval
         println("Cont. norm. (before): ", c.norm.val)
         scaling = 0.99
         while c.norm.val * scaling > c.norm.low
-            residuals = (GModelFit.evaluate(meval) - values(data)) ./ uncerts(data)
+            residuals = (GModelFit.last_eval(meval) - values(data)) ./ uncerts(data)
             ratio = count(residuals .< 0) / length(residuals)
             (ratio > 0.9)  &&  break
             (c.norm.val < (initialnorm / 5))  &&  break # give up
@@ -124,7 +124,7 @@ end
 
 function guess_norm_factor!(recipe::CRecipe{<: QSOGeneric}, meval::GModelFit.ModelEval, data::Measures{1}, name::Symbol; quantile=0.95)
     @assert meval.model[name].norm.val != 0
-    m = GModelFit.evaluate(meval, name)
+    m = GModelFit.last_eval(meval, name)
     c = cumsum(m)
     @assert maximum(c) != 0. "Model for $name evaluates to zero over the whole domain"
     c ./= maximum(c)
@@ -133,7 +133,7 @@ function guess_norm_factor!(recipe::CRecipe{<: QSOGeneric}, meval::GModelFit.Mod
     if i1 >= i2
         return #Can't calculate normalization for component
     end
-    r = values(data) - GModelFit.evaluate(meval)
+    r = values(data) - GModelFit.last_eval(meval)
     ratio = meval.model[name].norm.val / sum(m[i1:i2])
     off = sum(r[i1:i2]) * ratio
     meval.model[name].norm.val += off
@@ -197,7 +197,7 @@ function add_nuisance_lines!(recipe::CRecipe{<: QSOGeneric}, meval::GModelFit.Mo
     while true
         (length(λnuisance) >= recipe.n_nuisance)  &&  break
         GModelFit.scan_model!(meval)
-        Δ = (values(data) - GModelFit.evaluate(meval)) ./ uncerts(data)
+        Δ = (values(data) - GModelFit.last_eval(meval)) ./ uncerts(data)
 
         # Avoid considering again the same region (within 1A) TODO: within resolution
         for l in λnuisance
