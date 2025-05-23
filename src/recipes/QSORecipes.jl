@@ -38,15 +38,15 @@ function init_recipe!(recipe::CRecipe{T}) where T <: QSOGeneric
                              6565 .+ [-1,1] .* 150]
     recipe.nuisance_maxoffset_from_guess = 1e3  # km/s
     recipe.line_component = QSFit.SpecLineGauss
+    recipe.solver = GModelFit.cmpfit()
+    recipe.solver.config.ftol = 1.e-6
 end
 
 
 function fit!(recipe::CRecipe{<: QSOGeneric}, meval::GModelFit.ModelEval, data::Measures{1})
     @track_recipe
     GModelFit.scan_model!(meval)
-    solver = GModelFit.cmpfit()
-    solver.config.ftol = 1.e-6
-    bestfit, fsumm = GModelFit.fit!(GModelFit.FitProblem(meval, data), solver)
+    bestfit, fsumm = GModelFit.fit!(GModelFit.FitProblem(meval, data), recipe.solver)
     show(fsumm)
     return bestfit[1], fsumm
 end
