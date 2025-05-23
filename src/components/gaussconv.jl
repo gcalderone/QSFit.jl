@@ -36,8 +36,8 @@ y[3mm] = 1.;
 y[5mm] = 1.;
 comp = QSFit.GaussConv(:a, 2000)
 ceval = GModelFit.CompEval(comp, Domain(x))
-push!(ceval.deps, y)
-c = GModelFit.evaluate!(ceval)
+push!(ceval.tpar.deps, GModelFit.CompEvalT{Float64}(y))
+c = GModelFit.update_eval!(ceval, Float64[])
 
 QSFit.int_tabulated(x, y), QSFit.int_tabulated(x, c)  # <-- these should be equal
 @gp xlog=true xr=extrema(x) x y "w l notit" x c "w l notit"
