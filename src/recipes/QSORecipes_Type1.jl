@@ -262,12 +262,12 @@ function analyze(recipe::CRecipe{<: Type1}, food::Food)
         end
     end
     GModelFit.scan_model!(food.meval)
-    bestfit, stats = fit!(recipe, food)
+    bestfit, fsumm = fit!(recipe, food)
 
     if neglect_weak_features!(recipe, food)
         println("\nRe-run fit...")
-        bestfit, stats = fit!(recipe, food)
+        bestfit, fsumm = fit!(recipe, food)
     end
 
-    return bestfit, stats
+    return bestfit, fsumm
 end

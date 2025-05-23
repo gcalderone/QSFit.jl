@@ -3,7 +3,7 @@ module LineFitRecipes
 using Statistics
 using ..QSFit, GModelFit, Gnuplot
 
-import QSFit: init_recipe!, preprocess_spec!, line_component, analyze
+import QSFit: Food, init_recipe!, preprocess_spec!, line_component, analyze
 
 export LineFit, InteractiveLineFit
 
@@ -31,39 +31,35 @@ function preprocess_spec!(recipe::CRecipe{T}, spec::QSFit.Spectrum) where T <: L
 end
 
 
-function analyze(recipe::CRecipe{<: LineFit}, spec::QSFit.Spectrum, data::Measures{1})
-    model = Model()
-    model[:QSOcont] = QSFit.powerlaw(median(coords(domain(data))))
-    model[:QSOcont].norm.val = median(values(data))
-    model[:QSOcont].norm.low = median(values(data)) / 1000.  # ensure contiuum remains positive (needed to estimate EWs)
-    model[:QSOcont].alpha.val  = -1.5
-    model[:QSOcont].alpha.low  = -3
-    model[:QSOcont].alpha.high =  1
+function analyze(recipe::CRecipe{<: LineFit}, food::Food)
+    food.model[:QSOcont] = QSFit.powerlaw(median(coords(domain(food.data))))
+    food.model[:QSOcont].norm.val = median(values(food.data))
+    food.model[:QSOcont].norm.low = median(values(food.data)) / 1000.  # ensure contiuum remains positive (needed to estimate EWs)
+    food.model[:QSOcont].alpha.val  = -1.5
+    food.model[:QSOcont].alpha.low  = -3
+    food.model[:QSOcont].alpha.high =  1
 
-    model[:main] = SumReducer(:QSOcont)
-    select_maincomp!(model, :main)
+    food.model[:main] = SumReducer(:QSOcont)
+    select_maincomp!(food.model, :main)
 
     for (cname, line) in recipe.lines
-        model[cname] = line.comp
-        if !(line.group in keys(model))
-            model[line.group] = SumReducer(cname)
-            push!(model[:main].list, line.group)
+        food.model[cname] = line.comp
+        if !(line.group in keys(food.model))
+            food.model[line.group] = SumReducer(cname)
+            push!(food.model[:main].list, line.group)
         else
-            push!(model[line.group].list, cname)
+            push!(food.model[line.group].list, cname)
         end
     end
 
     solver = GModelFit.cmpfit()
     solver.config.ftol = 1.e-6
-    return GModelFit.fit!(model, data, solver)
+    return GModelFit.fit!(food.model, food.data, solver)
 end
 
 
-function analyze(_recipe::CRecipe{<: InteractiveLineFit}, _spec::Spectrum)
-    recipe = deepcopy(_recipe)
-    spec = deepcopy(_spec)
-    preprocess_spec!(recipe, spec)
-    @gp :LineFit spec
+function analyze(recipe::CRecipe{<: InteractiveLineFit}, food::Food)
+    @gp :LineFit food.spec
 
     println()
     printstyled("Interactive emission line fit\n", color=:green)
@@ -96,7 +92,7 @@ function analyze(_recipe::CRecipe{<: InteractiveLineFit}, _spec::Spectrum)
             end
             println("0: skip this line")
         end
-        print("Insert space separated list of line template(s) for the emission line at $λ ", spec.unit_x, ": ")
+        print("Insert space separated list of line template(s) for the emission line at $λ ", food.spec.unit_x, ": ")
         i = Int.(Meta.parse.(string.(split(readline()))))
         (0 in i)  &&  continue
         @assert all(1 .<= i .<= length(linetemplates))
@@ -115,7 +111,13 @@ function analyze(_recipe::CRecipe{<: InteractiveLineFit}, _spec::Spectrum)
         println(l)
     end
     println()
-    return @invoke analyze(recipe::CRecipe{<: LineFit}, _spec)
+
+    recipe2 = CRecipe{LineFit}()
+    for p in propertynames(recipe)
+        setproperty!(recipe2, p, getproperty(recipe, p))
+    end
+    res = analyze(recipe2, food.origspec)
+    return res.bestfit, res.fsumm    
 end
 
 end

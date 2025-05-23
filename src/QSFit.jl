@@ -95,6 +95,7 @@ end
 # ====================================================================
 mutable struct Food
     ref::Bool
+    origspec::Spectrum
     spec::Spectrum
     domain::Domain{1}
     data::Measures{1}
@@ -102,14 +103,14 @@ mutable struct Food
     meval::Union{Nothing, GModelFit.ModelEval}
     dict::OrderedDict{Symbol, Any}
 
-    function Food(recipe::CRecipe, _spec::Spectrum; ref=false)
+    function Food(recipe::CRecipe, spec::Spectrum; ref=false)
         @track_recipe
-        spec = deepcopy(_spec)
-        preprocess_spec!(recipe, spec)
-        ii = findall(spec.good)
-        dom = Domain(spec.x[ii])
-        data = Measures(dom, spec.y[ii], spec.err[ii])
-        return new(ref, spec, dom, data, Model(), nothing, OrderedDict{Symbol, Any}())
+        pspec = deepcopy(spec)
+        preprocess_spec!(recipe, pspec)
+        ii = findall(pspec.good)
+        dom = Domain(pspec.x[ii])
+        data = Measures(dom, pspec.y[ii], pspec.err[ii])
+        return new(ref, spec, pspec, dom, data, Model(), nothing, OrderedDict{Symbol, Any}())
     end
 end
 
@@ -152,8 +153,9 @@ end
 
 reduce(recipe::CRecipe{<: AbstractRecipe}, bestfit::GModelFit.ModelSnapshot) = OrderedDict{Symbol, Any}()
 
-function analyze(recipe::CRecipe{T}, spec::Spectrum) where T <: AbstractRecipe
+function analyze(_recipe::CRecipe{T}, spec::Spectrum) where T <: AbstractRecipe
     @track_recipe
+    recipe = deepcopy(_recipe)
     timestamp = now()
     starttime = time()
 
