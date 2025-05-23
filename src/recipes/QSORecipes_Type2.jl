@@ -38,11 +38,11 @@ function set_lines_dict!(recipe::CRecipe{T}) where T <: Type2
 end
 
 
-function add_qso_continuum!(recipe::CRecipe{<: Type2}, meval::GModelFit.ModelEval, data::Measures{1})
+function add_qso_continuum!(recipe::CRecipe{<: Type2}, food::Food)
     @track_recipe
-    @invoke add_qso_continuum!(recipe::CRecipe{<: QSOGeneric}, meval, data)
-    meval.model[:QSOcont].alpha.val = -1.8
-    GModelFit.update!(meval)
+    @invoke add_qso_continuum!(recipe::CRecipe{<: QSOGeneric}, food.meval, data)
+    food.model[:QSOcont].alpha.val = -1.8
+    GModelFit.scan_model!(food.meval)
 end
 
 
@@ -60,9 +60,9 @@ function set_constraints!(recipe::CRecipe{<: Type2}, ::Type{NuisanceLine}, comp:
 end
 
 
-function add_patch_functs!(recipe::CRecipe{<: Type2}, meval::GModelFit.ModelEval, data::Measures{1})
+function add_patch_functs!(recipe::CRecipe{<: Type2}, food::Food)
     @track_recipe
-    model = meval.model
+    model = food.model
     # Patch parameters
     if haskey(model, :OIII_4959) && haskey(model, :OIII_5007)
         # model[:OIII_4959].norm.patch = @fd m -> m[:OIII_5007].norm / 3
@@ -93,37 +93,36 @@ function add_patch_functs!(recipe::CRecipe{<: Type2}, meval::GModelFit.ModelEval
 end
 
 
-function analyze(recipe::CRecipe{<: Type2}, spec::Spectrum, data::Measures{1})
+function analyze(recipe::CRecipe{<: Type2}, food::Food)
     @track_recipe
-    recipe.spec = spec  # TODO: remove
     model = Model()
     model[:main] = SumReducer()
-    meval = GModelFit.ModelEval(model, domain(data))
+    food.meval = GModelFit.ModelEval(model, domain(data))
 
     println("\nFit continuum components...")
     model[:Continuum] = SumReducer()
     push!(model[:main].list, :Continuum)
-    add_qso_continuum!(recipe, meval, data)
-    add_host_galaxy!(recipe, meval, data)
-    fit!(recipe, meval, data)
-    renorm_cont!(recipe, meval, data)
+    add_qso_continuum!(recipe, food)
+    add_host_galaxy!(recipe, food)
+    fit!(recipe, food)
+    renorm_cont!(recipe, food)
     freeze!(model, :QSOcont)
     haskey(model, :Galaxy)  &&  freeze!(model, :Galaxy)
-    GModelFit.update!(meval)
+    GModelFit.scan_model!(food.meval)
 
     if (:lines in propertynames(recipe))  &&  (length(recipe.lines) > 0)
         println("\nFit known emission lines...")
-        add_emission_lines!(recipe, meval, data)
-        add_patch_functs!(recipe, meval, data)
+        add_emission_lines!(recipe, food)
+        add_patch_functs!(recipe, food)
 
-        fit!(recipe, meval, data)
+        fit!(recipe, food)
         for cname in keys(recipe.lines)
             freeze!(model, cname)
         end
     end
 
     println("\nFit nuisance emission lines...")
-    add_nuisance_lines!(recipe, meval, data)
+    add_nuisance_lines!(recipe, food)
 
     println("\nLast run with all parameters free...")
     thaw!(model, :QSOcont)
@@ -139,11 +138,11 @@ function analyze(recipe::CRecipe{<: Type2}, spec::Spectrum, data::Measures{1})
             freeze!(model, cname)
         end
     end
-    bestfit, stats = fit!(recipe, meval, data)
+    bestfit, stats = fit!(recipe, food)
 
-    if neglect_weak_features!(recipe, meval, data)
+    if neglect_weak_features!(recipe, food)
         println("\nRe-run fit...")
-        bestfit, stats = fit!(recipe, meval, data)
+        bestfit, stats = fit!(recipe, food)
     end
 
     return bestfit, stats

@@ -26,7 +26,7 @@ end
 
 function evaluate!(::sbpl, domain::Domain{1}, output::Vector,
                    norm, x0, alpha1, alpha2, delta)
-    xx = coords(ceval.domain) ./ x0
+    xx = coords(domain) ./ x0
 
     # The quantity `t = (x / x_b)^(1 / delta)` can become quite large.
     # To avoid overflow errors we will start by calculating its

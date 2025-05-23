@@ -14,7 +14,7 @@ function ViewerData(res::Results; kws...)
                                 yscale=ustrip(res.spec.unit_y),
                                 keep=keep, kws...)
 
-    d = GModelFitViewer.ViewerData(res.bestfit, res.fitres, res.data, meta=meta)
+    d = GModelFitViewer.ViewerData(res.bestfit, res.fsumm, res.data, meta=meta)
 
     # Add further content
     if haskey(res.reduced, :EW)
