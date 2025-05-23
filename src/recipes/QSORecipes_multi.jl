@@ -106,22 +106,22 @@ function qsfit_multi(source::QSO{TRecipe}; ref_id=1) where TRecipe <: DefaultRec
             end
         end
     end
-    bestfit, fitstats = fit!(source, multi, pspecs)
+    bestfit, fsumm = fit!(source, multi, pspecs)
 
     rerun = false
     for id in 1:length(pspecs)
         model = multi[id]
         pspec = pspecs[id]
-        rerun = rerun || QSFit.neglect_weak_features!(source, pspec, model, bestfit, fitstats)
+        rerun = rerun || QSFit.neglect_weak_features!(source, pspec, model, bestfit, fsumm)
     end
     if rerun
         println(logio(source), "\nRe-run fit...")
-        bestfit, fitstats = fit!(source, multi, pspecs)
+        bestfit, fsumm = fit!(source, multi, pspecs)
     end
     println(logio(source))
-    show(logio(source), fitstats)
+    show(logio(source), fsumm)
 
-    out = QSFit.QSFitMultiResults(source, pspecs, multi, bestfit, fitstats)
+    out = QSFit.QSFitMultiResults(source, pspecs, multi, bestfit, fsumm)
     elapsed = time() - elapsed
     println(logio(source), "\nElapsed time: $elapsed s")
     close_logio(source)
