@@ -201,6 +201,7 @@ function analyze(recipe::CRecipe{<: Type1}, spec::Spectrum, data::Measures{1})
     recipe.spec = spec  # TODO: remove
     model = Model()
     model[:main] = SumReducer()
+    select_maincomp!(model, :main)
     meval = GModelFit.ModelEval(model, domain(data))
 
     println("\nFit continuum components...")

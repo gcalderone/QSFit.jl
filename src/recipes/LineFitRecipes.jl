@@ -53,9 +53,9 @@ function analyze(recipe::CRecipe{<: LineFit}, spec::QSFit.Spectrum, data::Measur
         end
     end
 
-    mzer = GModelFit.cmpfit()
-    mzer.config.ftol = 1.e-6
-    return GModelFit.fit!(model, data, mzer)
+    solver = GModelFit.cmpfit()
+    solver.config.ftol = 1.e-6
+    return GModelFit.fit!(model, data, solver)
 end
 
 
