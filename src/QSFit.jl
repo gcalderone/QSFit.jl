@@ -93,6 +93,28 @@ end
 
 
 # ====================================================================
+mutable struct Food
+    ref::Bool
+    spec::Spectrum
+    domain::Domain{1}
+    data::Measures{1}
+    model::Model
+    meval::Union{Nothing, GModelFit.ModelEval}
+    dict::OrderedDict{Symbol, Any}
+
+    function Food(recipe::CRecipe, _spec::Spectrum; ref=false)
+        @track_recipe
+        spec = deepcopy(_spec)
+        preprocess_spec!(recipe, spec)
+        ii = findall(spec.good)
+        dom = Domain(spec.x[ii])
+        data = Measures(dom, spec.y[ii], spec.err[ii])
+        return new(ref, spec, dom, data, Model(), nothing, OrderedDict{Symbol, Any}())
+    end
+end
+
+
+# ====================================================================
 struct Results
     timestamp::DateTime
     elapsed::Float64
@@ -130,31 +152,23 @@ end
 
 reduce(recipe::CRecipe{<: AbstractRecipe}, bestfit::GModelFit.ModelSnapshot) = OrderedDict{Symbol, Any}()
 
-function analyze(_recipe::CRecipe{T}, _spec::Spectrum) where T <: AbstractRecipe
+function analyze(recipe::CRecipe{T}, spec::Spectrum) where T <: AbstractRecipe
     @track_recipe
     timestamp = now()
     starttime = time()
 
-    recipe = deepcopy(_recipe)
-    spec = deepcopy(_spec)
     println("Timestamp: ", timestamp)
     display(recipe)
     println()
 
-    preprocess_spec!(recipe, spec)
-
-    # Create GModelFit objects
-    ii = findall(spec.good)
-    domain = Domain(spec.x[ii])
-    data = Measures(domain, spec.y[ii], spec.err[ii])
-    bestfit, fsumm = analyze(recipe, spec, data)
+    food = Food(recipe, spec)
+    bestfit, fsumm = analyze(recipe, food)
     reduced = reduce(recipe, bestfit)
 
     out = Results(timestamp,
                   time() - starttime,
-                  spec, data,
+                  food.spec, food.data,
                   bestfit, fsumm, reduced)
-
     println("\nTotal elapsed time: $(out.elapsed) s")
     return out
 end
