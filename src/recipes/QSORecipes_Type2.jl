@@ -40,7 +40,7 @@ end
 
 function add_qso_continuum!(recipe::CRecipe{<: Type2}, food::Food)
     @track_recipe
-    @invoke add_qso_continuum!(recipe::CRecipe{<: QSOGeneric}, food.meval, data)
+    @invoke add_qso_continuum!(recipe::CRecipe{<: QSOGeneric}, food)
     food.model[:QSOcont].alpha.val = -1.8
     GModelFit.scan_model!(food.meval)
 end
@@ -95,7 +95,7 @@ end
 function analyze(recipe::CRecipe{<: Type2}, food::Food)
     @track_recipe
     food.model[:main] = SumReducer()
-    food.meval = GModelFit.ModelEval(food.model, domain(data))
+    food.meval = GModelFit.ModelEval(food.model, domain(food.data))
 
     println("\nFit continuum components...")
     food.model[:Continuum] = SumReducer()
