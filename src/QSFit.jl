@@ -99,12 +99,12 @@ struct Results
     spec::Spectrum
     data::Measures{1}
     bestfit::GModelFit.ModelSnapshot
-    fitres::GModelFit.FitSummary
+    fsumm::GModelFit.FitSummary
     reduced::OrderedDict{Symbol, Any}
 end
 
 function show(io::IO, res::Results)
-    show(io, res.fitres)
+    show(io, res.fsumm)
     println(io)
 end
 
@@ -147,13 +147,13 @@ function analyze(_recipe::CRecipe{T}, _spec::Spectrum) where T <: AbstractRecipe
     ii = findall(spec.good)
     domain = Domain(spec.x[ii])
     data = Measures(domain, spec.y[ii], spec.err[ii])
-    bestfit, summary = analyze(recipe, spec, data)
+    bestfit, fsumm = analyze(recipe, spec, data)
     reduced = reduce(recipe, bestfit)
 
     out = Results(timestamp,
                   time() - starttime,
                   spec, data,
-                  bestfit, summary, reduced)
+                  bestfit, fsumm, reduced)
 
     println("\nTotal elapsed time: $(out.elapsed) s")
     return out
