@@ -9,6 +9,11 @@ import QSFit: Food, init_recipe!, preprocess_spec!, line_suffix, line_component,
 abstract type QSOGeneric <: AbstractRecipe end
 
 
+function scan_and_evaluate(v)
+    GModelFit.scan_model!(v)
+    GModelFit.update_eval!(v)
+end
+
 line_component(recipe::CRecipe{<: QSOGeneric}, center::Float64) = recipe.line_component(center)
 
 abstract type BlueWing <: NarrowLine end
@@ -45,8 +50,10 @@ end
 
 function fit!(recipe::CRecipe{<: QSOGeneric}, food::Food)
     @track_recipe
-    GModelFit.scan_model!(food.meval)
-    bestfit, fsumm = GModelFit.fit!(GModelFit.FitProblem(food.meval, food.data), recipe.solver)
+    scan_and_evaluate(food.meval)
+
+    fp = GModelFit.FitProblem(GModelFit.MultiModelEval([food.meval]), [food.data])
+    bestfit, fsumm = GModelFit.fit!(fp, recipe.solver)
     show(fsumm)
     return bestfit[1], fsumm
 end
@@ -66,7 +73,7 @@ function add_qso_continuum!(recipe::CRecipe{<: QSOGeneric}, food::Food)
 
     food.model[:QSOcont] = comp
     push!(food.model[:Continuum].list, :QSOcont)
-    GModelFit.scan_model!(food.meval)
+    scan_and_evaluate(food.meval)
 end
 
 
@@ -92,7 +99,7 @@ function add_host_galaxy!(recipe::CRecipe{<: QSOGeneric}, food::Food)
             food.model[:Galaxy].norm.val   = 1/2 * vv
             food.model[:QSOcont].norm.val *= 1/2 * vv / Dierckx.Spline1D(λ, GModelFit.last_eval(food.meval, :QSOcont), k=1, bc="extrapolate")(refwl)
         end
-        GModelFit.scan_model!(food.meval)
+        scan_and_evaluate(food.meval)
     end
 end
 
@@ -112,13 +119,13 @@ function renorm_cont!(recipe::CRecipe{<: QSOGeneric}, food::Food)
             (ratio > 0.9)  &&  break
             (c.norm.val < (initialnorm / 5))  &&  break # give up
             c.norm.val *= scaling
-            GModelFit.scan_model!(food.meval)
+            scan_and_evaluate(food.meval)
         end
         println("Cont. norm. (after) : ", c.norm.val)
     else
         println("Skipping cont. renormalization")
     end
-    GModelFit.scan_model!(food.meval)
+    scan_and_evaluate(food.meval)
 end
 
 
@@ -161,7 +168,7 @@ function add_emission_lines!(recipe::CRecipe{<: QSOGeneric}, food::Food)
         food.model[group] = SumReducer(lnames)
         push!(food.model[:main].list, group)
     end
-    GModelFit.scan_model!(food.meval)
+    scan_and_evaluate(food.meval)
 
     # Guess normalizations
     for group in [:BroadLines, :NarrowLines, :VeryBroadLines]  # Note: order is important
@@ -184,11 +191,11 @@ function add_nuisance_lines!(recipe::CRecipe{<: QSOGeneric}, food::Food)
     end
     food.model[QSFit.line_group(recipe, NuisanceLine)] = SumReducer([Symbol(:nuisance, i) for i in 1:recipe.n_nuisance])
     push!(food.model[:main].list, QSFit.line_group(recipe, NuisanceLine))
-    GModelFit.scan_model!(food.meval)
+    scan_and_evaluate(food.meval)
     for j in 1:recipe.n_nuisance
         freeze!(food.model, Symbol(:nuisance, j))
     end
-    GModelFit.scan_model!(food.meval)
+    scan_and_evaluate(food.meval)
 
     # Set "nuisance" line center wavelength where there is a maximum in
     # the fit residuals, and re-run a fit.
@@ -196,7 +203,7 @@ function add_nuisance_lines!(recipe::CRecipe{<: QSOGeneric}, food::Food)
     λnuisance = Vector{Float64}()
     while true
         (length(λnuisance) >= recipe.n_nuisance)  &&  break
-        GModelFit.scan_model!(food.meval)
+        scan_and_evaluate(food.meval)
         Δ = (values(food.data) - GModelFit.last_eval(food.meval)) ./ uncerts(food.data)
 
         # Avoid considering again the same region (within 1A) TODO: within resolution
@@ -237,11 +244,11 @@ function add_nuisance_lines!(recipe::CRecipe{<: QSOGeneric}, food::Food)
             end
         end
 
-        thaw!(food.model, cname);     GModelFit.scan_model!(food.meval)
+        thaw!(food.model, cname);     scan_and_evaluate(food.meval)
         fit!(recipe, food)
-        freeze!(food.model, cname);   GModelFit.scan_model!(food.meval)
+        freeze!(food.model, cname);   scan_and_evaluate(food.meval)
     end
-    GModelFit.scan_model!(food.meval)
+    scan_and_evaluate(food.meval)
 end
 
 

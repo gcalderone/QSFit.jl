@@ -81,7 +81,7 @@ function add_balmer_cont!(recipe::CRecipe{<: Type1}, food::Food)
         c.ratio.low  = 0.1
         c.ratio.high = 1
         food.model[:Balmer].norm.patch = @fd (m, v) -> v * m[:QSOcont].norm
-        GModelFit.scan_model!(food.meval)
+        scan_and_evaluate(food.meval)
     end
 end
 
@@ -98,9 +98,9 @@ function add_iron_uv!(recipe::CRecipe{<: Type1}, food::Food)
             food.model[:Ironuv] = comp
             food.model[:Ironuv].norm.val = 1.
             push!(food.model[:Iron].list, :Ironuv)
-            GModelFit.scan_model!(food.meval)
+            scan_and_evaluate(food.meval)
             guess_norm_factor!(recipe, food, :Ironuv)
-            GModelFit.scan_model!(food.meval)
+            scan_and_evaluate(food.meval)
         else
             println("Ignoring ironuv component (threshold: $threshold)")
         end
@@ -125,9 +125,9 @@ function add_iron_opt!(recipe::CRecipe{<: Type1}, food::Food)
             food.model[:Ironoptna].norm.fixed = false
             push!(food.model[:Iron].list, :Ironoptbr)
             push!(food.model[:Iron].list, :Ironoptna)
-            GModelFit.scan_model!(food.meval)
+            scan_and_evaluate(food.meval)
             guess_norm_factor!(recipe, food, :Ironoptbr)
-            GModelFit.scan_model!(food.meval)
+            scan_and_evaluate(food.meval)
         else
             println("Ignoring ironopt component (threshold: $threshold)")
         end
@@ -213,7 +213,7 @@ function analyze(recipe::CRecipe{<: Type1}, food::Food)
     freeze!(food.model, :QSOcont)
     haskey(food.model, :Galaxy)  &&  freeze!(food.model, :Galaxy)
     haskey(food.model, :Balmer)  &&  freeze!(food.model, :Balmer)
-    GModelFit.scan_model!(food.meval)
+    scan_and_evaluate(food.meval)
 
     println("\nFit iron templates...")
     food.model[:Iron] = SumReducer()
@@ -227,7 +227,7 @@ function analyze(recipe::CRecipe{<: Type1}, food::Food)
         haskey(food.model, :Ironoptbr)  &&  freeze!(food.model, :Ironoptbr)
         haskey(food.model, :Ironoptna)  &&  freeze!(food.model, :Ironoptna)
     end
-    GModelFit.scan_model!(food.meval)
+    scan_and_evaluate(food.meval)
 
     println("\nFit known emission lines...")
     if (:lines in propertynames(recipe))  &&  (length(recipe.lines) > 0)
@@ -261,7 +261,7 @@ function analyze(recipe::CRecipe{<: Type1}, food::Food)
             freeze!(food.model, cname)
         end
     end
-    GModelFit.scan_model!(food.meval)
+    scan_and_evaluate(food.meval)
     bestfit, fsumm = fit!(recipe, food)
 
     if neglect_weak_features!(recipe, food)
