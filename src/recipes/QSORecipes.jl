@@ -1,18 +1,19 @@
 module QSORecipes
 
-using Printf, DataStructures, Statistics
+using Printf, DataStructures, Statistics, Dates
 using Dierckx
 using ..QSFit, ..QSFit.ATL, GModelFit
 
-import QSFit: Food, init_recipe!, preprocess_spec!, line_suffix, line_component, set_lines_dict!, analyze, reduce
+import GModelFit: domain
+import QSFit: init_recipe!, preprocess_spec!, spec2data, line_suffix, line_component, set_lines_dict!, analyze, reduce, Results
 
 abstract type QSOGeneric <: AbstractRecipe end
 
-
-function scan_and_evaluate(v)
-    GModelFit.scan_model!(v)
-    GModelFit.update_eval!(v)
+function scan_and_evaluate!(meval::GModelFit.ModelEval)
+    GModelFit.scan_model!(meval)
+    GModelFit.update_eval!(meval)
 end
+
 
 line_component(recipe::CRecipe{<: QSOGeneric}, center::Float64) = recipe.line_component(center)
 
@@ -48,90 +49,104 @@ function init_recipe!(recipe::CRecipe{T}) where T <: QSOGeneric
 end
 
 
-function fit!(recipe::CRecipe{<: QSOGeneric}, food::Food)
+function fit!(recipe::CRecipe{<: QSOGeneric}, meval::GModelFit.ModelEval, data::Measures{1})
     @track_recipe
-    scan_and_evaluate(food.meval)
-
-    fp = GModelFit.FitProblem(GModelFit.MultiModelEval([food.meval]), [food.data])
+    scan_and_evaluate!(meval)
+    fp = GModelFit.FitProblem(GModelFit.MultiModelEval([meval]), [data])
     bestfit, fsumm = GModelFit.fit!(fp, recipe.solver)
     show(fsumm)
     return bestfit[1], fsumm
 end
 
 
-function add_qso_continuum!(recipe::CRecipe{<: QSOGeneric}, food::Food)
+#=
+function add_qso_continuum!(recipe::CRecipe{<: QSOGeneric}, multi::GModelFit.MultiModelEval{1}, data::Vector{Measures})
+    add_qso_continuum!(recipe, multi[1], data)
+    scan_and_evaluate!(multi)
+end
+
+function add_qso_continuum!(recipe::CRecipe{<: QSOGeneric}, multi::GModelFit.MultiModelEval, data::Vector{Measures})
+    for i in 1:length(multi)
+        add_qso_continuum!(recipe, multi[1], data)
+        # patch
+    end
+    scan_and_evaluate!(multi)
+end
+=#
+
+function add_qso_continuum!(recipe::CRecipe{<: QSOGeneric}, meval::GModelFit.ModelEval, data::Measures)
     @track_recipe
-    λ = coords(food.domain)
+    λ = coords(domain(data))
 
     comp = QSFit.powerlaw(3000)
     comp.x0.val = median(λ)
-    comp.norm.val = median(values(food.data)) # Can't use Dierckx.Spline1D since it may fail when data is segmented (non-good channels)
+    comp.norm.val = median(values(data)) # Can't use Dierckx.Spline1D since it may fail when data is segmented (non-good channels)
     comp.norm.low = comp.norm.val / 1000.  # ensure contiuum remains positive (needed to estimate EWs)
     comp.alpha.val  = -1.5
     comp.alpha.low  = -3
     comp.alpha.high =  1
 
-    food.model[:QSOcont] = comp
-    push!(food.model[:Continuum].list, :QSOcont)
-    scan_and_evaluate(food.meval)
+    meval.model[:QSOcont] = comp
+    push!(meval.model[:Continuum].list, :QSOcont)
+    scan_and_evaluate!(meval)
 end
 
 
-function add_host_galaxy!(recipe::CRecipe{<: QSOGeneric}, food::Food)
+function add_host_galaxy!(recipe::CRecipe{<: QSOGeneric}, meval::GModelFit.ModelEval, data::Measures{1})
     @track_recipe
-    λ = coords(food.domain)
+    λ = coords(meval.domain)
     if recipe.use_host_template  &&
         (recipe.host_template_range[1] .< maximum(λ))  &&
         (recipe.host_template_range[2] .> minimum(λ))
-        food.model[:Galaxy] = QSFit.hostgalaxy(recipe.host_template[:template],
-                                                      library=recipe.host_template[:library],
-                                                      refwl=recipe.host_template[:ref_wavelength])
-        push!(food.model[:Continuum].list, :Galaxy)
+        meval.model[:Galaxy] = QSFit.hostgalaxy(recipe.host_template[:template],
+                                                library=recipe.host_template[:library],
+                                                refwl=recipe.host_template[:ref_wavelength])
+        push!(meval.model[:Continuum].list, :Galaxy)
 
         # Split total flux between continuum and host galaxy
         refwl = recipe.host_template[:ref_wavelength]
-        vv = Dierckx.Spline1D(λ, values(food.data), k=1, bc="extrapolate")(refwl)
+        vv = Dierckx.Spline1D(λ, values(data), k=1, bc="extrapolate")(refwl)
         @assert !isnan(vv) "Predicted L_λ at $(refwl)A is NaN"
         if vv <= 0
             @warn "Predicted L_λ at $(refwl)A is negative, set host galaxy guess value at zero."
-            food.model[:Galaxy].norm.val   = 0.
+            meval.model[:Galaxy].norm.val   = 0.
         else
-            food.model[:Galaxy].norm.val   = 1/2 * vv
-            food.model[:QSOcont].norm.val *= 1/2 * vv / Dierckx.Spline1D(λ, GModelFit.last_eval(food.meval, :QSOcont), k=1, bc="extrapolate")(refwl)
+            meval.model[:Galaxy].norm.val   = 1/2 * vv
+            meval.model[:QSOcont].norm.val *= 1/2 * vv / Dierckx.Spline1D(λ, GModelFit.last_eval(meval, :QSOcont), k=1, bc="extrapolate")(refwl)
         end
-        scan_and_evaluate(food.meval)
+        scan_and_evaluate!(meval)
     end
 end
 
 
-function renorm_cont!(recipe::CRecipe{<: QSOGeneric}, food::Food)
+function renorm_cont!(recipe::CRecipe{<: QSOGeneric}, meval::GModelFit.ModelEval, data::Measures{1})
     @track_recipe
-    freeze!(food.model, :QSOcont)
-    c = food.model[:QSOcont]
-    d = food.meval.cevals[:QSOcont]
+    freeze!(meval.model, :QSOcont)
+    c = meval.model[:QSOcont]
+    d = meval.cevals[:QSOcont]
     initialnorm = c.norm.val
     if c.norm.val > 0
         println("Cont. norm. (before): ", c.norm.val)
         scaling = 0.99
         while c.norm.val * scaling > c.norm.low
-            residuals = (GModelFit.last_eval(food.meval) - values(food.data)) ./ uncerts(food.data)
+            residuals = (GModelFit.last_eval(meval) - values(data)) ./ uncerts(data)
             ratio = count(residuals .< 0) / length(residuals)
             (ratio > 0.9)  &&  break
             (c.norm.val < (initialnorm / 5))  &&  break # give up
             c.norm.val *= scaling
-            scan_and_evaluate(food.meval)
+            scan_and_evaluate!(meval)
         end
         println("Cont. norm. (after) : ", c.norm.val)
     else
         println("Skipping cont. renormalization")
     end
-    scan_and_evaluate(food.meval)
+    scan_and_evaluate!(meval)
 end
 
 
-function guess_norm_factor!(recipe::CRecipe{<: QSOGeneric}, food::Food, name::Symbol; quantile=0.95)
-    @assert food.model[name].norm.val != 0
-    m = GModelFit.last_eval(food.meval, name)
+function guess_norm_factor!(recipe::CRecipe{<: QSOGeneric}, meval::GModelFit.ModelEval, data::Measures{1}, name::Symbol; quantile=0.95)
+    @assert meval.model[name].norm.val != 0
+    m = GModelFit.last_eval(meval, name)
     c = cumsum(m)
     @assert maximum(c) != 0. "Model for $name evaluates to zero over the whole domain"
     c ./= maximum(c)
@@ -140,24 +155,24 @@ function guess_norm_factor!(recipe::CRecipe{<: QSOGeneric}, food::Food, name::Sy
     if i1 >= i2
         return #Can't calculate normalization for component
     end
-    r = values(food.data) - GModelFit.last_eval(food.meval)
-    ratio = food.model[name].norm.val / sum(m[i1:i2])
+    r = values(data) - GModelFit.last_eval(meval)
+    ratio = meval.model[name].norm.val / sum(m[i1:i2])
     off = sum(r[i1:i2]) * ratio
-    food.model[name].norm.val += off
+    meval.model[name].norm.val += off
     @assert !isnan(off) "Norm. offset is NaN for $name"
-    if food.model[name].norm.val < 0  # ensure line has positive normalization
-        food.model[name].norm.val = abs(off)
+    if meval.model[name].norm.val < 0  # ensure line has positive normalization
+        meval.model[name].norm.val = abs(off)
     end
 end
 
 
-function add_emission_lines!(recipe::CRecipe{<: QSOGeneric}, food::Food)
+function add_emission_lines!(recipe::CRecipe{<: QSOGeneric}, meval::GModelFit.ModelEval, data::Measures{1})
     @track_recipe
     groups = OrderedDict{Symbol, Vector{Symbol}}()
 
     # Create model components
     for (cname, line) in recipe.lines
-        food.model[cname] = line.comp
+        meval.model[cname] = line.comp
         haskey(groups, line.group)  ||  (groups[line.group] = Vector{Symbol}())
         push!(groups[line.group], cname)
     end
@@ -165,46 +180,46 @@ function add_emission_lines!(recipe::CRecipe{<: QSOGeneric}, food::Food)
     # Create reducers for groups
     for (group, lnames) in groups
         @assert group in [:BroadLines, :NarrowLines, :VeryBroadLines] "Unexpected group for emission lines: $group"
-        food.model[group] = SumReducer(lnames)
-        push!(food.model[:main].list, group)
+        meval.model[group] = SumReducer(lnames)
+        push!(meval.model[:main].list, group)
     end
-    scan_and_evaluate(food.meval)
+    scan_and_evaluate!(meval)
 
     # Guess normalizations
     for group in [:BroadLines, :NarrowLines, :VeryBroadLines]  # Note: order is important
         if group in keys(groups)
             for cname in groups[group]
-                guess_norm_factor!(recipe, food, cname)
+                guess_norm_factor!(recipe, meval, data, cname)
             end
         end
     end
 end
 
 
-function add_nuisance_lines!(recipe::CRecipe{<: QSOGeneric}, food::Food)
+function add_nuisance_lines!(recipe::CRecipe{<: QSOGeneric}, meval::GModelFit.ModelEval, data::Measures{1})
     @track_recipe
     (recipe.n_nuisance > 0)  ||  (return nothing)
 
     # Prepare nuisance line components
     for i in 1:recipe.n_nuisance
-        food.model[Symbol(:nuisance, i)] = line_component(recipe, 3000., NuisanceLine)
+        meval.model[Symbol(:nuisance, i)] = line_component(recipe, 3000., NuisanceLine)
     end
-    food.model[QSFit.line_group(recipe, NuisanceLine)] = SumReducer([Symbol(:nuisance, i) for i in 1:recipe.n_nuisance])
-    push!(food.model[:main].list, QSFit.line_group(recipe, NuisanceLine))
-    scan_and_evaluate(food.meval)
+    meval.model[QSFit.line_group(recipe, NuisanceLine)] = SumReducer([Symbol(:nuisance, i) for i in 1:recipe.n_nuisance])
+    push!(meval.model[:main].list, QSFit.line_group(recipe, NuisanceLine))
+    scan_and_evaluate!(meval)
     for j in 1:recipe.n_nuisance
-        freeze!(food.model, Symbol(:nuisance, j))
+        freeze!(meval.model, Symbol(:nuisance, j))
     end
-    scan_and_evaluate(food.meval)
+    scan_and_evaluate!(meval)
 
     # Set "nuisance" line center wavelength where there is a maximum in
     # the fit residuals, and re-run a fit.
-    λ = coords(food.domain)
+    λ = coords(meval.domain)
     λnuisance = Vector{Float64}()
     while true
         (length(λnuisance) >= recipe.n_nuisance)  &&  break
-        scan_and_evaluate(food.meval)
-        Δ = (values(food.data) - GModelFit.last_eval(food.meval)) ./ uncerts(food.data)
+        scan_and_evaluate!(meval)
+        Δ = (values(data) - GModelFit.last_eval(meval)) ./ uncerts(data)
 
         # Avoid considering again the same region (within 1A) TODO: within resolution
         for l in λnuisance
@@ -225,48 +240,48 @@ function add_nuisance_lines!(recipe::CRecipe{<: QSOGeneric}, food::Food)
         push!(λnuisance, λ[iadd])
 
         cname = Symbol(:nuisance, length(λnuisance))
-        food.model[cname].norm.val = 1.
-        food.model[cname].center.val  = λ[iadd]
+        meval.model[cname].norm.val = 1.
+        meval.model[cname].center.val  = λ[iadd]
 
         # Allow to shift by a quantity equal to ...
         @assert recipe.nuisance_maxoffset_from_guess > 0
-        food.model[cname].center.low  = λ[iadd] * (1 - recipe.nuisance_maxoffset_from_guess / 3e5)
-        food.model[cname].center.high = λ[iadd] * (1 + recipe.nuisance_maxoffset_from_guess / 3e5)
+        meval.model[cname].center.low  = λ[iadd] * (1 - recipe.nuisance_maxoffset_from_guess / 3e5)
+        meval.model[cname].center.high = λ[iadd] * (1 + recipe.nuisance_maxoffset_from_guess / 3e5)
 
         # In any case, we must stay out of avoidance regions
         for rr in recipe.nuisance_avoid
             @assert !(rr[1] .< λ[iadd] .< rr[2])
             if rr[1] .>= λ[iadd]
-                food.model[cname].center.high = min(food.model[cname].center.high, rr[1])
+                meval.model[cname].center.high = min(meval.model[cname].center.high, rr[1])
             end
             if rr[2] .<= λ[iadd]
-                food.model[cname].center.low  = max(food.model[cname].center.low, rr[2])
+                meval.model[cname].center.low  = max(meval.model[cname].center.low, rr[2])
             end
         end
 
-        thaw!(food.model, cname);     scan_and_evaluate(food.meval)
-        fit!(recipe, food)
-        freeze!(food.model, cname);   scan_and_evaluate(food.meval)
+        thaw!(meval.model, cname);     scan_and_evaluate!(meval)
+        fit!(recipe, meval, data)
+        freeze!(meval.model, cname);   scan_and_evaluate!(meval)
     end
-    scan_and_evaluate(food.meval)
+    scan_and_evaluate!(meval)
 end
 
 
-function neglect_weak_features!(recipe::CRecipe{<: QSOGeneric}, food::Food)
+function neglect_weak_features!(recipe::CRecipe{<: QSOGeneric}, meval::GModelFit.ModelEval, data::Measures{1})
     @track_recipe
     # Disable "nuisance" lines whose normalization uncertainty is larger
     # than X times the normalization
     needs_fitting = false
     for ii in 1:recipe.n_nuisance
         cname = Symbol(:nuisance, ii)
-        isfreezed(food.model, cname)  &&  continue
-        if food.model[cname].norm.val == 0.
-            freeze!(food.model, cname)
+        isfreezed(meval.model, cname)  &&  continue
+        if meval.model[cname].norm.val == 0.
+            freeze!(meval.model, cname)
             needs_fitting = true
             println("Disabling $cname (norm. = 0)")
-        elseif food.model[cname].norm.unc / food.model[cname].norm.val > 3
-            food.model[cname].norm.val = 0.
-            freeze!(food.model, cname)
+        elseif meval.model[cname].norm.unc / meval.model[cname].norm.val > 3
+            meval.model[cname].norm.val = 0.
+            freeze!(meval.model, cname)
             needs_fitting = true
             println("Disabling $cname (unc. / norm. > 3)")
         end
@@ -278,6 +293,8 @@ end
 function preprocess_spec!(recipe::CRecipe{T}, spec::QSFit.Spectrum) where T <: QSOGeneric
     @track_recipe
     @invoke preprocess_spec!(recipe::CRecipe{<: AbstractRecipe}, spec)
+    recipe.spec = spec  # save spectrum for later use
+
     set_lines_dict!(recipe)
 
     spec.good[findall(spec.x .< recipe.wavelength_range[1])] .= false

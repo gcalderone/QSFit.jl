@@ -67,12 +67,12 @@ function set_lines_dict!(recipe::CRecipe{T}) where T <: Type1
 end
 
 
-function add_balmer_cont!(recipe::CRecipe{<: Type1}, food::Food)
+function add_balmer_cont!(recipe::CRecipe{<: Type1}, meval::GModelFit.ModelEval, data::Measures{1})
     @track_recipe
     if recipe.use_balmer
-        food.model[:Balmer] = QSFit.balmercont(0.1, 0.5)
-        push!(food.model[:Continuum].list, :Balmer)
-        c = food.model[:Balmer]
+        meval.model[:Balmer] = QSFit.balmercont(0.1, 0.5)
+        push!(meval.model[:Continuum].list, :Balmer)
+        c = meval.model[:Balmer]
         c.norm.val  = 0.1
         c.norm.fixed = false
         c.norm.high = 0.5
@@ -80,27 +80,27 @@ function add_balmer_cont!(recipe::CRecipe{<: Type1}, food::Food)
         c.ratio.fixed = false
         c.ratio.low  = 0.1
         c.ratio.high = 1
-        food.model[:Balmer].norm.patch = @fd (m, v) -> v * m[:QSOcont].norm
-        scan_and_evaluate(food.meval)
+        meval.model[:Balmer].norm.patch = @fd (m, v) -> v * m[:QSOcont].norm
+        scan_and_evaluate!(meval)
     end
 end
 
 
-function add_iron_uv!(recipe::CRecipe{<: Type1}, food::Food)
+function add_iron_uv!(recipe::CRecipe{<: Type1}, meval::GModelFit.ModelEval, data::Measures{1})
     @track_recipe
-    λ = coords(food.meval.domain)
+    λ = coords(meval.domain)
     if recipe.use_ironuv
         fwhm = recipe.Ironuv_fwhm
         comp = QSFit.ironuv(fwhm)
-        (_1, _2, coverage) = QSFit.spectral_coverage(λ, food.spec.resolution, comp)
+        (_1, _2, coverage) = QSFit.spectral_coverage(λ, recipe.spec.resolution, comp)
         threshold = get(recipe.min_spectral_coverage, :Ironuv, recipe.min_spectral_coverage[:default])
         if coverage >= threshold
-            food.model[:Ironuv] = comp
-            food.model[:Ironuv].norm.val = 1.
-            push!(food.model[:Iron].list, :Ironuv)
-            scan_and_evaluate(food.meval)
-            guess_norm_factor!(recipe, food, :Ironuv)
-            scan_and_evaluate(food.meval)
+            meval.model[:Ironuv] = comp
+            meval.model[:Ironuv].norm.val = 1.
+            push!(meval.model[:Iron].list, :Ironuv)
+            scan_and_evaluate!(meval)
+            guess_norm_factor!(recipe, meval, data, :Ironuv)
+            scan_and_evaluate!(meval)
         else
             println("Ignoring ironuv component (threshold: $threshold)")
         end
@@ -108,26 +108,26 @@ function add_iron_uv!(recipe::CRecipe{<: Type1}, food::Food)
 end
 
 
-function add_iron_opt!(recipe::CRecipe{<: Type1}, food::Food)
+function add_iron_opt!(recipe::CRecipe{<: Type1}, meval::GModelFit.ModelEval, data::Measures{1})
     @track_recipe
-    λ = coords(food.meval.domain)
+    λ = coords(meval.domain)
     if recipe.use_ironopt
         fwhm = recipe.Ironoptbr_fwhm
         comp = QSFit.ironopt_broad(fwhm)
-        (_1, _2, coverage) = QSFit.spectral_coverage(λ, food.spec.resolution, comp)
+        (_1, _2, coverage) = QSFit.spectral_coverage(λ, recipe.spec.resolution, comp)
         threshold = get(recipe.min_spectral_coverage, :Ironopt, recipe.min_spectral_coverage[:default])
         if coverage >= threshold
-            food.model[:Ironoptbr] = comp
-            food.model[:Ironoptbr].norm.val = 1 # TODO: guess a sensible value
+            meval.model[:Ironoptbr] = comp
+            meval.model[:Ironoptbr].norm.val = 1 # TODO: guess a sensible value
             fwhm = recipe.Ironoptna_fwhm
-            food.model[:Ironoptna] = QSFit.ironopt_narrow(fwhm)
-            food.model[:Ironoptna].norm.val = 1 # TODO: guess a sensible value
-            food.model[:Ironoptna].norm.fixed = false
-            push!(food.model[:Iron].list, :Ironoptbr)
-            push!(food.model[:Iron].list, :Ironoptna)
-            scan_and_evaluate(food.meval)
-            guess_norm_factor!(recipe, food, :Ironoptbr)
-            scan_and_evaluate(food.meval)
+            meval.model[:Ironoptna] = QSFit.ironopt_narrow(fwhm)
+            meval.model[:Ironoptna].norm.val = 1 # TODO: guess a sensible value
+            meval.model[:Ironoptna].norm.fixed = false
+            push!(meval.model[:Iron].list, :Ironoptbr)
+            push!(meval.model[:Iron].list, :Ironoptna)
+            scan_and_evaluate!(meval)
+            guess_norm_factor!(recipe, meval, data, :Ironoptbr)
+            scan_and_evaluate!(meval)
         else
             println("Ignoring ironopt component (threshold: $threshold)")
         end
@@ -135,9 +135,9 @@ function add_iron_opt!(recipe::CRecipe{<: Type1}, food::Food)
 end
 
 
-function add_patch_functs!(recipe::CRecipe{<: Type1}, food::Food)
+function add_patch_functs!(recipe::CRecipe{<: Type1}, meval::GModelFit.ModelEval, data::Measures{1})
     @track_recipe
-    model = food.model
+    model = meval.model
     # Patch parameters
     if haskey(model, :OIII_4959)  &&  haskey(model, :OIII_5007)
         # model[:OIII_4959].norm.patch = @fd m -> m[:OIII_5007].norm / 3
@@ -196,77 +196,77 @@ function add_patch_functs!(recipe::CRecipe{<: Type1}, food::Food)
 end
 
 
-function analyze(recipe::CRecipe{<: Type1}, food::Food)
+function analyze(recipe::CRecipe{T}, data::Measures{1}) where T <: Type1
     @track_recipe
-    food.model[:main] = SumReducer()
-    select_maincomp!(food.model, :main)
-    food.meval = GModelFit.ModelEval(food.model, domain(food.data))
+    model = Model(:main => SumReducer())
+    select_maincomp!(model, :main)
+    model[:Continuum] = SumReducer()
+    push!(model[:main].list, :Continuum)
+    meval = GModelFit.ModelEval(model, domain(data))
 
     println("\nFit continuum components...")
-    food.model[:Continuum] = SumReducer()
-    push!(food.model[:main].list, :Continuum)
-    add_qso_continuum!(recipe, food)
-    add_host_galaxy!(recipe, food)
-    add_balmer_cont!(recipe, food)
-    fit!(recipe, food)
-    renorm_cont!(recipe, food)
-    freeze!(food.model, :QSOcont)
-    haskey(food.model, :Galaxy)  &&  freeze!(food.model, :Galaxy)
-    haskey(food.model, :Balmer)  &&  freeze!(food.model, :Balmer)
-    scan_and_evaluate(food.meval)
+    add_qso_continuum!(recipe, meval, data)
+    add_host_galaxy!(recipe, meval, data)
+    add_balmer_cont!(recipe, meval, data)
+    fit!(recipe, meval, data)
+    renorm_cont!(recipe, meval, data)
+    freeze!(model, :QSOcont)
+    haskey(model, :Galaxy)  &&  freeze!(model, :Galaxy)
+    haskey(model, :Balmer)  &&  freeze!(model, :Balmer)
+    scan_and_evaluate!(meval)
 
     println("\nFit iron templates...")
-    food.model[:Iron] = SumReducer()
-    push!(food.model[:main].list, :Iron)
-    add_iron_uv!(recipe, food)
-    add_iron_opt!(recipe, food)
+    model[:Iron] = SumReducer()
+    push!(model[:main].list, :Iron)
+    add_iron_uv!(recipe, meval, data)
+    add_iron_opt!(recipe, meval, data)
 
-    if length(food.model[:Iron].list) > 0
-        fit!(recipe, food)
-        haskey(food.model, :Ironuv   )  &&  freeze!(food.model, :Ironuv)
-        haskey(food.model, :Ironoptbr)  &&  freeze!(food.model, :Ironoptbr)
-        haskey(food.model, :Ironoptna)  &&  freeze!(food.model, :Ironoptna)
+    if length(model[:Iron].list) > 0
+        fit!(recipe, meval, data)
+        haskey(model, :Ironuv   )  &&  freeze!(model, :Ironuv)
+        haskey(model, :Ironoptbr)  &&  freeze!(model, :Ironoptbr)
+        haskey(model, :Ironoptna)  &&  freeze!(model, :Ironoptna)
     end
-    scan_and_evaluate(food.meval)
+    scan_and_evaluate!(meval)
 
     println("\nFit known emission lines...")
     if (:lines in propertynames(recipe))  &&  (length(recipe.lines) > 0)
-        add_emission_lines!(recipe, food)
-        add_patch_functs!(recipe, food)
+        add_emission_lines!(recipe, meval, data)
+        add_patch_functs!(recipe, meval, data)
 
-        fit!(recipe, food)
+        fit!(recipe, meval, data)
         for cname in keys(recipe.lines)
-            freeze!(food.model, cname)
+            freeze!(model, cname)
         end
     end
 
     println("\nFit nuisance emission lines...")
-    add_nuisance_lines!(recipe, food)
+    add_nuisance_lines!(recipe, meval, data)
 
     println("\nLast run with all parameters free...")
-    thaw!(food.model, :QSOcont)
-    haskey(food.model, :Galaxy   )  &&  thaw!(food.model, :Galaxy)
-    haskey(food.model, :Balmer   )  &&  thaw!(food.model, :Balmer)
-    haskey(food.model, :Ironuv   )  &&  thaw!(food.model, :Ironuv)
-    haskey(food.model, :Ironoptbr)  &&  thaw!(food.model, :Ironoptbr)
-    haskey(food.model, :Ironoptna)  &&  thaw!(food.model, :Ironoptna)
+    thaw!(model, :QSOcont)
+    haskey(model, :Galaxy   )  &&  thaw!(model, :Galaxy)
+    haskey(model, :Balmer   )  &&  thaw!(model, :Balmer)
+    haskey(model, :Ironuv   )  &&  thaw!(model, :Ironuv)
+    haskey(model, :Ironoptbr)  &&  thaw!(model, :Ironoptbr)
+    haskey(model, :Ironoptna)  &&  thaw!(model, :Ironoptna)
     for cname in keys(recipe.lines)
-        thaw!(food.model, cname)
+        thaw!(model, cname)
     end
     for j in 1:recipe.n_nuisance
         cname = Symbol(:nuisance, j)
-        if food.model[cname].norm.val > 0
-            thaw!(food.model, cname)
+        if model[cname].norm.val > 0
+            thaw!(model, cname)
         else
-            freeze!(food.model, cname)
+            freeze!(model, cname)
         end
     end
-    scan_and_evaluate(food.meval)
-    bestfit, fsumm = fit!(recipe, food)
+    scan_and_evaluate!(meval)
+    bestfit, fsumm = fit!(recipe, meval, data)
 
-    if neglect_weak_features!(recipe, food)
+    if neglect_weak_features!(recipe, meval, data)
         println("\nRe-run fit...")
-        bestfit, fsumm = fit!(recipe, food)
+        bestfit, fsumm = fit!(recipe, meval, data)
     end
 
     return bestfit, fsumm

@@ -38,11 +38,11 @@ function set_lines_dict!(recipe::CRecipe{T}) where T <: Type2
 end
 
 
-function add_qso_continuum!(recipe::CRecipe{<: Type2}, food::Food)
+function add_qso_continuum!(recipe::CRecipe{<: Type2}, meval::GModelFit.ModelEval, data::Measures)
     @track_recipe
-    @invoke add_qso_continuum!(recipe::CRecipe{<: QSOGeneric}, food)
-    food.model[:QSOcont].alpha.val = -1.8
-    GModelFit.scan_model!(food.meval)
+    @invoke add_qso_continuum!(recipe::CRecipe{<: QSOGeneric}, meval, data)
+    meval.model[:QSOcont].alpha.val = -1.8
+    scan_and_evaluate!(meval)
 end
 
 
@@ -60,87 +60,89 @@ function set_constraints!(recipe::CRecipe{<: Type2}, ::Type{NuisanceLine}, comp:
 end
 
 
-function add_patch_functs!(recipe::CRecipe{<: Type2}, food::Food)
+function add_patch_functs!(recipe::CRecipe{<: Type2}, meval::GModelFit.ModelEval, data::Measures)
     @track_recipe
+    model = meval.model
     # Patch parameters
-    if haskey(food.model, :OIII_4959) && haskey(food.model, :OIII_5007)
-        # food.model[:OIII_4959].norm.patch = @fd m -> m[:OIII_5007].norm / 3
-        food.model[:OIII_4959].voff.patch = :OIII_5007
+    if haskey(model, :OIII_4959) && haskey(model, :OIII_5007)
+        # model[:OIII_4959].norm.patch = @fd m -> m[:OIII_5007].norm / 3
+        model[:OIII_4959].voff.patch = :OIII_5007
     end
-    if haskey(food.model, :OIII_5007) && haskey(food.model, :OIII_5007_bw)
-        food.model[:OIII_5007_bw].voff.patch = @fd (m, v) -> v + m[:OIII_5007].voff
-        food.model[:OIII_5007_bw].fwhm.patch = @fd (m, v) -> v + m[:OIII_5007].fwhm
-        #food.model[:OIII_5007_bw].norm.patch = @fd (m, v) -> v + m[:OIII_5007].norm
+    if haskey(model, :OIII_5007) && haskey(model, :OIII_5007_bw)
+        model[:OIII_5007_bw].voff.patch = @fd (m, v) -> v + m[:OIII_5007].voff
+        model[:OIII_5007_bw].fwhm.patch = @fd (m, v) -> v + m[:OIII_5007].fwhm
+        #model[:OIII_5007_bw].norm.patch = @fd (m, v) -> v + m[:OIII_5007].norm
     end
-    if haskey(food.model, :OIII_4959_bw) && haskey(food.model, :OIII_5007_bw)
-        food.model[:OIII_4959_bw].voff.patch = :OIII_5007_bw
-        food.model[:OIII_4959_bw].fwhm.patch = :OIII_5007_bw
-        # food.model[:OIII_4959_bw].norm.patch = @fd m -> m[:OIII_5007_bw].norm / 3
+    if haskey(model, :OIII_4959_bw) && haskey(model, :OIII_5007_bw)
+        model[:OIII_4959_bw].voff.patch = :OIII_5007_bw
+        model[:OIII_4959_bw].fwhm.patch = :OIII_5007_bw
+        # model[:OIII_4959_bw].norm.patch = @fd m -> m[:OIII_5007_bw].norm / 3
     end
-    if haskey(food.model, :OI_6300) && haskey(food.model, :OI_6364)
-        # food.model[:OI_6300].norm.patch = @fd m -> m[:OI_6364].norm / 3
-        food.model[:OI_6300].voff.patch = :OI_6364
+    if haskey(model, :OI_6300) && haskey(model, :OI_6364)
+        # model[:OI_6300].norm.patch = @fd m -> m[:OI_6364].norm / 3
+        model[:OI_6300].voff.patch = :OI_6364
     end
-    if haskey(food.model, :NII_6549) && haskey(food.model, :NII_6583)
-        # food.model[:NII_6549].norm.patch = @fd m -> m[:NII_6583].norm / 3
-        food.model[:NII_6549].voff.patch = :NII_6583
+    if haskey(model, :NII_6549) && haskey(model, :NII_6583)
+        # model[:NII_6549].norm.patch = @fd m -> m[:NII_6583].norm / 3
+        model[:NII_6549].voff.patch = :NII_6583
     end
-    if haskey(food.model, :SII_6716) && haskey(food.model, :SII_6731)
-        # food.model[:SII_6716].norm.patch = @fd m -> m[:SII_6731].norm / 3
-        food.model[:SII_6716].voff.patch = :SII_6731
+    if haskey(model, :SII_6716) && haskey(model, :SII_6731)
+        # model[:SII_6716].norm.patch = @fd m -> m[:SII_6731].norm / 3
+        model[:SII_6716].voff.patch = :SII_6731
     end
 end
 
 
-function analyze(recipe::CRecipe{<: Type2}, food::Food)
+function analyze(recipe::CRecipe{<: Type2}, data::Measures{1})
     @track_recipe
-    food.model[:main] = SumReducer()
-    food.meval = GModelFit.ModelEval(food.model, domain(food.data))
+    model = Model(:main => SumReducer())
+    select_maincomp!(model, :main)
+    meval = GModelFit.ModelEval(model, domain(data))
 
     println("\nFit continuum components...")
-    food.model[:Continuum] = SumReducer()
-    push!(food.model[:main].list, :Continuum)
-    add_qso_continuum!(recipe, food)
-    add_host_galaxy!(recipe, food)
-    fit!(recipe, food)
-    renorm_cont!(recipe, food)
-    freeze!(food.model, :QSOcont)
-    haskey(food.model, :Galaxy)  &&  freeze!(food.model, :Galaxy)
-    GModelFit.scan_model!(food.meval)
+    model[:Continuum] = SumReducer()
+    push!(model[:main].list, :Continuum)
+    add_qso_continuum!(recipe, meval, data)
+    add_host_galaxy!(recipe, meval, data)
+    fit!(recipe, meval, data)
+    renorm_cont!(recipe, meval, data)
+    freeze!(model, :QSOcont)
+    haskey(model, :Galaxy)  &&  freeze!(model, :Galaxy)
+    scan_and_evaluate!(meval)
 
     if (:lines in propertynames(recipe))  &&  (length(recipe.lines) > 0)
         println("\nFit known emission lines...")
-        add_emission_lines!(recipe, food)
-        add_patch_functs!(recipe, food)
+        add_emission_lines!(recipe, meval, data)
+        add_patch_functs!(recipe, meval, data)
 
-        fit!(recipe, food)
+        fit!(recipe, meval, data)
         for cname in keys(recipe.lines)
-            freeze!(food.model, cname)
+            freeze!(model, cname)
         end
     end
 
     println("\nFit nuisance emission lines...")
-    add_nuisance_lines!(recipe, food)
+    add_nuisance_lines!(recipe, meval, data)
 
     println("\nLast run with all parameters free...")
-    thaw!(food.model, :QSOcont)
-    haskey(food.model, :Galaxy   )  &&  thaw!(food.model, :Galaxy)
+    thaw!(model, :QSOcont)
+    haskey(model, :Galaxy   )  &&  thaw!(model, :Galaxy)
     for cname in keys(recipe.lines)
-        thaw!(food.model, cname)
+        thaw!(model, cname)
     end
     for j in 1:recipe.n_nuisance
         cname = Symbol(:nuisance, j)
-        if food.model[cname].norm.val > 0
-            thaw!(food.model, cname)
+        if model[cname].norm.val > 0
+            thaw!(model, cname)
         else
-            freeze!(food.model, cname)
+            freeze!(model, cname)
         end
     end
-    bestfit, fsumm = fit!(recipe, food)
+    bestfit, fsumm = fit!(recipe, meval, data)
 
-    if neglect_weak_features!(recipe, food)
+    if neglect_weak_features!(recipe, meval, data)
         println("\nRe-run fit...")
-        bestfit, fsumm = fit!(recipe, food)
+        bestfit, fsumm = fit!(recipe, meval, data)
     end
 
     return bestfit, fsumm

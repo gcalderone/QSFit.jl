@@ -76,7 +76,7 @@ function show(io::IO, recipe::CRecipe)
     tmp = IOBuffer()
     show(tmp, "text/plain", getfield(recipe, :dict))
     s = String(take!(tmp))
-    s = join(split(s, "\n")[2:end], "\n")
+    s = join(split(s, "\n")[2:end], "\n")  # TODO: sort
     println(io, s)
 end
 
@@ -92,50 +92,36 @@ function init_recipe!(recipe::CRecipe{T}) where T <: AbstractRecipe
 end
 
 
-# ====================================================================
-mutable struct Food
-    ref::Bool
-    origspec::Spectrum
-    spec::Spectrum
-    domain::Domain{1}
-    data::Measures{1}
-    model::Model
-    meval::Union{Nothing, GModelFit.ModelEval}
-    dict::OrderedDict{Symbol, Any}
-
-    function Food(recipe::CRecipe, spec::Spectrum; ref=false)
-        @track_recipe
-        pspec = deepcopy(spec)
-        preprocess_spec!(recipe, pspec)
-        ii = findall(pspec.good)
-        dom = Domain(pspec.x[ii])
-        data = Measures(dom, pspec.y[ii], pspec.err[ii])
-        return new(ref, spec, pspec, dom, data, Model(), nothing, OrderedDict{Symbol, Any}())
-    end
-end
-
 
 # ====================================================================
 struct Results
     timestamp::DateTime
     elapsed::Float64
     spec::Spectrum
-    data::Measures{1}
+    data::GModelFit.AbstractMeasures
     bestfit::GModelFit.ModelSnapshot
     fsumm::GModelFit.FitSummary
     reduced::OrderedDict{Symbol, Any}
 end
 
-function show(io::IO, res::Results)
+struct MultiResults
+    timestamp::DateTime
+    elapsed::Float64
+    spec::Vector{Spectrum}
+    data::Vector{<: GModelFit.AbstractMeasures}
+    bestfit::Vector{GModelFit.ModelSnapshot}
+    fsumm::GModelFit.FitSummary
+    reduced::Vector{OrderedDict{Symbol, Any}}
+end
+
+function show(io::IO, res::Union{Results, MultiResults})
     show(io, res.fsumm)
     println(io)
 end
 
-
 # ====================================================================
 function preprocess_spec!(recipe::CRecipe{<: AbstractRecipe}, spec::Spectrum)
     @track_recipe
-    show(spec)
     if !ismissing(recipe.Av)
         @printf "      Av: %8.3f  (%s)\n" recipe.Av join(split(string(recipe.extlaw), "\n"), ",")
         deredden!(spec, recipe.extlaw, recipe.Av)
@@ -151,29 +137,63 @@ function preprocess_spec!(recipe::CRecipe{<: AbstractRecipe}, spec::Spectrum)
 end
 
 
-reduce(recipe::CRecipe{<: AbstractRecipe}, bestfit::GModelFit.ModelSnapshot) = OrderedDict{Symbol, Any}()
+function spec2data(recipe::CRecipe{<: AbstractRecipe}, spec::Spectrum)
+    ii = findall(spec.good)
+    dom = Domain(spec.x[ii])
+    data = Measures(dom, spec.y[ii], spec.err[ii])
+    return data
+end
 
-function analyze(_recipe::CRecipe{T}, spec::Spectrum) where T <: AbstractRecipe
+
+function analyze(_recipe::CRecipe{<: AbstractRecipe}, _spec::Spectrum)
     @track_recipe
+    tstart = now();
     recipe = deepcopy(_recipe)
-    timestamp = now()
-    starttime = time()
+    spec = deepcopy(_spec)
 
-    println("Timestamp: ", timestamp)
-    display(recipe)
+    println("Timestamp: ", tstart)
+    display(recipe);
     println()
+    show(spec)
 
-    food = Food(recipe, spec)
-    bestfit, fsumm = analyze(recipe, food)
+    preprocess_spec!(recipe, spec)
+    data = spec2data(recipe, spec)
+    bestfit, fsumm = analyze(recipe, data)
     reduced = reduce(recipe, bestfit)
 
-    out = Results(timestamp,
-                  time() - starttime,
-                  food.spec, food.data,
-                  bestfit, fsumm, reduced)
+    out = Results(tstart,
+                  Dates.value(convert(Millisecond, now() - tstart)) / 1000.,
+                  spec, data, bestfit, fsumm, reduced)
     println("\nTotal elapsed time: $(out.elapsed) s")
     return out
 end
+
+function analyze(_recipe::CRecipe{<: AbstractRecipe}, _specs::Vector{Spectrum})
+    @track_recipe
+    tstart = now();
+    recipe = deepcopy(_recipe)
+    specs = deepcopy(_specs)
+
+    println("Timestamp: ", tstart)
+    display(recipe);
+    println()
+    for i in 1:length(specs)
+        show(specs[i])
+    end
+
+    preprocess_spec!.(Ref(recipe), recipe._specs)
+    data = spec2data.(Ref(recipe), recipe._specs)
+    bestfit, fsumm = analyze(recipe, data)
+    reduced = [reduce(recipe, b) for b in bestfit]
+
+    out = MultiResults(tstart,
+                       Dates.value(convert(Millisecond, now() - tstart)) / 1000.,
+                       specs, data, bestfit, fsumm, reduced)
+    println("\nTotal elapsed time: $(out.elapsed) s")
+    return out
+end
+
+reduce(recipe::CRecipe{<: AbstractRecipe}, bestfit::GModelFit.ModelSnapshot) = OrderedDict{Symbol, Any}()
 
 include("SpectralLines.jl")
 include("recipes/LineFitRecipes.jl")
