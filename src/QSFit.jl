@@ -76,7 +76,7 @@ function show(io::IO, recipe::CRecipe)
     tmp = IOBuffer()
     show(tmp, "text/plain", getfield(recipe, :dict))
     s = String(take!(tmp))
-    s = join(split(s, "\n")[2:end], "\n")  # TODO: sort
+    s = join(sort(split(s, "\n")[2:end]), "\n")
     println(io, s)
 end
 
