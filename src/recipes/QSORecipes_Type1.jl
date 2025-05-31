@@ -67,12 +67,12 @@ function set_lines_dict!(recipe::CRecipe{T}) where T <: Type1
 end
 
 
-function add_balmer_cont!(recipe::CRecipe{<: Type1}, meval::GModelFit.ModelEval, data::Measures{1})
+function add_balmer_cont!(recipe::CRecipe{<: Type1}, meval::GModelFit.MEval, data::Measures{1})
     @track_recipe
     if recipe.use_balmer
-        meval.model[:Balmer] = QSFit.balmercont(0.1, 0.5)
-        push!(meval.model[:Continuum].list, :Balmer)
-        c = meval.model[:Balmer]
+        getmodel(meval)[:Balmer] = QSFit.balmercont(0.1, 0.5)
+        push!(getmodel(meval)[:Continuum].list, :Balmer)
+        c = getmodel(meval)[:Balmer]
         c.norm.val  = 0.1
         c.norm.fixed = false
         c.norm.high = 0.5
@@ -80,24 +80,24 @@ function add_balmer_cont!(recipe::CRecipe{<: Type1}, meval::GModelFit.ModelEval,
         c.ratio.fixed = false
         c.ratio.low  = 0.1
         c.ratio.high = 1
-        meval.model[:Balmer].norm.patch = @fd (m, v) -> v * m[:QSOcont].norm
+        getmodel(meval)[:Balmer].norm.patch = @fd (m, v) -> v * m[:QSOcont].norm
         scan_and_evaluate!(meval)
     end
 end
 
 
-function add_iron_uv!(recipe::CRecipe{<: Type1}, meval::GModelFit.ModelEval, data::Measures{1})
+function add_iron_uv!(recipe::CRecipe{<: Type1}, meval::GModelFit.MEval, data::Measures{1})
     @track_recipe
-    λ = coords(meval.domain)
+    λ = coords(getdomain(meval))
     if recipe.use_ironuv
         fwhm = recipe.Ironuv_fwhm
         comp = QSFit.ironuv(fwhm)
         (_1, _2, coverage) = QSFit.spectral_coverage(λ, recipe.spec.resolution, comp)
         threshold = get(recipe.min_spectral_coverage, :Ironuv, recipe.min_spectral_coverage[:default])
         if coverage >= threshold
-            meval.model[:Ironuv] = comp
-            meval.model[:Ironuv].norm.val = 1.
-            push!(meval.model[:Iron].list, :Ironuv)
+            getmodel(meval)[:Ironuv] = comp
+            getmodel(meval)[:Ironuv].norm.val = 1.
+            push!(getmodel(meval)[:Iron].list, :Ironuv)
             scan_and_evaluate!(meval)
             guess_norm_factor!(recipe, meval, data, :Ironuv)
             scan_and_evaluate!(meval)
@@ -108,23 +108,23 @@ function add_iron_uv!(recipe::CRecipe{<: Type1}, meval::GModelFit.ModelEval, dat
 end
 
 
-function add_iron_opt!(recipe::CRecipe{<: Type1}, meval::GModelFit.ModelEval, data::Measures{1})
+function add_iron_opt!(recipe::CRecipe{<: Type1}, meval::GModelFit.MEval, data::Measures{1})
     @track_recipe
-    λ = coords(meval.domain)
+    λ = coords(getdomain(meval))
     if recipe.use_ironopt
         fwhm = recipe.Ironoptbr_fwhm
         comp = QSFit.ironopt_broad(fwhm)
         (_1, _2, coverage) = QSFit.spectral_coverage(λ, recipe.spec.resolution, comp)
         threshold = get(recipe.min_spectral_coverage, :Ironopt, recipe.min_spectral_coverage[:default])
         if coverage >= threshold
-            meval.model[:Ironoptbr] = comp
-            meval.model[:Ironoptbr].norm.val = 1 # TODO: guess a sensible value
+            getmodel(meval)[:Ironoptbr] = comp
+            getmodel(meval)[:Ironoptbr].norm.val = 1 # TODO: guess a sensible value
             fwhm = recipe.Ironoptna_fwhm
-            meval.model[:Ironoptna] = QSFit.ironopt_narrow(fwhm)
-            meval.model[:Ironoptna].norm.val = 1 # TODO: guess a sensible value
-            meval.model[:Ironoptna].norm.fixed = false
-            push!(meval.model[:Iron].list, :Ironoptbr)
-            push!(meval.model[:Iron].list, :Ironoptna)
+            getmodel(meval)[:Ironoptna] = QSFit.ironopt_narrow(fwhm)
+            getmodel(meval)[:Ironoptna].norm.val = 1 # TODO: guess a sensible value
+            getmodel(meval)[:Ironoptna].norm.fixed = false
+            push!(getmodel(meval)[:Iron].list, :Ironoptbr)
+            push!(getmodel(meval)[:Iron].list, :Ironoptna)
             scan_and_evaluate!(meval)
             guess_norm_factor!(recipe, meval, data, :Ironoptbr)
             scan_and_evaluate!(meval)
@@ -135,9 +135,9 @@ function add_iron_opt!(recipe::CRecipe{<: Type1}, meval::GModelFit.ModelEval, da
 end
 
 
-function add_patch_functs!(recipe::CRecipe{<: Type1}, meval::GModelFit.ModelEval, data::Measures{1})
+function add_patch_functs!(recipe::CRecipe{<: Type1}, meval::GModelFit.MEval, data::Measures{1})
     @track_recipe
-    model = meval.model
+    model = getmodel(meval)
     # Patch parameters
     if haskey(model, :OIII_4959)  &&  haskey(model, :OIII_5007)
         # model[:OIII_4959].norm.patch = @fd m -> m[:OIII_5007].norm / 3
@@ -202,7 +202,7 @@ function analyze(recipe::CRecipe{T}, data::Measures{1}) where T <: Type1
     select_maincomp!(model, :main)
     model[:Continuum] = SumReducer()
     push!(model[:main].list, :Continuum)
-    meval = GModelFit.ModelEval(model, domain(data))
+    meval = GModelFit.MEval(model, domain(data))
 
     println("\nFit continuum components...")
     add_qso_continuum!(recipe, meval, data)

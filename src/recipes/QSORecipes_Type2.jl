@@ -38,10 +38,10 @@ function set_lines_dict!(recipe::CRecipe{T}) where T <: Type2
 end
 
 
-function add_qso_continuum!(recipe::CRecipe{<: Type2}, meval::GModelFit.ModelEval, data::Measures)
+function add_qso_continuum!(recipe::CRecipe{<: Type2}, meval::GModelFit.MEval, data::Measures)
     @track_recipe
     @invoke add_qso_continuum!(recipe::CRecipe{<: QSOGeneric}, meval, data)
-    meval.model[:QSOcont].alpha.val = -1.8
+    getmodel(meval)[:QSOcont].alpha.val = -1.8
     scan_and_evaluate!(meval)
 end
 
@@ -60,9 +60,9 @@ function set_constraints!(recipe::CRecipe{<: Type2}, ::Type{NuisanceLine}, comp:
 end
 
 
-function add_patch_functs!(recipe::CRecipe{<: Type2}, meval::GModelFit.ModelEval, data::Measures)
+function add_patch_functs!(recipe::CRecipe{<: Type2}, meval::GModelFit.MEval, data::Measures)
     @track_recipe
-    model = meval.model
+    model = getmodel(meval)
     # Patch parameters
     if haskey(model, :OIII_4959) && haskey(model, :OIII_5007)
         # model[:OIII_4959].norm.patch = @fd m -> m[:OIII_5007].norm / 3
@@ -97,7 +97,7 @@ function analyze(recipe::CRecipe{<: Type2}, data::Measures{1})
     @track_recipe
     model = Model(:main => SumReducer())
     select_maincomp!(model, :main)
-    meval = GModelFit.ModelEval(model, domain(data))
+    meval = GModelFit.MEval(model, domain(data))
 
     println("\nFit continuum components...")
     model[:Continuum] = SumReducer()
