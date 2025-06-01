@@ -67,11 +67,11 @@ function set_lines_dict!(recipe::CRecipe{T}) where T <: Type1
 end
 
 
-function add_balmer_cont!(recipe::CRecipe{<: QSOGeneric}, multi::GModelFit.MEval, data::Vector{Measures{1}})
-    [add_balmer_cont!(recipe, SingleEval{1}(multi, i), data[i]) for i in 1:length(multi)]
-    scan_and_evaluate!(multi)
+function add_balmer_cont!(recipe::CRecipe{<: QSOGeneric}, dm::Vector{DataModel{N}}) where N
+    add_balmer_cont!.(Ref(recipe), dm)
+    scan_and_evaluate!(dm)
 end
-function add_balmer_cont!(recipe::CRecipe{<: Type1}, meval::SingleEval, data::Measures{1})
+function add_balmer_cont!(recipe::CRecipe{<: Type1}, meval::DataModel)
     @track_recipe
     if recipe.use_balmer
         getmodel(meval)[:Balmer] = QSFit.balmercont(0.1, 0.5)
@@ -89,10 +89,10 @@ function add_balmer_cont!(recipe::CRecipe{<: Type1}, meval::SingleEval, data::Me
 end
 
 
-function add_iron_uv!(recipe::CRecipe{<: QSOGeneric}, multi::GModelFit.MEval, data::Vector{Measures{1}})
-    [add_iron_uv!(recipe, SingleEval{1}(multi, i), data[i]) for i in 1:length(multi)]
+function add_iron_uv!(recipe::CRecipe{<: QSOGeneric}, dm::Vector{DataModel{N}}) where N
+    add_iron_uv!.(Ref(recipe), dm)
 end
-function add_iron_uv!(recipe::CRecipe{<: Type1}, meval::SingleEval, data::Measures{1})
+function add_iron_uv!(recipe::CRecipe{<: Type1}, meval::DataModel)
     @track_recipe
     λ = coords(getdomain(meval))
     if recipe.use_ironuv
@@ -105,7 +105,7 @@ function add_iron_uv!(recipe::CRecipe{<: Type1}, meval::SingleEval, data::Measur
             getmodel(meval)[:Ironuv].norm.val = 1.
             push!(getmodel(meval)[:Iron].list, :Ironuv)
             scan_and_evaluate!(meval)
-            guess_norm_factor!(recipe, meval, data, :Ironuv)
+            guess_norm_factor!(recipe, meval, :Ironuv)
             scan_and_evaluate!(meval)
         else
             println("Ignoring ironuv component (threshold: $threshold)")
@@ -114,11 +114,11 @@ function add_iron_uv!(recipe::CRecipe{<: Type1}, meval::SingleEval, data::Measur
 end
 
 
-function add_iron_opt!(recipe::CRecipe{<: QSOGeneric}, multi::GModelFit.MEval, data::Vector{Measures{1}})
-    [add_iron_opt!(recipe, SingleEval{1}(multi, i), data[i]) for i in 1:length(multi)]
-    scan_and_evaluate!(multi)
+function add_iron_opt!(recipe::CRecipe{<: QSOGeneric}, dm::Vector{DataModel{N}}) where N
+    add_iron_opt!.(Ref(recipe), dm)
+    scan_and_evaluate!(dm)
 end
-function add_iron_opt!(recipe::CRecipe{<: Type1}, meval::SingleEval, data::Measures{1})
+function add_iron_opt!(recipe::CRecipe{<: Type1}, meval::DataModel)
     @track_recipe
     λ = coords(getdomain(meval))
     if recipe.use_ironopt
@@ -136,7 +136,7 @@ function add_iron_opt!(recipe::CRecipe{<: Type1}, meval::SingleEval, data::Measu
             push!(getmodel(meval)[:Iron].list, :Ironoptbr)
             push!(getmodel(meval)[:Iron].list, :Ironoptna)
             scan_and_evaluate!(meval)
-            guess_norm_factor!(recipe, meval, data, :Ironoptbr)
+            guess_norm_factor!(recipe, meval, :Ironoptbr)
         else
             println("Ignoring ironopt component (threshold: $threshold)")
         end
@@ -144,10 +144,10 @@ function add_iron_opt!(recipe::CRecipe{<: Type1}, meval::SingleEval, data::Measu
 end
 
 
-function add_patch_functs!(recipe::CRecipe{<: QSOGeneric}, multi::GModelFit.MEval, data::Vector{Measures{1}})
-    [add_patch_functs!(recipe, SingleEval{1}(multi, i), data[i]) for i in 1:length(multi)]
+function add_patch_functs!(recipe::CRecipe{<: QSOGeneric}, dm::Vector{DataModel{N}}) where N
+    add_patch_functs!.(Ref(recipe), dm)
 end
-function add_patch_functs!(recipe::CRecipe{<: Type1}, meval::SingleEval, data::Measures{1})
+function add_patch_functs!(recipe::CRecipe{<: Type1}, meval::DataModel)
     @track_recipe
     model = getmodel(meval)
     # Patch parameters
@@ -215,45 +215,46 @@ function analyze(recipe::CRecipe{T}, data::Vector{Measures{1}}) where T <: Type1
     model[:Continuum] = SumReducer()
     push!(model[:main].list, :Continuum)
     meval = GModelFit.MEval(model, domain(data[1]))
+    dm = [DataModel(meval, data, 1)]
 
     println("\nFit continuum components...")
-    add_qso_continuum!(recipe, meval, data)
-    add_host_galaxy!(recipe, meval, data)
-    add_balmer_cont!(recipe, meval, data)
-    fit!(recipe, meval, data)
-    renorm_cont!(recipe, meval, data)
+    add_qso_continuum!(recipe, dm)
+    add_host_galaxy!(recipe, dm)
+    add_balmer_cont!(recipe, dm)
+    fit!(recipe, dm)
+    renorm_cont!(recipe, dm)
     freeze!(model, :QSOcont)
     haskey(model, :Galaxy)  &&  freeze!(model, :Galaxy)
     haskey(model, :Balmer)  &&  freeze!(model, :Balmer)
-    scan_and_evaluate!(meval)
+    scan_and_evaluate!(dm)
 
     println("\nFit iron templates...")
     model[:Iron] = SumReducer()
     push!(model[:main].list, :Iron)
-    add_iron_uv!(recipe, meval, data)
-    add_iron_opt!(recipe, meval, data)
+    add_iron_uv!(recipe, dm)
+    add_iron_opt!(recipe, dm)
 
     if length(model[:Iron].list) > 0
-        fit!(recipe, meval, data)
+        fit!(recipe, dm)
         haskey(model, :Ironuv   )  &&  freeze!(model, :Ironuv)
         haskey(model, :Ironoptbr)  &&  freeze!(model, :Ironoptbr)
         haskey(model, :Ironoptna)  &&  freeze!(model, :Ironoptna)
     end
-    scan_and_evaluate!(meval)
+    scan_and_evaluate!(dm)
 
     println("\nFit known emission lines...")
     if (:lines in propertynames(recipe))  &&  (length(recipe.lines) > 0)
-        add_emission_lines!(recipe, meval, data)
-        add_patch_functs!(recipe, meval, data)
+        add_emission_lines!(recipe, dm)
+        add_patch_functs!(recipe, dm)
 
-        fit!(recipe, meval, data)
+        fit!(recipe, dm)
         for cname in keys(recipe.lines)
             freeze!(model, cname)
         end
     end
 
     println("\nFit nuisance emission lines...")
-    add_nuisance_lines!(recipe, meval, data)
+    add_nuisance_lines!(recipe, dm)
 
     println("\nLast run with all parameters free...")
     thaw!(model, :QSOcont)
@@ -273,12 +274,12 @@ function analyze(recipe::CRecipe{T}, data::Vector{Measures{1}}) where T <: Type1
             freeze!(model, cname)
         end
     end
-    scan_and_evaluate!(meval)
-    bestfit, fsumm = fit!(recipe, meval, data)
+    scan_and_evaluate!(dm)
+    bestfit, fsumm = fit!(recipe, dm)
 
-    if any(neglect_weak_features!(recipe, meval, data))
+    if any(neglect_weak_features!(recipe, dm))
         println("\nRe-run fit...")
-        bestfit, fsumm = fit!(recipe, meval, data)
+        bestfit, fsumm = fit!(recipe, dm)
     end
 
     return bestfit, fsumm
