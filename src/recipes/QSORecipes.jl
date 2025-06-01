@@ -132,7 +132,6 @@ end
 
 function renorm_cont!(recipe::CRecipe{<: QSOGeneric}, multi::GModelFit.MEval, data::Vector{Measures{1}})
     for i in 1:length(multi) renorm_cont!(recipe, SingleEval{1}(multi, i), data[i]); end
-    scan_and_evaluate!(multi)
 end
 function renorm_cont!(recipe::CRecipe{<: QSOGeneric}, meval::SingleEval, data::Measures{1})
     @track_recipe
@@ -160,7 +159,6 @@ end
 
 function guess_norm_factor!(recipe::CRecipe{<: QSOGeneric}, multi::GModelFit.MEval, data::Vector{Measures{1}})
     for i in 1:length(multi); guess_norm_factor!(recipe, SingleEval{1}(multi, i), data[i]); end
-    scan_and_evaluate!(multi)
 end
 function guess_norm_factor!(recipe::CRecipe{<: QSOGeneric}, meval::SingleEval, data::Measures{1}, name::Symbol; quantile=0.95)
     @track_recipe
@@ -187,7 +185,6 @@ end
 
 function add_emission_lines!(recipe::CRecipe{<: QSOGeneric}, multi::GModelFit.MEval, data::Vector{Measures{1}})
     for i in 1:length(multi); add_emission_lines!(recipe, SingleEval{1}(multi, i), data[i]); end
-    scan_and_evaluate!(multi)
 end
 function add_emission_lines!(recipe::CRecipe{<: QSOGeneric}, meval::SingleEval, data::Measures{1})
     @track_recipe
@@ -221,7 +218,6 @@ end
 
 function add_nuisance_lines!(recipe::CRecipe{<: QSOGeneric}, multi::GModelFit.MEval, data::Vector{Measures{1}})
     for i in 1:length(multi); add_nuisance_lines!(recipe, SingleEval{1}(multi, i), data[i]); end
-    scan_and_evaluate!(multi)
 end
 function add_nuisance_lines!(recipe::CRecipe{<: QSOGeneric}, meval::SingleEval, data::Measures{1})
     @track_recipe
@@ -296,7 +292,6 @@ end
 
 function neglect_weak_features!(recipe::CRecipe{<: QSOGeneric}, multi::GModelFit.MEval, data::Vector{Measures{1}})
     out = [neglect_weak_features!(recipe, SingleEval{1}(multi, i), data[i]) for i in 1:length(multi)]
-    scan_and_evaluate!(multi)
     return out
 end
 function neglect_weak_features!(recipe::CRecipe{<: QSOGeneric}, meval::SingleEval, data::Measures{1})

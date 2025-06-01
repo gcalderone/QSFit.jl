@@ -146,7 +146,6 @@ end
 
 function add_patch_functs!(recipe::CRecipe{<: QSOGeneric}, multi::GModelFit.MEval, data::Vector{Measures{1}})
     [add_patch_functs!(recipe, SingleEval{1}(multi, i), data[i]) for i in 1:length(multi)]
-    scan_and_evaluate!(multi)
 end
 function add_patch_functs!(recipe::CRecipe{<: Type1}, meval::SingleEval, data::Measures{1})
     @track_recipe
