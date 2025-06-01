@@ -9,15 +9,27 @@ import QSFit: init_recipe!, preprocess_spec!, spec2data, line_suffix, line_compo
 
 abstract type QSOGeneric <: AbstractRecipe end
 
-
-getmodel(meval::GModelFit.MEval{1}) = meval.v[1].model
-getdomain(meval::GModelFit.MEval{1}) = meval.v[1].domain
-getcevals(meval::GModelFit.MEval{1}) = meval.v[1].cevals
-
-function scan_and_evaluate!(meval::GModelFit.MEval)
-    GModelFit.scan_model!(meval)
-    GModelFit.update_eval!(meval)
+#=
+Note: the following structure has the same name and purpose as the one in GModelFit, the only difference being that the followinf can trigger a multi-model scan and evaluation
+=#
+struct SingleEval{N}
+    parent::GModelFit.MEval{N}
+    id::Int
 end
+
+getmodel(s::SingleEval) = s.parent.v[s.id].model
+getdomain(s::SingleEval) = s.parent.v[s.id].domain
+
+import GModelFit: last_eval
+last_eval(s::SingleEval) = GModelFit.last_eval(s.parent, s.id)
+last_eval(s::SingleEval, cname::Symbol) = GModelFit.last_eval(s.parent, s.id, cname)
+
+
+function scan_and_evaluate!(multi::GModelFit.MEval)
+    GModelFit.scan_model!(multi)
+    GModelFit.update_eval!(multi)
+end
+scan_and_evaluate!(meval::SingleEval) = scan_and_evaluate!(meval.parent)
 
 
 line_component(recipe::CRecipe{<: QSOGeneric}, center::Float64) = recipe.line_component(center)
@@ -54,35 +66,24 @@ function init_recipe!(recipe::CRecipe{T}) where T <: QSOGeneric
 end
 
 
-function fit!(recipe::CRecipe{<: QSOGeneric}, meval::GModelFit.MEval, data::Measures{1})
+function fit!(recipe::CRecipe{<: QSOGeneric}, multi::GModelFit.MEval, data::Vector{Measures{1}})
     @track_recipe
-    scan_and_evaluate!(meval)
-    fp = GModelFit.FitProblem(meval, [data])
+    scan_and_evaluate!(multi)
+    fp = GModelFit.FitProblem(multi, data)
     bestfit, fsumm = GModelFit.fit!(fp, recipe.solver)
     show(fsumm)
     return bestfit[1], fsumm
 end
 
 
-#=
-function add_qso_continuum!(recipe::CRecipe{<: QSOGeneric}, multi::GModelFit.MultiModelEval{1}, data::Vector{Measures})
-    add_qso_continuum!(recipe, multi[1], data)
+
+function add_qso_continuum!(recipe::CRecipe{<: QSOGeneric}, multi::GModelFit.MEval, data::Vector{Measures{1}})
+    for i in 1:length(multi); add_qso_continuum!(recipe, SingleEval{1}(multi, i), data[i]); end
     scan_and_evaluate!(multi)
 end
-
-function add_qso_continuum!(recipe::CRecipe{<: QSOGeneric}, multi::GModelFit.MultiModelEval, data::Vector{Measures})
-    for i in 1:length(multi)
-        add_qso_continuum!(recipe, multi[1], data)
-        # patch
-    end
-    scan_and_evaluate!(multi)
-end
-=#
-
-function add_qso_continuum!(recipe::CRecipe{<: QSOGeneric}, meval::GModelFit.MEval, data::Measures)
+function add_qso_continuum!(recipe::CRecipe{<: QSOGeneric}, meval::SingleEval, data::Measures)
     @track_recipe
     λ = coords(domain(data))
-
     comp = QSFit.powerlaw(3000)
     comp.x0.val = median(λ)
     comp.norm.val = median(values(data)) # Can't use Dierckx.Spline1D since it may fail when data is segmented (non-good channels)
@@ -93,11 +94,17 @@ function add_qso_continuum!(recipe::CRecipe{<: QSOGeneric}, meval::GModelFit.MEv
 
     getmodel(meval)[:QSOcont] = comp
     push!(getmodel(meval)[:Continuum].list, :QSOcont)
-    scan_and_evaluate!(meval)
 end
 
 
-function add_host_galaxy!(recipe::CRecipe{<: QSOGeneric}, meval::GModelFit.MEval, data::Measures{1})
+function add_host_galaxy!(recipe::CRecipe{<: QSOGeneric}, multi::GModelFit.MEval, data::Vector{Measures{1}})
+    for i in 1:length(multi); add_host_galaxy!(recipe, SingleEval{1}(multi, i), data[i]); end
+    for i in 2:length(multi)
+        multi.v[i].model[:Galaxy].norm.mpatch = @fd m -> m[1][:Galaxy].norm
+    end
+    scan_and_evaluate!(multi)
+end
+function add_host_galaxy!(recipe::CRecipe{<: QSOGeneric}, meval::SingleEval, data::Measures{1})
     @track_recipe
     λ = coords(getdomain(meval))
     if recipe.use_host_template  &&
@@ -119,16 +126,18 @@ function add_host_galaxy!(recipe::CRecipe{<: QSOGeneric}, meval::GModelFit.MEval
             getmodel(meval)[:Galaxy].norm.val   = 1/2 * vv
             getmodel(meval)[:QSOcont].norm.val *= 1/2 * vv / Dierckx.Spline1D(λ, GModelFit.last_eval(meval, :QSOcont), k=1, bc="extrapolate")(refwl)
         end
-        scan_and_evaluate!(meval)
     end
 end
 
 
-function renorm_cont!(recipe::CRecipe{<: QSOGeneric}, meval::GModelFit.MEval, data::Measures{1})
+function renorm_cont!(recipe::CRecipe{<: QSOGeneric}, multi::GModelFit.MEval, data::Vector{Measures{1}})
+    for i in 1:length(multi) renorm_cont!(recipe, SingleEval{1}(multi, i), data[i]); end
+    scan_and_evaluate!(multi)
+end
+function renorm_cont!(recipe::CRecipe{<: QSOGeneric}, meval::SingleEval, data::Measures{1})
     @track_recipe
     freeze!(getmodel(meval), :QSOcont)
     c = getmodel(meval)[:QSOcont]
-    d = getcevals(meval)[:QSOcont]
     initialnorm = c.norm.val
     if c.norm.val > 0
         println("Cont. norm. (before): ", c.norm.val)
@@ -149,7 +158,12 @@ function renorm_cont!(recipe::CRecipe{<: QSOGeneric}, meval::GModelFit.MEval, da
 end
 
 
-function guess_norm_factor!(recipe::CRecipe{<: QSOGeneric}, meval::GModelFit.MEval, data::Measures{1}, name::Symbol; quantile=0.95)
+function guess_norm_factor!(recipe::CRecipe{<: QSOGeneric}, multi::GModelFit.MEval, data::Vector{Measures{1}})
+    for i in 1:length(multi); guess_norm_factor!(recipe, SingleEval{1}(multi, i), data[i]); end
+    scan_and_evaluate!(multi)
+end
+function guess_norm_factor!(recipe::CRecipe{<: QSOGeneric}, meval::SingleEval, data::Measures{1}, name::Symbol; quantile=0.95)
+    @track_recipe
     @assert getmodel(meval)[name].norm.val != 0
     m = GModelFit.last_eval(meval, name)
     c = cumsum(m)
@@ -171,7 +185,11 @@ function guess_norm_factor!(recipe::CRecipe{<: QSOGeneric}, meval::GModelFit.MEv
 end
 
 
-function add_emission_lines!(recipe::CRecipe{<: QSOGeneric}, meval::GModelFit.MEval, data::Measures{1})
+function add_emission_lines!(recipe::CRecipe{<: QSOGeneric}, multi::GModelFit.MEval, data::Vector{Measures{1}})
+    for i in 1:length(multi); add_emission_lines!(recipe, SingleEval{1}(multi, i), data[i]); end
+    scan_and_evaluate!(multi)
+end
+function add_emission_lines!(recipe::CRecipe{<: QSOGeneric}, meval::SingleEval, data::Measures{1})
     @track_recipe
     groups = OrderedDict{Symbol, Vector{Symbol}}()
 
@@ -201,7 +219,11 @@ function add_emission_lines!(recipe::CRecipe{<: QSOGeneric}, meval::GModelFit.ME
 end
 
 
-function add_nuisance_lines!(recipe::CRecipe{<: QSOGeneric}, meval::GModelFit.MEval, data::Measures{1})
+function add_nuisance_lines!(recipe::CRecipe{<: QSOGeneric}, multi::GModelFit.MEval, data::Vector{Measures{1}})
+    for i in 1:length(multi); add_nuisance_lines!(recipe, SingleEval{1}(multi, i), data[i]); end
+    scan_and_evaluate!(multi)
+end
+function add_nuisance_lines!(recipe::CRecipe{<: QSOGeneric}, meval::SingleEval, data::Measures{1})
     @track_recipe
     (recipe.n_nuisance > 0)  ||  (return nothing)
 
@@ -265,15 +287,21 @@ function add_nuisance_lines!(recipe::CRecipe{<: QSOGeneric}, meval::GModelFit.ME
         end
 
         thaw!(getmodel(meval), cname);     scan_and_evaluate!(meval)
-        fit!(recipe, meval, data)
+        fit!(recipe, meval.parent, [data])  # issue: can't access parent data vector
         freeze!(getmodel(meval), cname);   scan_and_evaluate!(meval)
     end
     scan_and_evaluate!(meval)
 end
 
 
-function neglect_weak_features!(recipe::CRecipe{<: QSOGeneric}, meval::GModelFit.MEval, data::Measures{1})
+function neglect_weak_features!(recipe::CRecipe{<: QSOGeneric}, multi::GModelFit.MEval, data::Vector{Measures{1}})
+    out = [neglect_weak_features!(recipe, SingleEval{1}(multi, i), data[i]) for i in 1:length(multi)]
+    scan_and_evaluate!(multi)
+    return out
+end
+function neglect_weak_features!(recipe::CRecipe{<: QSOGeneric}, meval::SingleEval, data::Measures{1})
     @track_recipe
+
     # Disable "nuisance" lines whose normalization uncertainty is larger
     # than X times the normalization
     needs_fitting = false

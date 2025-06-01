@@ -158,7 +158,7 @@ function analyze(_recipe::CRecipe{<: AbstractRecipe}, _spec::Spectrum)
 
     preprocess_spec!(recipe, spec)
     data = spec2data(recipe, spec)
-    bestfit, fsumm = analyze(recipe, data)
+    bestfit, fsumm = analyze(recipe, [data])
     reduced = reduce(recipe, bestfit)
 
     out = Results(tstart,
