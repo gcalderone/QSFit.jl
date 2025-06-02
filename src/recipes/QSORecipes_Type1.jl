@@ -68,6 +68,7 @@ end
 
 
 function add_balmer_cont!(recipe::CRecipe{<: QSOGeneric}, fp::GModelFit.FitProblem)
+    @track_recipe
     add_balmer_cont!.(Ref(recipe), Ref(fp), 1:length(fp.multi))
     scan_and_evaluate!(fp)
 end
@@ -90,6 +91,7 @@ end
 
 
 function add_iron_uv!(recipe::CRecipe{<: QSOGeneric}, fp::GModelFit.FitProblem)
+    @track_recipe
     add_iron_uv!.(Ref(recipe), Ref(fp), 1:length(fp.multi))
 end
 function add_iron_uv!(recipe::CRecipe{<: Type1}, fp::GModelFit.FitProblem, ith::Int)
@@ -115,6 +117,7 @@ end
 
 
 function add_iron_opt!(recipe::CRecipe{<: QSOGeneric}, fp::GModelFit.FitProblem)
+    @track_recipe
     add_iron_opt!.(Ref(recipe), Ref(fp), 1:length(fp.multi))
     scan_and_evaluate!(fp)
 end
@@ -145,6 +148,7 @@ end
 
 
 function add_patch_functs!(recipe::CRecipe{<: QSOGeneric}, fp::GModelFit.FitProblem)
+    @track_recipe
     add_patch_functs!.(Ref(recipe), Ref(fp), 1:length(fp.multi))
 end
 function add_patch_functs!(recipe::CRecipe{<: Type1}, fp::GModelFit.FitProblem, ith::Int)

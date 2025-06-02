@@ -38,11 +38,10 @@ function set_lines_dict!(recipe::CRecipe{T}) where T <: Type2
 end
 
 
-function add_qso_continuum!(recipe::CRecipe{<: Type2}, meval::GModelFit.MEval, data::Measures)
+function add_qso_continuum!(recipe::CRecipe{<: Type2}, fp::GModelFit.FitProblem, ith::Int)
     @track_recipe
-    @invoke add_qso_continuum!(recipe::CRecipe{<: QSOGeneric}, meval, data)
-    getmodel(meval)[:QSOcont].alpha.val = -1.8
-    scan_and_evaluate!(meval)
+    @invoke add_qso_continuum!(recipe::CRecipe{<: QSOGeneric}, fp, ith)
+    getmodel(fp, ith)[:QSOcont].alpha.val = -1.8
 end
 
 
@@ -60,9 +59,9 @@ function set_constraints!(recipe::CRecipe{<: Type2}, ::Type{NuisanceLine}, comp:
 end
 
 
-function add_patch_functs!(recipe::CRecipe{<: Type2}, meval::GModelFit.MEval, data::Measures)
+function add_patch_functs!(recipe::CRecipe{<: Type2}, fp::GModelFit.FitProblem, ith::Int)
     @track_recipe
-    model = getmodel(meval)
+    model = getmodel(fp, ith)
     # Patch parameters
     if haskey(model, :OIII_4959) && haskey(model, :OIII_5007)
         # model[:OIII_4959].norm.patch = @fd m -> m[:OIII_5007].norm / 3
@@ -93,36 +92,36 @@ function add_patch_functs!(recipe::CRecipe{<: Type2}, meval::GModelFit.MEval, da
 end
 
 
-function analyze(recipe::CRecipe{<: Type2}, data::Measures{1})
+function analyze(recipe::CRecipe{<: Type2}, data::Vector{Measures{1}})
     @track_recipe
     model = Model(:main => SumReducer())
     select_maincomp!(model, :main)
-    meval = GModelFit.MEval(model, domain(data))
+    fp = GModelFit.FitProblem([model], data)
 
     println("\nFit continuum components...")
     model[:Continuum] = SumReducer()
     push!(model[:main].list, :Continuum)
-    add_qso_continuum!(recipe, meval, data)
-    add_host_galaxy!(recipe, meval, data)
-    fit!(recipe, meval, data)
-    renorm_cont!(recipe, meval, data)
+    add_qso_continuum!(recipe, fp)
+    add_host_galaxy!(recipe, fp)
+    fit!(recipe, fp)
+    renorm_cont!(recipe, fp)
     freeze!(model, :QSOcont)
     haskey(model, :Galaxy)  &&  freeze!(model, :Galaxy)
-    scan_and_evaluate!(meval)
+    scan_and_evaluate!(fp)
 
     if (:lines in propertynames(recipe))  &&  (length(recipe.lines) > 0)
         println("\nFit known emission lines...")
-        add_emission_lines!(recipe, meval, data)
-        add_patch_functs!(recipe, meval, data)
+        add_emission_lines!(recipe, fp)
+        add_patch_functs!(recipe, fp)
 
-        fit!(recipe, meval, data)
+        fit!(recipe, fp)
         for cname in keys(recipe.lines)
             freeze!(model, cname)
         end
     end
 
     println("\nFit nuisance emission lines...")
-    add_nuisance_lines!(recipe, meval, data)
+    add_nuisance_lines!(recipe, fp)
 
     println("\nLast run with all parameters free...")
     thaw!(model, :QSOcont)
@@ -138,11 +137,11 @@ function analyze(recipe::CRecipe{<: Type2}, data::Measures{1})
             freeze!(model, cname)
         end
     end
-    bestfit, fsumm = fit!(recipe, meval, data)
+    bestfit, fsumm = fit!(recipe, fp)
 
-    if neglect_weak_features!(recipe, meval, data)
+    if any(neglect_weak_features!(recipe, fp))
         println("\nRe-run fit...")
-        bestfit, fsumm = fit!(recipe, meval, data)
+        bestfit, fsumm = fit!(recipe, fp)
     end
 
     return bestfit, fsumm

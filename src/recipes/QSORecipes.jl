@@ -64,6 +64,7 @@ end
 
 
 function add_qso_continuum!(recipe::CRecipe{<: QSOGeneric}, fp::GModelFit.FitProblem)
+    @track_recipe
     add_qso_continuum!.(Ref(recipe), Ref(fp), 1:length(fp.multi))
     scan_and_evaluate!(fp)
 end
@@ -84,6 +85,7 @@ end
 
 
 function add_host_galaxy!(recipe::CRecipe{<: QSOGeneric}, fp::GModelFit.FitProblem)
+    @track_recipe
     add_host_galaxy!.(Ref(recipe), Ref(fp), 1:length(fp.multi))
     for i in 2:length(fp.multi)
         getmodel(fp, i)[:Galaxy].norm.mpatch = @fd m -> m[1][:Galaxy].norm
@@ -117,6 +119,7 @@ end
 
 
 function renorm_cont!(recipe::CRecipe{<: QSOGeneric}, fp::GModelFit.FitProblem)
+    @track_recipe
     renorm_cont!.(Ref(recipe), Ref(fp), 1:length(fp.multi))
 end
 function renorm_cont!(recipe::CRecipe{<: QSOGeneric}, fp::GModelFit.FitProblem, ith::Int)
@@ -144,6 +147,7 @@ end
 
 
 function guess_norm_factor!(recipe::CRecipe{<: QSOGeneric}, fp::GModelFit.FitProblem)
+    @track_recipe
     guess_norm_factor!.(Ref(recipe), Ref(fp), 1:length(fp.multi))
 end
 function guess_norm_factor!(recipe::CRecipe{<: QSOGeneric}, fp::GModelFit.FitProblem, ith::Int, name::Symbol; quantile=0.95)
@@ -170,6 +174,7 @@ end
 
 
 function add_emission_lines!(recipe::CRecipe{<: QSOGeneric}, fp::GModelFit.FitProblem)
+    @track_recipe
     add_emission_lines!.(Ref(recipe), Ref(fp), 1:length(fp.multi))
 end
 function add_emission_lines!(recipe::CRecipe{<: QSOGeneric}, fp::GModelFit.FitProblem, ith::Int)
@@ -203,6 +208,7 @@ end
 
 
 function add_nuisance_lines!(recipe::CRecipe{<: QSOGeneric}, fp::GModelFit.FitProblem)
+    @track_recipe
     add_nuisance_lines!.(Ref(recipe), Ref(fp), 1:length(fp.multi))
 end
 function add_nuisance_lines!(recipe::CRecipe{<: QSOGeneric}, fp::GModelFit.FitProblem, ith::Int)
@@ -277,6 +283,7 @@ end
 
 
 function neglect_weak_features!(recipe::CRecipe{<: QSOGeneric}, fp::GModelFit.FitProblem)
+    @track_recipe
     out = neglect_weak_features!.(Ref(recipe), Ref(fp), 1:length(fp.multi))
     return out
 end
@@ -373,6 +380,6 @@ end
 
 
 include("QSORecipes_Type1.jl")
-# TODO include("QSORecipes_Type2.jl")
+include("QSORecipes_Type2.jl")
 
 end
