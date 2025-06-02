@@ -9,14 +9,14 @@ import QSFit: init_recipe!, preprocess_spec!, spec2data, line_suffix, line_compo
 
 abstract type QSOGeneric <: AbstractRecipe end
 
-getmodel( fp::GModelFit.FitProblem, ith::Int) = fp.meval.v[ith].model
-getdomain(fp::GModelFit.FitProblem, ith::Int) = fp.meval.v[ith].domain
+getmodel( fp::GModelFit.FitProblem, ith::Int) = fp.multi.v[ith].model
+getdomain(fp::GModelFit.FitProblem, ith::Int) = fp.multi.v[ith].domain
 getdata(  fp::GModelFit.FitProblem, ith::Int) = fp.data[ith]
 
 
 function scan_and_evaluate!(fp::GModelFit.FitProblem)
-    GModelFit.scan_model!(fp.meval)
-    GModelFit.update_eval!(fp.meval)
+    GModelFit.scan_model!(fp.multi)
+    GModelFit.update_eval!(fp.multi)
 end
 
 line_component(recipe::CRecipe{<: QSOGeneric}, center::Float64) = recipe.line_component(center)
@@ -64,7 +64,7 @@ end
 
 
 function add_qso_continuum!(recipe::CRecipe{<: QSOGeneric}, fp::GModelFit.FitProblem)
-    add_qso_continuum!.(Ref(recipe), Ref(fp), 1:length(fp.meval))
+    add_qso_continuum!.(Ref(recipe), Ref(fp), 1:length(fp.multi))
     scan_and_evaluate!(fp)
 end
 function add_qso_continuum!(recipe::CRecipe{<: QSOGeneric}, fp::GModelFit.FitProblem, ith::Int)
@@ -84,8 +84,8 @@ end
 
 
 function add_host_galaxy!(recipe::CRecipe{<: QSOGeneric}, fp::GModelFit.FitProblem)
-    add_host_galaxy!.(Ref(recipe), Ref(fp), 1:length(fp.meval))
-    for i in 2:length(fp.meval)
+    add_host_galaxy!.(Ref(recipe), Ref(fp), 1:length(fp.multi))
+    for i in 2:length(fp.multi)
         getmodel(fp, i)[:Galaxy].norm.mpatch = @fd m -> m[1][:Galaxy].norm
     end
     scan_and_evaluate!(fp)
@@ -110,14 +110,14 @@ function add_host_galaxy!(recipe::CRecipe{<: QSOGeneric}, fp::GModelFit.FitProbl
             getmodel(fp, ith)[:Galaxy].norm.val   = 0.
         else
             getmodel(fp, ith)[:Galaxy].norm.val   = 1/2 * vv
-            getmodel(fp, ith)[:QSOcont].norm.val *= 1/2 * vv / Dierckx.Spline1D(λ, GModelFit.last_eval(fp.meval, ith, :QSOcont), k=1, bc="extrapolate")(refwl)
+            getmodel(fp, ith)[:QSOcont].norm.val *= 1/2 * vv / Dierckx.Spline1D(λ, GModelFit.last_eval(fp.multi, ith, :QSOcont), k=1, bc="extrapolate")(refwl)
         end
     end
 end
 
 
 function renorm_cont!(recipe::CRecipe{<: QSOGeneric}, fp::GModelFit.FitProblem)
-    renorm_cont!.(Ref(recipe), Ref(fp), 1:length(fp.meval))
+    renorm_cont!.(Ref(recipe), Ref(fp), 1:length(fp.multi))
 end
 function renorm_cont!(recipe::CRecipe{<: QSOGeneric}, fp::GModelFit.FitProblem, ith::Int)
     @track_recipe
@@ -128,7 +128,7 @@ function renorm_cont!(recipe::CRecipe{<: QSOGeneric}, fp::GModelFit.FitProblem, 
         println("Cont. norm. (before): ", c.norm.val)
         scaling = 0.99
         while c.norm.val * scaling > c.norm.low
-            residuals = (GModelFit.last_eval(fp.meval, ith) - values(getdata(fp, ith))) ./ uncerts(getdata(fp, ith))
+            residuals = (GModelFit.last_eval(fp.multi, ith) - values(getdata(fp, ith))) ./ uncerts(getdata(fp, ith))
             ratio = count(residuals .< 0) / length(residuals)
             (ratio > 0.9)  &&  break
             (c.norm.val < (initialnorm / 5))  &&  break # give up
@@ -144,12 +144,12 @@ end
 
 
 function guess_norm_factor!(recipe::CRecipe{<: QSOGeneric}, fp::GModelFit.FitProblem)
-    guess_norm_factor!.(Ref(recipe), Ref(fp), 1:length(fp.meval))
+    guess_norm_factor!.(Ref(recipe), Ref(fp), 1:length(fp.multi))
 end
 function guess_norm_factor!(recipe::CRecipe{<: QSOGeneric}, fp::GModelFit.FitProblem, ith::Int, name::Symbol; quantile=0.95)
     @track_recipe
     @assert getmodel(fp, ith)[name].norm.val != 0
-    m = GModelFit.last_eval(fp.meval, ith, name)
+    m = GModelFit.last_eval(fp.multi, ith, name)
     c = cumsum(m)
     @assert maximum(c) != 0. "Model for $name evaluates to zero over the whole domain"
     c ./= maximum(c)
@@ -158,7 +158,7 @@ function guess_norm_factor!(recipe::CRecipe{<: QSOGeneric}, fp::GModelFit.FitPro
     if i1 >= i2
         return #Can't calculate normalization for component
     end
-    r = values(getdata(fp, ith)) - GModelFit.last_eval(fp.meval, ith)
+    r = values(getdata(fp, ith)) - GModelFit.last_eval(fp.multi, ith)
     ratio = getmodel(fp, ith)[name].norm.val / sum(m[i1:i2])
     off = sum(r[i1:i2]) * ratio
     getmodel(fp, ith)[name].norm.val += off
@@ -170,7 +170,7 @@ end
 
 
 function add_emission_lines!(recipe::CRecipe{<: QSOGeneric}, fp::GModelFit.FitProblem)
-    add_emission_lines!.(Ref(recipe), Ref(fp), 1:length(fp.meval))
+    add_emission_lines!.(Ref(recipe), Ref(fp), 1:length(fp.multi))
 end
 function add_emission_lines!(recipe::CRecipe{<: QSOGeneric}, fp::GModelFit.FitProblem, ith::Int)
     @track_recipe
@@ -203,7 +203,7 @@ end
 
 
 function add_nuisance_lines!(recipe::CRecipe{<: QSOGeneric}, fp::GModelFit.FitProblem)
-    add_nuisance_lines!.(Ref(recipe), Ref(fp), 1:length(fp.meval))
+    add_nuisance_lines!.(Ref(recipe), Ref(fp), 1:length(fp.multi))
 end
 function add_nuisance_lines!(recipe::CRecipe{<: QSOGeneric}, fp::GModelFit.FitProblem, ith::Int)
     @track_recipe
@@ -228,7 +228,7 @@ function add_nuisance_lines!(recipe::CRecipe{<: QSOGeneric}, fp::GModelFit.FitPr
     while true
         (length(λnuisance) >= recipe.n_nuisance)  &&  break
         scan_and_evaluate!(fp)
-        Δ = (values(getdata(fp, ith)) - GModelFit.last_eval(fp.meval, ith)) ./ uncerts(getdata(fp, ith))
+        Δ = (values(getdata(fp, ith)) - GModelFit.last_eval(fp.multi, ith)) ./ uncerts(getdata(fp, ith))
 
         # Avoid considering again the same region (within 1A) TODO: within resolution
         for l in λnuisance
@@ -277,7 +277,7 @@ end
 
 
 function neglect_weak_features!(recipe::CRecipe{<: QSOGeneric}, fp::GModelFit.FitProblem)
-    out = neglect_weak_features!.(Ref(recipe), Ref(fp), 1:length(fp.meval))
+    out = neglect_weak_features!.(Ref(recipe), Ref(fp), 1:length(fp.multi))
     return out
 end
 function neglect_weak_features!(recipe::CRecipe{<: QSOGeneric}, fp::GModelFit.FitProblem, ith::Int)
@@ -373,6 +373,6 @@ end
 
 
 include("QSORecipes_Type1.jl")
-include("QSORecipes_Type2.jl")
+# TODO include("QSORecipes_Type2.jl")
 
 end

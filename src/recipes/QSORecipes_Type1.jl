@@ -68,7 +68,7 @@ end
 
 
 function add_balmer_cont!(recipe::CRecipe{<: QSOGeneric}, fp::GModelFit.FitProblem)
-    add_balmer_cont!.(Ref(recipe), Ref(fp), 1:length(fp.meval))
+    add_balmer_cont!.(Ref(recipe), Ref(fp), 1:length(fp.multi))
     scan_and_evaluate!(fp)
 end
 function add_balmer_cont!(recipe::CRecipe{<: Type1}, fp::GModelFit.FitProblem, ith::Int)
@@ -90,7 +90,7 @@ end
 
 
 function add_iron_uv!(recipe::CRecipe{<: QSOGeneric}, fp::GModelFit.FitProblem)
-    add_iron_uv!.(Ref(recipe), Ref(fp), 1:length(fp.meval))
+    add_iron_uv!.(Ref(recipe), Ref(fp), 1:length(fp.multi))
 end
 function add_iron_uv!(recipe::CRecipe{<: Type1}, fp::GModelFit.FitProblem, ith::Int)
     @track_recipe
@@ -115,7 +115,7 @@ end
 
 
 function add_iron_opt!(recipe::CRecipe{<: QSOGeneric}, fp::GModelFit.FitProblem)
-    add_iron_opt!.(Ref(recipe), Ref(fp), 1:length(fp.meval))
+    add_iron_opt!.(Ref(recipe), Ref(fp), 1:length(fp.multi))
     scan_and_evaluate!(fp)
 end
 function add_iron_opt!(recipe::CRecipe{<: Type1}, fp::GModelFit.FitProblem, ith::Int)
@@ -145,7 +145,7 @@ end
 
 
 function add_patch_functs!(recipe::CRecipe{<: QSOGeneric}, fp::GModelFit.FitProblem)
-    add_patch_functs!.(Ref(recipe), Ref(fp), 1:length(fp.meval))
+    add_patch_functs!.(Ref(recipe), Ref(fp), 1:length(fp.multi))
 end
 function add_patch_functs!(recipe::CRecipe{<: Type1}, fp::GModelFit.FitProblem, ith::Int)
     @track_recipe
@@ -214,7 +214,6 @@ function analyze(recipe::CRecipe{T}, data::Vector{Measures{1}}) where T <: Type1
     select_maincomp!(model, :main)
     model[:Continuum] = SumReducer()
     push!(model[:main].list, :Continuum)
-    meval = GModelFit.MEval(model, domain(data[1]))
     fp = GModelFit.FitProblem([model], data)
 
     println("\nFit continuum components...")
