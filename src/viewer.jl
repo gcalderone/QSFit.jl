@@ -17,7 +17,7 @@ function ViewerData(res::Results; kws...)
     d = GModelFitViewer.ViewerData(res.bestfit, res.fsumm, res.data, meta=meta)
 
     # Add further content
-    if haskey(res.reduced, :EW)
+    if haskey(res.post, :EW)
         m = OrderedDict{Symbol, Any}()
         m[:EW] = OrderedDict{Symbol, Any}()
         m[:EW][:label] = "Em. lines EW"
@@ -25,11 +25,11 @@ function ViewerData(res::Results; kws...)
         m[:EW][:fields][:Label] = OrderedDict{Symbol, Any}()
         m[:EW][:fields][:Label][:meta] = OrderedDict{Symbol, Any}()
         m[:EW][:fields][:Label][:meta][:desc] = "Em. line"
-        m[:EW][:fields][:Label][:data] = collect(keys(res.reduced[:EW]))
+        m[:EW][:fields][:Label][:data] = collect(keys(res.post[:EW]))
         m[:EW][:fields][:Value] = OrderedDict{Symbol, Any}()
         m[:EW][:fields][:Value][:meta] = OrderedDict{Symbol, Any}()
         m[:EW][:fields][:Value][:meta][:desc] = "EW [A]"
-        m[:EW][:fields][:Value][:data] = collect(values(res.reduced[:EW]))
+        m[:EW][:fields][:Value][:data] = collect(values(res.post[:EW]))
         d.data[1]["extra"] = [m]
     end
 

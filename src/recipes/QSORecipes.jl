@@ -5,7 +5,7 @@ using Dierckx
 using ..QSFit, ..QSFit.ATL, GModelFit
 
 import GModelFit: domain
-import QSFit: init_recipe!, preprocess_spec!, spec2data, line_suffix, line_component, set_lines_dict!, analyze, reduce, Results
+import QSFit: init_recipe!, preprocess_spec!, spec2data, line_suffix, line_component, set_lines_dict!, analyze, postanalysis, Results
 
 abstract type QSOGeneric <: AbstractRecipe end
 
@@ -360,7 +360,7 @@ function preprocess_spec!(recipe::CRecipe{T}, spec::QSFit.Spectrum) where T <: Q
 end
 
 
-function reduce(recipe::CRecipe{<: QSOGeneric}, bestfit::GModelFit.ModelSnapshot)
+function postanalysis(recipe::CRecipe{<: QSOGeneric}, bestfit::GModelFit.ModelSnapshot)
     @track_recipe
     EW = OrderedDict{Symbol, Float64}()
 

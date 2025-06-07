@@ -39,6 +39,13 @@ include("components/SpecLineAsymmGauss.jl")
 include("components/SpecLineLorentz.jl")
 include("components/SpecLineVoigt.jl")
 
+
+#TODO: is the following needed?
+function evaluate!(::GModelFit.SumReducer, ::AbstractDomain, output)
+    output .= 0.
+end
+
+
 include("utils.jl")
 include("convolutions.jl")
 include("Spectrum.jl")
@@ -101,7 +108,7 @@ struct Results
     data::GModelFit.AbstractMeasures
     bestfit::GModelFit.ModelSnapshot
     fsumm::GModelFit.FitSummary
-    reduced::OrderedDict{Symbol, Any}
+    post::OrderedDict{Symbol, Any}
 end
 
 struct MultiResults
@@ -111,7 +118,7 @@ struct MultiResults
     data::Vector{<: GModelFit.AbstractMeasures}
     bestfit::Vector{GModelFit.ModelSnapshot}
     fsumm::GModelFit.FitSummary
-    reduced::Vector{OrderedDict{Symbol, Any}}
+    post::Vector{OrderedDict{Symbol, Any}}
 end
 
 function show(io::IO, res::Union{Results, MultiResults})
@@ -152,18 +159,18 @@ function analyze(_recipe::CRecipe{<: AbstractRecipe}, _spec::Spectrum)
     spec = deepcopy(_spec)
 
     println("Timestamp: ", tstart)
-    display(recipe);
+    display(recipe)
     println()
     show(spec)
 
     preprocess_spec!(recipe, spec)
     data = spec2data(recipe, spec)
     bestfit, fsumm = analyze(recipe, [data])
-    reduced = reduce(recipe, bestfit)
+    post = postanalysis(recipe, bestfit)
 
     out = Results(tstart,
                   Dates.value(convert(Millisecond, now() - tstart)) / 1000.,
-                  spec, data, bestfit, fsumm, reduced)
+                  spec, data, bestfit, fsumm, post)
     println("\nTotal elapsed time: $(out.elapsed) s")
     return out
 end
@@ -175,25 +182,25 @@ function analyze(_recipe::CRecipe{<: AbstractRecipe}, _specs::Vector{Spectrum})
     specs = deepcopy(_specs)
 
     println("Timestamp: ", tstart)
-    display(recipe);
+    display(recipe)
     println()
     for i in 1:length(specs)
         show(specs[i])
     end
 
-    preprocess_spec!.(Ref(recipe), recipe._specs)
-    data = spec2data.(Ref(recipe), recipe._specs)
+    preprocess_spec!.(Ref(recipe), specs)
+    data = spec2data.(Ref(recipe), specs)
     bestfit, fsumm = analyze(recipe, data)
-    reduced = [reduce(recipe, b) for b in bestfit]
+    post = [postanalysis(recipe, b) for b in bestfit]
 
     out = MultiResults(tstart,
                        Dates.value(convert(Millisecond, now() - tstart)) / 1000.,
-                       specs, data, bestfit, fsumm, reduced)
+                       specs, data, bestfit, fsumm, post)
     println("\nTotal elapsed time: $(out.elapsed) s")
     return out
 end
 
-reduce(recipe::CRecipe{<: AbstractRecipe}, bestfit::GModelFit.ModelSnapshot) = OrderedDict{Symbol, Any}()
+postanalysis(recipe::CRecipe{<: AbstractRecipe}, bestfit::GModelFit.ModelSnapshot) = OrderedDict{Symbol, Any}()
 
 include("SpectralLines.jl")
 include("recipes/LineFitRecipes.jl")

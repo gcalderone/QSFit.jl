@@ -212,13 +212,22 @@ function add_patch_functs!(recipe::CRecipe{<: Type1}, fp::GModelFit.FitProblem, 
 end
 
 
+function analyze(recipe::CRecipe{T}, data::Measures{1}) where T <: Type1
+    bestfit, fsumm = analyze(recipe, [data])
+    return bestfit[1], fsumm
+end
+
 function analyze(recipe::CRecipe{T}, data::Vector{Measures{1}}) where T <: Type1
     @track_recipe
-    model = Model(:main => SumReducer())
-    select_maincomp!(model, :main)
-    model[:Continuum] = SumReducer()
-    push!(model[:main].list, :Continuum)
-    fp = GModelFit.FitProblem([model], data)
+    models = Vector{Model}()
+    for i in 1:length(data)
+        model = Model(:main => SumReducer())
+        select_maincomp!(model, :main)
+        model[:Continuum] = SumReducer()
+        push!(model[:main].list, :Continuum)
+        push!(models, model)
+    end
+    fp = GModelFit.FitProblem(models, data)
 
     println("\nFit continuum components...")
     add_qso_continuum!(recipe, fp)
@@ -226,22 +235,28 @@ function analyze(recipe::CRecipe{T}, data::Vector{Measures{1}}) where T <: Type1
     add_balmer_cont!(recipe, fp)
     fit!(recipe, fp)
     renorm_cont!(recipe, fp)
-    freeze!(model, :QSOcont)
-    haskey(model, :Galaxy)  &&  freeze!(model, :Galaxy)
-    haskey(model, :Balmer)  &&  freeze!(model, :Balmer)
+    for model in models
+        freeze!(model, :QSOcont)
+        haskey(model, :Galaxy)  &&  freeze!(model, :Galaxy)
+        haskey(model, :Balmer)  &&  freeze!(model, :Balmer)
+    end
     scan_and_evaluate!(fp)
 
     println("\nFit iron templates...")
-    model[:Iron] = SumReducer()
-    push!(model[:main].list, :Iron)
+    for model in models
+        model[:Iron] = SumReducer()
+        push!(model[:main].list, :Iron)
+    end
     add_iron_uv!(recipe, fp)
     add_iron_opt!(recipe, fp)
 
-    if length(model[:Iron].list) > 0
-        fit!(recipe, fp)
-        haskey(model, :Ironuv   )  &&  freeze!(model, :Ironuv)
-        haskey(model, :Ironoptbr)  &&  freeze!(model, :Ironoptbr)
-        haskey(model, :Ironoptna)  &&  freeze!(model, :Ironoptna)
+    fit!(recipe, fp)
+    for model in models
+        if length(model[:Iron].list) > 0
+            haskey(model, :Ironuv   )  &&  freeze!(model, :Ironuv)
+            haskey(model, :Ironoptbr)  &&  freeze!(model, :Ironoptbr)
+            haskey(model, :Ironoptna)  &&  freeze!(model, :Ironoptna)
+        end
     end
     scan_and_evaluate!(fp)
 
@@ -251,8 +266,10 @@ function analyze(recipe::CRecipe{T}, data::Vector{Measures{1}}) where T <: Type1
         add_patch_functs!(recipe, fp)
 
         fit!(recipe, fp)
-        for cname in keys(recipe.lines)
-            freeze!(model, cname)
+        for model in models
+            for cname in keys(recipe.lines)
+                freeze!(model, cname)
+            end
         end
     end
 
@@ -260,21 +277,23 @@ function analyze(recipe::CRecipe{T}, data::Vector{Measures{1}}) where T <: Type1
     add_nuisance_lines!(recipe, fp)
 
     println("\nLast run with all parameters free...")
-    thaw!(model, :QSOcont)
-    haskey(model, :Galaxy   )  &&  thaw!(model, :Galaxy)
-    haskey(model, :Balmer   )  &&  thaw!(model, :Balmer)
-    haskey(model, :Ironuv   )  &&  thaw!(model, :Ironuv)
-    haskey(model, :Ironoptbr)  &&  thaw!(model, :Ironoptbr)
-    haskey(model, :Ironoptna)  &&  thaw!(model, :Ironoptna)
-    for cname in keys(recipe.lines)
-        thaw!(model, cname)
-    end
-    for j in 1:recipe.n_nuisance
-        cname = Symbol(:nuisance, j)
-        if model[cname].norm.val > 0
+    for model in models
+        thaw!(model, :QSOcont)
+        haskey(model, :Galaxy   )  &&  thaw!(model, :Galaxy)
+        haskey(model, :Balmer   )  &&  thaw!(model, :Balmer)
+        haskey(model, :Ironuv   )  &&  thaw!(model, :Ironuv)
+        haskey(model, :Ironoptbr)  &&  thaw!(model, :Ironoptbr)
+        haskey(model, :Ironoptna)  &&  thaw!(model, :Ironoptna)
+        for cname in keys(recipe.lines)
             thaw!(model, cname)
-        else
-            freeze!(model, cname)
+        end
+        for j in 1:recipe.n_nuisance
+            cname = Symbol(:nuisance, j)
+            if model[cname].norm.val > 0
+                thaw!(model, cname)
+            else
+                freeze!(model, cname)
+            end
         end
     end
     scan_and_evaluate!(fp)
