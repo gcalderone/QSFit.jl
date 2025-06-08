@@ -58,7 +58,7 @@ function fit!(recipe::CRecipe{<: QSOGeneric}, fp::GModelFit.FitProblem)
     scan_and_evaluate!(fp)
     bestfit, fsumm = GModelFit.fit!(fp, recipe.solver)
     show(fsumm)
-    return bestfit[1], fsumm
+    return bestfit, fsumm
 end
 
 

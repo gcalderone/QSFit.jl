@@ -166,11 +166,11 @@ function analyze(_recipe::CRecipe{<: AbstractRecipe}, _spec::Spectrum)
     preprocess_spec!(recipe, spec)
     data = spec2data(recipe, spec)
     bestfit, fsumm = analyze(recipe, [data])
-    post = postanalysis(recipe, bestfit)
+    post = postanalysis(recipe, bestfit[1])
 
     out = Results(tstart,
                   Dates.value(convert(Millisecond, now() - tstart)) / 1000.,
-                  spec, data, bestfit, fsumm, post)
+                  spec, data, bestfit[1], fsumm, post)
     println("\nTotal elapsed time: $(out.elapsed) s")
     return out
 end
