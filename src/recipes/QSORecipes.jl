@@ -142,7 +142,6 @@ function renorm_cont!(recipe::CRecipe{<: QSOGeneric}, fp::GModelFit.FitProblem, 
     else
         println("Skipping cont. renormalization")
     end
-    scan_and_evaluate!(fp)
 end
 
 

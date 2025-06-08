@@ -35,3 +35,25 @@ function ViewerData(res::Results; kws...)
 
     return d
 end
+
+
+
+function ViewerData(res::MultiResults; kws...)
+    meta = Vector{GModelFitViewer.Meta}()
+    for ith in 1:length(res.bestfit)
+        ctypes = [comptype(res.bestfit[ith], cname) for cname in keys(res.bestfit[ith])]
+        i = findall(isnothing.(match.(r"SpecLine", ctypes)))
+        keep = string.(keys(res.bestfit[ith]))[i]
+        push!(meta, GModelFitViewer.Meta(; title=res.spec[ith].label,
+                                         xlabel="Wavelength",
+                                         xunit=string(unit(res.spec[ith].unit_x)),
+                                         xscale=ustrip(res.spec[ith].unit_x),
+                                         ylabel="Lum. density",
+                                         yunit=string(unit(res.spec[ith].unit_y)),
+                                         yscale=ustrip(res.spec[ith].unit_y),
+                                         keep=keep, kws...))
+    end
+
+    d = GModelFitViewer.ViewerData(res.bestfit, res.fsumm, res.data, meta=meta)
+    return d
+end
