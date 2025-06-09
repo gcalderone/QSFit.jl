@@ -111,7 +111,7 @@ function use_line!(recipe::CRecipe, dict::OrderedDict{Symbol, SpectralLine}, t::
     cname = Symbol(tid, line_suffix(recipe, template))
     @assert !(cname in keys(dict)) "Duplicated component name: $cname"
     group = line_group(recipe, template)
-    comp = line_component(recipe, ATL.get_wavelength(t), template)
+    comp = line_component(recipe, ATL.get_wavelengths(t)[1], template)
     dict[cname] = SpectralLine{template}(tid, t, group, comp)
     nothing
 end
@@ -123,7 +123,7 @@ function use_line!(recipe::CRecipe, dict::OrderedDict{Symbol, SpectralLine}, t::
     cname = Symbol(tid, line_suffix(recipe, template))
     @assert !(cname in keys(dict)) "Duplicated component name: $cname"
     group = line_group(recipe, template)
-    comp = line_component(recipe, ATL.get_wavelength(t), template)
+    comp = line_component(recipe, mean(ATL.get_wavelengths(t)), template)
     dict[cname] = SpectralLine{template}(tid, t, group, comp)
     nothing
 end
@@ -136,7 +136,7 @@ function use_line!(recipe::CRecipe, dict::OrderedDict{Symbol, SpectralLine}, t::
     cname = tid
     @assert !(cname in keys(dict)) "Duplicated component name: $cname"
     group = line_group(recipe, template)
-    comp = line_component(recipe, ATL.get_wavelength(t), template)
+    comp = line_component(recipe, ATL.get_wavelengths(t)[1], template)
     dict[cname] = SpectralLine{template}(tid, t, group, comp)
     nothing
 end

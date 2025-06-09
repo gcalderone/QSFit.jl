@@ -67,16 +67,13 @@ get_id(t::AbstractTransition) = transition_id(get_label(t))
 
 get_wavelengths(t::Transition) = t.lambda
 get_wavelengths(t::UnidentifiedTransition) = [t.lambda]
-
-get_wavelength(t::Transition) = mean(get_wavelengths(t))
-get_wavelength(t::UnidentifiedTransition) = t.lambda
+get_wavelengths(t::UnidentifiedTransition) = [t.lambda]
 
 ismultiplet(t::Transition{1,T}) where T = false
 ismultiplet(t::Transition{N,T}) where {N,T} = true
 ismultiplet(t::UnidentifiedTransition) = false
 
 get_label(tid::Symbol) = get_label(get_transition(tid))
-get_wavelength(tid::Symbol) = get_wavelength(get_transition(tid))
 get_wavelengths(tid::Symbol) = get_wavelengths(get_transition(tid))
 ismultiplet(tid::Symbol) = ismultiplet(get_transition(tid))
 
