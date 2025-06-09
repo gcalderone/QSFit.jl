@@ -179,7 +179,7 @@ function analyze(_recipe::CRecipe{<: AbstractRecipe}, _specs::Vector{Spectrum})
     println("Timestamp: ", tstart)
     recipe = deepcopy(_recipe)
     display(recipe); println()
-    specs = deepcopy(_spec)
+    specs = deepcopy(_specs)
     for i in 1:length(specs)
         show(specs[i])
     end
