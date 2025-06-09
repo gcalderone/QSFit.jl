@@ -1,7 +1,7 @@
 name = "QSFit"
 uuid = "fea25315-b951-4667-83c9-50e53efab241"
 authors = ["Giorgio Calderone <giorgio.calderone@gmail.com>"]
-version = "0.4.0"
+version = "0.5.0"
 
 [deps]
 CMPFit = "a5944310-3432-5d93-8bb2-e3b5eb62a58f"
@@ -35,7 +35,7 @@ DelimitedFiles = "1.9"
 Dierckx = "0.5"
 DustExtinction = "0.11"
 FITSIO = "0.17"
-GModelFit = "0.5.2"
+GModelFit = "0.5.4"
 GModelFitViewer = "0.2.3"
 Gnuplot = "1.6"
 Polyester = "0.7"

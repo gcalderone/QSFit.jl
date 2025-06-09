@@ -250,7 +250,7 @@ function analyze(recipe::CRecipe{T}, data::Vector{Measures{1}}) where T <: Type1
     add_iron_uv!(recipe, fp)
     add_iron_opt!(recipe, fp)
 
-    fit!(recipe, fp)
+    (GModelFit.nfree(fp) > 0)  &&  fit!(recipe, fp)
     for model in models
         if length(model[:Iron].list) > 0
             haskey(model, :Ironuv   )  &&  freeze!(model, :Ironuv)
