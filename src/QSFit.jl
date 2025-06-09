@@ -156,21 +156,21 @@ function analyze(_recipe::CRecipe{<: AbstractRecipe}, _spec::Spectrum)
     @track_recipe
     tstart = now();
     recipe = deepcopy(_recipe)
-    spec = deepcopy(_spec)
+    recipe.specs = [deepcopy(_spec)]
 
     println("Timestamp: ", tstart)
     display(recipe)
     println()
-    show(spec)
+    show(recipe.specs[1])
 
-    preprocess_spec!(recipe, spec)
-    data = spec2data(recipe, spec)
+    preprocess_spec!(recipe, recipe.specs[1])
+    data = spec2data(recipe, recipe.specs[1])
     bestfit, fsumm = analyze(recipe, [data])
-    post = postanalysis(recipe, bestfit[1])
+    post = postanalysis(recipe, 1, bestfit[1])
 
     out = Results(tstart,
                   Dates.value(convert(Millisecond, now() - tstart)) / 1000.,
-                  spec, data, bestfit[1], fsumm, post)
+                  recipe.specs[1], data, bestfit[1], fsumm, post)
     println("\nTotal elapsed time: $(out.elapsed) s")
     return out
 end
@@ -179,23 +179,23 @@ function analyze(_recipe::CRecipe{<: AbstractRecipe}, _specs::Vector{Spectrum})
     @track_recipe
     tstart = now();
     recipe = deepcopy(_recipe)
-    specs = deepcopy(_specs)
+    recipe.specs = deepcopy(_specs)
 
     println("Timestamp: ", tstart)
     display(recipe)
     println()
-    for i in 1:length(specs)
-        show(specs[i])
+    for i in 1:length(recipe.specs)
+        show(recipe.specs[i])
     end
 
-    preprocess_spec!.(Ref(recipe), specs)
-    data = spec2data.(Ref(recipe), specs)
+    preprocess_spec!.(Ref(recipe), recipe.specs)
+    data = spec2data.(Ref(recipe), recipe.specs)
     bestfit, fsumm = analyze(recipe, data)
-    post = [postanalysis(recipe, b) for b in bestfit]
+    post = [postanalysis(recipe, i, bestfit[i]) for i in 1:length(bestfit)]
 
     out = MultiResults(tstart,
                        Dates.value(convert(Millisecond, now() - tstart)) / 1000.,
-                       specs, data, bestfit, fsumm, post)
+                       recipe.specs, data, bestfit, fsumm, post)
     println("\nTotal elapsed time: $(out.elapsed) s")
     return out
 end

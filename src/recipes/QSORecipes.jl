@@ -5,7 +5,7 @@ using Dierckx
 using ..QSFit, ..QSFit.ATL, GModelFit
 
 import GModelFit: domain
-import QSFit: init_recipe!, preprocess_spec!, spec2data, line_suffix, line_component, set_lines_dict!, analyze, postanalysis, Results
+import QSFit: init_recipe!, preprocess_spec!, spec2data, SpectralLine, line_suffix, line_component, analyze, postanalysis, Results
 
 abstract type QSOGeneric <: AbstractRecipe end
 
@@ -181,7 +181,7 @@ function add_emission_lines!(recipe::CRecipe{<: QSOGeneric}, fp::GModelFit.FitPr
     groups = OrderedDict{Symbol, Vector{Symbol}}()
 
     # Create model components
-    for (cname, line) in recipe.lines
+    for (cname, line) in recipe.specs[ith].meta[:lines]
         getmodel(fp, ith)[cname] = line.comp
         haskey(groups, line.group)  ||  (groups[line.group] = Vector{Symbol}())
         push!(groups[line.group], cname)
@@ -310,13 +310,13 @@ function neglect_weak_features!(recipe::CRecipe{<: QSOGeneric}, fp::GModelFit.Fi
 end
 
 
-function preprocess_spec!(recipe::CRecipe{T}, spec::QSFit.Spectrum) where T <: QSOGeneric
+function preprocess_spec!(recipe::CRecipe{T}, spec::Spectrum) where T <: QSOGeneric
     @track_recipe
     @invoke preprocess_spec!(recipe::CRecipe{<: AbstractRecipe}, spec)
-    recipe.spec = spec  # save spectrum for later use
 
-    set_lines_dict!(recipe)
-
+    spec.meta[:lines] = OrderedDict{Symbol, SpectralLine}()
+    set_lines_dict!(recipe, spec.meta[:lines])
+    
     spec.good[findall(spec.x .< recipe.wavelength_range[1])] .= false
     spec.good[findall(spec.x .> recipe.wavelength_range[2])] .= false
 
@@ -329,6 +329,7 @@ function preprocess_spec!(recipe::CRecipe{T}, spec::QSFit.Spectrum) where T <: Q
     println("Good samples before line coverage filter: ", count(spec.good) , " / ", length(spec.good))
 
     # Collect line components
+    lines = spec.meta[:lines]
     for loop in 1:2
         # The second pass is required to neglect lines whose coverage
         # has been affected by the neglected spectral samples.
@@ -336,7 +337,7 @@ function preprocess_spec!(recipe::CRecipe{T}, spec::QSFit.Spectrum) where T <: Q
             println()
             println("Updated coverage:")
         end
-        for (cname, line) in get_lines_dict(recipe)
+        for (cname, line) in lines
             threshold = get(recipe.min_spectral_coverage, cname, recipe.min_spectral_coverage[:default])
             (λmin, λmax, coverage) = QSFit.spectral_coverage(spec.x[findall(spec.good)],
                                                              spec.resolution, line.comp)
@@ -344,7 +345,7 @@ function preprocess_spec!(recipe::CRecipe{T}, spec::QSFit.Spectrum) where T <: Q
             if coverage < threshold
             @printf(", threshold is < %5.3f, neglecting...", threshold)
                 spec.good[λmin .<= spec.x .< λmax] .= false
-                delete!(recipe.lines, cname)
+                delete!(lines, cname)
             end
             println()
         end
@@ -352,24 +353,24 @@ function preprocess_spec!(recipe::CRecipe{T}, spec::QSFit.Spectrum) where T <: Q
     println("Good samples after line coverage filter: ", count(spec.good) , " / ", length(spec.good))
 
     # Sort lines according to center wavelength, and save list in recipe
-    kk = collect(keys(  recipe.lines))
-    vv = collect(values(recipe.lines))
+    kk = collect(keys(  lines))
+    vv = collect(values(lines))
     ii = sortperm(getfield.(getfield.(getfield.(vv, :comp), :center), :val))
-    recipe.lines = OrderedDict(Pair.(kk[ii], vv[ii]))
+    spec.meta[:lines] = OrderedDict(Pair.(kk[ii], vv[ii]))
 end
 
 
-function postanalysis(recipe::CRecipe{<: QSOGeneric}, bestfit::GModelFit.ModelSnapshot)
+function postanalysis(recipe::CRecipe{<: QSOGeneric}, ith::Int, bestfit::GModelFit.ModelSnapshot)
     @track_recipe
     EW = OrderedDict{Symbol, Float64}()
 
     cont = deepcopy(bestfit())
-    for cname in keys(recipe.lines)
+    for cname in keys(recipe.specs[ith].meta[:lines])
         haskey(bestfit, cname) || continue
         cont .-= bestfit(cname)
     end
     @assert all(cont .> 0) "Continuum model is zero or negative"
-    for cname in keys(recipe.lines)
+    for cname in keys(recipe.specs[ith].meta[:lines])
         haskey(bestfit, cname) || continue
         EW[cname] = QSFit.int_tabulated(coords(bestfit.domain),
                                         bestfit(cname) ./ cont)[1]

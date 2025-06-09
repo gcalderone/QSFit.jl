@@ -3,7 +3,7 @@ include("ATL.jl")
 using .ATL
 
 export ForbiddenLine, SemiForbiddenLine, NarrowLine, BroadLine, VeryBroadLine, NuisanceLine
-export get_lines_dict, set_lines_dict!, add_line!
+export add_line!
 
 
 abstract type LineTemplate end
@@ -14,10 +14,11 @@ abstract type BroadLine         <: LineTemplate  end
 abstract type VeryBroadLine     <: LineTemplate  end
 abstract type NuisanceLine      <: LineTemplate  end
 
-default_line_templates(::CRecipe, ::ATL.AbstractTransition{<: ATL.Forbidden})     = [ForbiddenLine]
-default_line_templates(::CRecipe, ::ATL.AbstractTransition{<: ATL.SemiForbidden}) = [SemiForbiddenLine]
-default_line_templates(::CRecipe, ::ATL.AbstractTransition{<: ATL.Permitted})     = [NarrowLine, BroadLine]
-default_line_templates(::CRecipe, ::ATL.UnidentifiedTransition)                   = [NuisanceLine]
+
+default_line_templates(::CRecipe, ::ATL.Transition{N, <: ATL.Forbidden})     where N = [ForbiddenLine]
+default_line_templates(::CRecipe, ::ATL.Transition{N, <: ATL.SemiForbidden}) where N = [SemiForbiddenLine]
+default_line_templates(::CRecipe, ::ATL.Transition{N, <: ATL.Permitted})     where N = [NarrowLine, BroadLine]
+default_line_templates(::CRecipe, ::ATL.UnidentifiedTransition)                      = [NuisanceLine]
 
 line_suffix(::CRecipe, ::Type{<: LineTemplate})  = ""
 line_suffix(::CRecipe, ::Type{<: NarrowLine})    = "_na"
@@ -32,7 +33,6 @@ line_group( ::CRecipe, ::Type{<: VeryBroadLine})     = :VeryBroadLines
 line_group( ::CRecipe, ::Type{<: NuisanceLine})      = :NuisanceLines
 
 line_component(::CRecipe, center::Float64) = SpecLineGauss(center)
-line_component(recipe::CRecipe, t::ATL.AbstractTransition, template::Type{<: LineTemplate}) = line_component(recipe, get_wavelength(t), template)
 
 function line_component(recipe::CRecipe, center::Float64, template::Type{<: ForbiddenLine})
     @track_recipe
@@ -44,7 +44,7 @@ end
 
 function line_component(recipe::CRecipe, center::Float64, template::Type{<: SemiForbiddenLine})
     @track_recipe
-    return line_component(recipe, BroadLine, t)
+    return line_component(recipe, center, BroadLine)
 end
 
 function line_component(recipe::CRecipe, center::Float64, template::Type{<: NarrowLine})
@@ -95,41 +95,48 @@ function show(io::IO, line::SpectralLine)
     show(io, line.comp)
 end
 
-add_line!(recipe::CRecipe, tid::Symbol) = add_line!(recipe, get_transition(tid))
-add_line!(recipe::CRecipe, tid::Symbol, templates::Vararg{DataType, N}) where N = add_line!(recipe, get_transition(tid), templates...)
+add_line!(recipe::CRecipe, dict::OrderedDict{Symbol, SpectralLine}, val::Val{tid}) where {tid}                                    = [add_line!(recipe, dict, val   , t) for t in default_line_templates(recipe, get_transition(tid))]
+add_line!(recipe::CRecipe, dict::OrderedDict{Symbol, SpectralLine},    ::Val{tid}  , template::Type{<: LineTemplate}) where {tid} =  add_line!(recipe, dict, get_transition(tid), template)
 
-add_line!(recipe::CRecipe, center::Float64) = add_line!(recipe, ATL.UnidentifiedTransition(center))
-add_line!(recipe::CRecipe, center::Float64, templates::Vararg{DataType, N}) where N = add_line!(recipe, ATL.UnidentifiedTransition(center), templates...)
+add_line!(recipe::CRecipe, dict::OrderedDict{Symbol, SpectralLine}, tid::Symbol)                                                  = [add_line!(recipe, dict, tid   , t) for t in default_line_templates(recipe, get_transition(tid))]
+add_line!(recipe::CRecipe, dict::OrderedDict{Symbol, SpectralLine}, tid::Symbol    , template::Type{<: LineTemplate})             =  add_line!(recipe, dict, get_transition(tid), template)
 
-add_line!(recipe::CRecipe, t::ATL.AbstractTransition) = add_line!(recipe, t, default_line_templates(recipe, t)...)
-function add_line!(recipe::CRecipe, t::ATL.AbstractTransition, templates::Vararg{DataType, N}) where N
+add_line!(recipe::CRecipe, dict::OrderedDict{Symbol, SpectralLine}, center::Float64)                                              = [add_line!(recipe, dict, center, t) for t in default_line_templates(recipe, ATL.UnidentifiedTransition(center))]
+add_line!(recipe::CRecipe, dict::OrderedDict{Symbol, SpectralLine}, center::Float64, template::Type{<: LineTemplate})             =  add_line!(recipe, dict, ATL.UnidentifiedTransition(center), template)
+
+# Singlets
+function add_line!(recipe::CRecipe, dict::OrderedDict{Symbol, SpectralLine}, t::ATL.Transition{1,T}, template::Type{<: LineTemplate}) where T
     @track_recipe
-    @assert N > 0
-    dict = get_lines_dict(recipe)
-    for template in templates
-        @assert template <: LineTemplate
-        cname = Symbol(get_id(t), line_suffix(recipe, template))
-        @assert !(cname in keys(dict)) "Duplicated component name: $cname"
-        group = line_group(recipe, template)
-        comp = line_component(recipe, t, template)
-        dict[cname] = SpectralLine{template}(get_id(t), t, group, comp)
-    end
-    return dict
+    tid = get_id(t)
+    cname = Symbol(tid, line_suffix(recipe, template))
+    @assert !(cname in keys(dict)) "Duplicated component name: $cname"
+    group = line_group(recipe, template)
+    comp = line_component(recipe, ATL.get_wavelength(t), template)
+    dict[cname] = SpectralLine{template}(tid, t, group, comp)
+    nothing
 end
 
-function get_lines_dict(recipe::CRecipe)
-    if !(:lines in propertynames(recipe))
-        @track_recipe
-        recipe.lines = OrderedDict{Symbol, SpectralLine}()
-    end
-    return recipe.lines
+# Handle multiplets
+function add_line!(recipe::CRecipe, dict::OrderedDict{Symbol, SpectralLine}, t::ATL.Transition{N,T}, template::Type{<: LineTemplate}) where {N,T}
+    @track_recipe
+    tid = get_id(t)
+    cname = Symbol(tid, line_suffix(recipe, template))
+    @assert !(cname in keys(dict)) "Duplicated component name: $cname"
+    group = line_group(recipe, template)
+    comp = line_component(recipe, ATL.get_wavelength(t), template)
+    dict[cname] = SpectralLine{template}(tid, t, group, comp)
+    nothing
 end
 
-function set_lines_dict!(recipe::CRecipe)
+
+# Unidentified lines
+function add_line!(recipe::CRecipe, dict::OrderedDict{Symbol, SpectralLine}, t::ATL.UnidentifiedTransition, template::Type{<: LineTemplate}) where T
     @track_recipe
-    recipe.lines = OrderedDict{Symbol, SpectralLine}()
-    for tid in ATL.get_transition_ids()
-        add_line!(recipe, tid)
-    end
-    return get_lines_dict(recipe)
+    tid = get_id(t)
+    cname = tid
+    @assert !(cname in keys(dict)) "Duplicated component name: $cname"
+    group = line_group(recipe, template)
+    comp = line_component(recipe, ATL.get_wavelength(t), template)
+    dict[cname] = SpectralLine{template}(tid, t, group, comp)
+    nothing
 end

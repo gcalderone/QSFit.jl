@@ -25,44 +25,43 @@ function init_recipe!(recipe::CRecipe{T}) where T <: Type1
 end
 
 
-function set_lines_dict!(recipe::CRecipe{T}) where T <: Type1
+function set_lines_dict!(recipe::CRecipe{T}, dict::OrderedDict{Symbol, SpectralLine}) where T <: Type1
     @track_recipe
-    (:lines in propertynames(recipe))  &&  (return get_lines_dict(recipe))
-    add_line!(recipe, :Lyb)
-    # add_line!(recipe, :OV_1213)  # 1213.8A, Ferland+92, Shields+95
-    add_line!(recipe, :Lya)
-    # add_line!(recipe, :OV_1218)  # 1218.3A, Ferland+92, Shields+95
-    add_line!(recipe, :NV_1241    , NarrowLine)
-    add_line!(recipe, :OI_1306    , BroadLine)
-    add_line!(recipe, :CII_1335   , BroadLine)
-    add_line!(recipe, :SiIV_1400  , BroadLine)
-    add_line!(recipe, :CIV_1549   , NarrowLine, BroadLine)
-    add_line!(recipe, :HeII_1640  , BroadLine)
-    add_line!(recipe, :OIII_1664  , BroadLine)
-    add_line!(recipe, :AlIII_1858 , BroadLine)
-    add_line!(recipe, :CIII_1909  , BroadLine)
-    add_line!(recipe, :CII_2326   , BroadLine)
-    add_line!(recipe, QSFit.ATL.UnidentifiedTransition(2420.0), BroadLine)
-    add_line!(recipe, :MgII_2798  , NarrowLine, MgIIBroadLine)
-    add_line!(recipe, :NeV_3345)
-    add_line!(recipe, :NeV_3426)
-    add_line!(recipe, :OII_3727)
-    add_line!(recipe, :NeIII_3869)
-    add_line!(recipe, :Hd         , BroadLine)
-    add_line!(recipe, :Hg         , BroadLine)
-    add_line!(recipe, :OIII_4363)
-    add_line!(recipe, :HeII_4686  , BroadLine)
-    add_line!(recipe, :Hb)
-    add_line!(recipe, :OIII_4959)
-    add_line!(recipe, :OIII_5007  , ForbiddenLine, BlueWing)
-    add_line!(recipe, :HeI_5876   , BroadLine)
-    add_line!(recipe, :OI_6300)
-    add_line!(recipe, :OI_6364)
-    add_line!(recipe, :NII_6549)
-    add_line!(recipe, :Ha         , NarrowLine, BroadLine, VeryBroadLine)
-    add_line!(recipe, :NII_6583)
-    add_line!(recipe, :SII_6716)
-    add_line!(recipe, :SII_6731)
+    add_line!(recipe, dict, :Lyb)
+    # add_line!(recipe, dict, :OV_1213)  # 1213.8A, Ferland+92, Shields+95
+    add_line!(recipe, dict, :Lya)
+    # add_line!(recipe, dict, :OV_1218)  # 1218.3A, Ferland+92, Shields+95
+    add_line!(recipe, dict, :NV_1241    , NarrowLine)
+    add_line!(recipe, dict, :OI_1306    , BroadLine)
+    add_line!(recipe, dict, :CII_1335   , BroadLine)
+    add_line!(recipe, dict, :SiIV_1400  , BroadLine)
+    [add_line!(recipe, dict, :CIV_1549   , t) for t in [NarrowLine, BroadLine]]
+    add_line!(recipe, dict, :HeII_1640  , BroadLine)
+    add_line!(recipe, dict, :OIII_1664  , BroadLine)
+    add_line!(recipe, dict, :AlIII_1858 , BroadLine)
+    add_line!(recipe, dict, :CIII_1909  , BroadLine)
+    add_line!(recipe, dict, :CII_2326   , BroadLine)
+    add_line!(recipe, dict, QSFit.ATL.UnidentifiedTransition(2420.0), BroadLine)
+    [add_line!(recipe, dict, :MgII_2798  , t) for t in [NarrowLine, MgIIBroadLine]]
+    add_line!(recipe, dict, :NeV_3345)
+    add_line!(recipe, dict, :NeV_3426)
+    add_line!(recipe, dict, :OII_3727)
+    add_line!(recipe, dict, :NeIII_3869)
+    add_line!(recipe, dict, :Hd         , BroadLine)
+    add_line!(recipe, dict, :Hg         , BroadLine)
+    add_line!(recipe, dict, :OIII_4363)
+    add_line!(recipe, dict, :HeII_4686  , BroadLine)
+    add_line!(recipe, dict, :Hb)
+    add_line!(recipe, dict, :OIII_4959)
+    [add_line!(recipe, dict, :OIII_5007  , t)  for t in [ForbiddenLine, BlueWing]]
+    add_line!(recipe, dict, :HeI_5876   , BroadLine)
+    add_line!(recipe, dict, :OI_6300)
+    add_line!(recipe, dict, :OI_6364)
+    add_line!(recipe, dict, :NII_6549)
+    [add_line!(recipe, dict, :Ha         , t) for t in [NarrowLine, BroadLine, VeryBroadLine]]
+    add_line!(recipe, dict, :NII_6583)
+    add_line!(recipe, dict, :SII_6716)
+    add_line!(recipe, dict, :SII_6731)
     return nothing
 end
 
@@ -100,7 +99,7 @@ function add_iron_uv!(recipe::CRecipe{<: Type1}, fp::GModelFit.FitProblem, ith::
     if recipe.use_ironuv
         fwhm = recipe.Ironuv_fwhm
         comp = QSFit.ironuv(fwhm)
-        (_1, _2, coverage) = QSFit.spectral_coverage(λ, recipe.spec.resolution, comp)
+        (_1, _2, coverage) = QSFit.spectral_coverage(λ, recipe.specs[ith].resolution, comp)
         threshold = get(recipe.min_spectral_coverage, :Ironuv, recipe.min_spectral_coverage[:default])
         if coverage >= threshold
             getmodel(fp, ith)[:Ironuv] = comp
@@ -127,7 +126,7 @@ function add_iron_opt!(recipe::CRecipe{<: Type1}, fp::GModelFit.FitProblem, ith:
     if recipe.use_ironopt
         fwhm = recipe.Ironoptbr_fwhm
         comp = QSFit.ironopt_broad(fwhm)
-        (_1, _2, coverage) = QSFit.spectral_coverage(λ, recipe.spec.resolution, comp)
+        (_1, _2, coverage) = QSFit.spectral_coverage(λ, recipe.specs[ith].resolution, comp)
         threshold = get(recipe.min_spectral_coverage, :Ironopt, recipe.min_spectral_coverage[:default])
         if coverage >= threshold
             getmodel(fp, ith)[:Ironoptbr] = comp
@@ -261,15 +260,12 @@ function analyze(recipe::CRecipe{T}, data::Vector{Measures{1}}) where T <: Type1
     scan_and_evaluate!(fp)
 
     println("\nFit known emission lines...")
-    if (:lines in propertynames(recipe))  &&  (length(recipe.lines) > 0)
-        add_emission_lines!(recipe, fp)
-        add_patch_functs!(recipe, fp)
-
-        fit!(recipe, fp)
-        for model in models
-            for cname in keys(recipe.lines)
-                freeze!(model, cname)
-            end
+    add_emission_lines!(recipe, fp)
+    add_patch_functs!(recipe, fp)
+    fit!(recipe, fp)
+    for i in 1:length(models)
+        for cname in keys(recipe.specs[i].meta[:lines])
+            freeze!(models[i], cname)
         end
     end
 
@@ -284,8 +280,10 @@ function analyze(recipe::CRecipe{T}, data::Vector{Measures{1}}) where T <: Type1
         haskey(model, :Ironuv   )  &&  thaw!(model, :Ironuv)
         haskey(model, :Ironoptbr)  &&  thaw!(model, :Ironoptbr)
         haskey(model, :Ironoptna)  &&  thaw!(model, :Ironoptna)
-        for cname in keys(recipe.lines)
-            thaw!(model, cname)
+        for i in 1:length(models)
+            for cname in keys(recipe.specs[i].meta[:lines])
+                thaw!(models[i], cname)
+            end
         end
         for j in 1:recipe.n_nuisance
             cname = Symbol(:nuisance, j)
