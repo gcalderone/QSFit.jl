@@ -27,41 +27,41 @@ end
 
 function set_lines_dict!(recipe::CRecipe{T}, dict::OrderedDict{Symbol, SpectralLine}) where T <: Type1
     @track_recipe
-    add_line!(recipe, dict, :Lyb)
-    # add_line!(recipe, dict, :OV_1213)  # 1213.8A, Ferland+92, Shields+95
-    add_line!(recipe, dict, :Lya)
-    # add_line!(recipe, dict, :OV_1218)  # 1218.3A, Ferland+92, Shields+95
-    add_line!(recipe, dict, :NV_1241    , NarrowLine)
-    add_line!(recipe, dict, :OI_1306    , BroadLine)
-    add_line!(recipe, dict, :CII_1335   , BroadLine)
-    add_line!(recipe, dict, :SiIV_1400  , BroadLine)
-    [add_line!(recipe, dict, :CIV_1549   , t) for t in [NarrowLine, BroadLine]]
-    add_line!(recipe, dict, :HeII_1640  , BroadLine)
-    add_line!(recipe, dict, :OIII_1664  , BroadLine)
-    add_line!(recipe, dict, :AlIII_1858 , BroadLine)
-    add_line!(recipe, dict, :CIII_1909  , BroadLine)
-    add_line!(recipe, dict, :CII_2326   , BroadLine)
-    add_line!(recipe, dict, QSFit.ATL.UnidentifiedTransition(2420.0), BroadLine)
-    [add_line!(recipe, dict, :MgII_2798  , t) for t in [NarrowLine, MgIIBroadLine]]
-    add_line!(recipe, dict, :NeV_3345)
-    add_line!(recipe, dict, :NeV_3426)
-    add_line!(recipe, dict, :OII_3727)
-    add_line!(recipe, dict, :NeIII_3869)
-    add_line!(recipe, dict, :Hd         , BroadLine)
-    add_line!(recipe, dict, :Hg         , BroadLine)
-    add_line!(recipe, dict, :OIII_4363)
-    add_line!(recipe, dict, :HeII_4686  , BroadLine)
-    add_line!(recipe, dict, :Hb)
-    add_line!(recipe, dict, :OIII_4959)
-    [add_line!(recipe, dict, :OIII_5007  , t)  for t in [ForbiddenLine, BlueWing]]
-    add_line!(recipe, dict, :HeI_5876   , BroadLine)
-    add_line!(recipe, dict, :OI_6300)
-    add_line!(recipe, dict, :OI_6364)
-    add_line!(recipe, dict, :NII_6549)
-    [add_line!(recipe, dict, :Ha         , t) for t in [NarrowLine, BroadLine, VeryBroadLine]]
-    add_line!(recipe, dict, :NII_6583)
-    add_line!(recipe, dict, :SII_6716)
-    add_line!(recipe, dict, :SII_6731)
+    use_line!( recipe, dict, :Lyb)
+    # use_line!( recipe, dict, :OV_1213)  # 1213.8A, Ferland+92, Shields+95
+    use_line!( recipe, dict, :Lya)
+    # use_line!( recipe, dict, :OV_1218)  # 1218.3A, Ferland+92, Shields+95
+    use_line!( recipe, dict, :NV_1241    , NarrowLine)
+    use_line!( recipe, dict, :OI_1306    , BroadLine)
+    use_line!( recipe, dict, :CII_1335   , BroadLine)
+    use_line!( recipe, dict, :SiIV_1400  , BroadLine)
+    [use_line!(recipe, dict, :CIV_1549   , t) for t in [NarrowLine, BroadLine]]
+    use_line!( recipe, dict, :HeII_1640  , BroadLine)
+    use_line!( recipe, dict, :OIII_1664  , BroadLine)
+    use_line!( recipe, dict, :AlIII_1858 , BroadLine)
+    use_line!( recipe, dict, :CIII_1909  , BroadLine)
+    use_line!( recipe, dict, :CII_2326   , BroadLine)
+    use_line!( recipe, dict, QSFit.ATL.UnidentifiedTransition(2420.0), BroadLine)
+    [use_line!(recipe, dict, :MgII_2798  , t) for t in [NarrowLine, MgIIBroadLine]]
+    use_line!( recipe, dict, :NeV_3345)
+    use_line!( recipe, dict, :NeV_3426)
+    use_line!( recipe, dict, :OII_3727)
+    use_line!( recipe, dict, :NeIII_3869)
+    use_line!( recipe, dict, :Hd         , BroadLine)
+    use_line!( recipe, dict, :Hg         , BroadLine)
+    use_line!( recipe, dict, :OIII_4363)
+    use_line!( recipe, dict, :HeII_4686  , BroadLine)
+    use_line!( recipe, dict, :Hb)
+    use_line!( recipe, dict, :OIII_4959)
+    [use_line!(recipe, dict, :OIII_5007  , t)  for t in [ForbiddenLine, BlueWing]]
+    use_line!( recipe, dict, :HeI_5876   , BroadLine)
+    use_line!( recipe, dict, :OI_6300)
+    use_line!( recipe, dict, :OI_6364)
+    use_line!( recipe, dict, :NII_6549)
+    [use_line!(recipe, dict, :Ha         , t) for t in [NarrowLine, BroadLine, VeryBroadLine]]
+    use_line!( recipe, dict, :NII_6583)
+    use_line!( recipe, dict, :SII_6716)
+    use_line!( recipe, dict, :SII_6731)
     return nothing
 end
 

@@ -155,22 +155,20 @@ end
 function analyze(_recipe::CRecipe{<: AbstractRecipe}, _spec::Spectrum)
     @track_recipe
     tstart = now();
-    recipe = deepcopy(_recipe)
-    recipe.specs = [deepcopy(_spec)]
-
     println("Timestamp: ", tstart)
-    display(recipe)
-    println()
-    show(recipe.specs[1])
+    recipe = deepcopy(_recipe)
+    display(recipe); println()
+    spec = deepcopy(_spec)
+    show(spec)
 
-    preprocess_spec!(recipe, recipe.specs[1])
-    data = spec2data(recipe, recipe.specs[1])
+    preprocess_spec!(recipe, spec)
+    data = spec2data(recipe, spec)
     bestfit, fsumm = analyze(recipe, [data])
-    post = postanalysis(recipe, 1, bestfit[1])
+    post = postanalysis(recipe, bestfit[1])
 
     out = Results(tstart,
                   Dates.value(convert(Millisecond, now() - tstart)) / 1000.,
-                  recipe.specs[1], data, bestfit[1], fsumm, post)
+                  spec, data, bestfit[1], fsumm, post)
     println("\nTotal elapsed time: $(out.elapsed) s")
     return out
 end
@@ -178,24 +176,22 @@ end
 function analyze(_recipe::CRecipe{<: AbstractRecipe}, _specs::Vector{Spectrum})
     @track_recipe
     tstart = now();
-    recipe = deepcopy(_recipe)
-    recipe.specs = deepcopy(_specs)
-
     println("Timestamp: ", tstart)
-    display(recipe)
-    println()
-    for i in 1:length(recipe.specs)
-        show(recipe.specs[i])
+    recipe = deepcopy(_recipe)
+    display(recipe); println()
+    specs = deepcopy(_spec)
+    for i in 1:length(specs)
+        show(specs[i])
     end
 
-    preprocess_spec!.(Ref(recipe), recipe.specs)
-    data = spec2data.(Ref(recipe), recipe.specs)
+    preprocess_spec!.(Ref(recipe), specs)
+    data = spec2data.(Ref(recipe), specs)
     bestfit, fsumm = analyze(recipe, data)
-    post = [postanalysis(recipe, i, bestfit[i]) for i in 1:length(bestfit)]
+    post = [postanalysis(recipe, bestfit[i]) for i in 1:length(bestfit)]
 
     out = MultiResults(tstart,
                        Dates.value(convert(Millisecond, now() - tstart)) / 1000.,
-                       recipe.specs, data, bestfit, fsumm, post)
+                       specs, data, bestfit, fsumm, post)
     println("\nTotal elapsed time: $(out.elapsed) s")
     return out
 end

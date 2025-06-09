@@ -3,7 +3,7 @@ include("ATL.jl")
 using .ATL
 
 export ForbiddenLine, SemiForbiddenLine, NarrowLine, BroadLine, VeryBroadLine, NuisanceLine
-export add_line!
+export use_line!
 
 
 abstract type LineTemplate end
@@ -95,17 +95,17 @@ function show(io::IO, line::SpectralLine)
     show(io, line.comp)
 end
 
-add_line!(recipe::CRecipe, dict::OrderedDict{Symbol, SpectralLine}, val::Val{tid}) where {tid}                                    = [add_line!(recipe, dict, val   , t) for t in default_line_templates(recipe, get_transition(tid))]
-add_line!(recipe::CRecipe, dict::OrderedDict{Symbol, SpectralLine},    ::Val{tid}  , template::Type{<: LineTemplate}) where {tid} =  add_line!(recipe, dict, get_transition(tid), template)
+use_line!(recipe::CRecipe, dict::OrderedDict{Symbol, SpectralLine}, val::Val{tid}) where {tid}                                    = [use_line!(recipe, dict, val   , t) for t in default_line_templates(recipe, get_transition(tid))]
+use_line!(recipe::CRecipe, dict::OrderedDict{Symbol, SpectralLine},    ::Val{tid}  , template::Type{<: LineTemplate}) where {tid} =  use_line!(recipe, dict, get_transition(tid), template)
 
-add_line!(recipe::CRecipe, dict::OrderedDict{Symbol, SpectralLine}, tid::Symbol)                                                  = [add_line!(recipe, dict, tid   , t) for t in default_line_templates(recipe, get_transition(tid))]
-add_line!(recipe::CRecipe, dict::OrderedDict{Symbol, SpectralLine}, tid::Symbol    , template::Type{<: LineTemplate})             =  add_line!(recipe, dict, get_transition(tid), template)
+use_line!(recipe::CRecipe, dict::OrderedDict{Symbol, SpectralLine}, tid::Symbol)                                                  = [use_line!(recipe, dict, tid   , t) for t in default_line_templates(recipe, get_transition(tid))]
+use_line!(recipe::CRecipe, dict::OrderedDict{Symbol, SpectralLine}, tid::Symbol    , template::Type{<: LineTemplate})             =  use_line!(recipe, dict, get_transition(tid), template)
 
-add_line!(recipe::CRecipe, dict::OrderedDict{Symbol, SpectralLine}, center::Float64)                                              = [add_line!(recipe, dict, center, t) for t in default_line_templates(recipe, ATL.UnidentifiedTransition(center))]
-add_line!(recipe::CRecipe, dict::OrderedDict{Symbol, SpectralLine}, center::Float64, template::Type{<: LineTemplate})             =  add_line!(recipe, dict, ATL.UnidentifiedTransition(center), template)
+use_line!(recipe::CRecipe, dict::OrderedDict{Symbol, SpectralLine}, center::Float64)                                              = [use_line!(recipe, dict, center, t) for t in default_line_templates(recipe, ATL.UnidentifiedTransition(center))]
+use_line!(recipe::CRecipe, dict::OrderedDict{Symbol, SpectralLine}, center::Float64, template::Type{<: LineTemplate})             =  use_line!(recipe, dict, ATL.UnidentifiedTransition(center), template)
 
 # Singlets
-function add_line!(recipe::CRecipe, dict::OrderedDict{Symbol, SpectralLine}, t::ATL.Transition{1,T}, template::Type{<: LineTemplate}) where T
+function use_line!(recipe::CRecipe, dict::OrderedDict{Symbol, SpectralLine}, t::ATL.Transition{1,T}, template::Type{<: LineTemplate}) where T
     @track_recipe
     tid = get_id(t)
     cname = Symbol(tid, line_suffix(recipe, template))
@@ -117,7 +117,7 @@ function add_line!(recipe::CRecipe, dict::OrderedDict{Symbol, SpectralLine}, t::
 end
 
 # Handle multiplets
-function add_line!(recipe::CRecipe, dict::OrderedDict{Symbol, SpectralLine}, t::ATL.Transition{N,T}, template::Type{<: LineTemplate}) where {N,T}
+function use_line!(recipe::CRecipe, dict::OrderedDict{Symbol, SpectralLine}, t::ATL.Transition{N,T}, template::Type{<: LineTemplate}) where {N,T}
     @track_recipe
     tid = get_id(t)
     cname = Symbol(tid, line_suffix(recipe, template))
@@ -130,7 +130,7 @@ end
 
 
 # Unidentified lines
-function add_line!(recipe::CRecipe, dict::OrderedDict{Symbol, SpectralLine}, t::ATL.UnidentifiedTransition, template::Type{<: LineTemplate}) where T
+function use_line!(recipe::CRecipe, dict::OrderedDict{Symbol, SpectralLine}, t::ATL.UnidentifiedTransition, template::Type{<: LineTemplate}) where T
     @track_recipe
     tid = get_id(t)
     cname = tid

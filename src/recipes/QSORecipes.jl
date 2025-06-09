@@ -5,7 +5,7 @@ using Dierckx
 using ..QSFit, ..QSFit.ATL, GModelFit
 
 import GModelFit: domain
-import QSFit: init_recipe!, preprocess_spec!, spec2data, SpectralLine, line_suffix, line_component, analyze, postanalysis, Results
+import QSFit: init_recipe!, preprocess_spec!, SpectralLine, line_suffix, line_component, analyze, postanalysis, Results
 
 abstract type QSOGeneric <: AbstractRecipe end
 
@@ -50,6 +50,7 @@ function init_recipe!(recipe::CRecipe{T}) where T <: QSOGeneric
     recipe.line_component = QSFit.SpecLineGauss
     recipe.solver = GModelFit.cmpfit()
     recipe.solver.config.ftol = 1.e-6
+    recipe.specs = Vector{Spectrum}()
 end
 
 
@@ -313,10 +314,11 @@ end
 function preprocess_spec!(recipe::CRecipe{T}, spec::Spectrum) where T <: QSOGeneric
     @track_recipe
     @invoke preprocess_spec!(recipe::CRecipe{<: AbstractRecipe}, spec)
+    push!(recipe.specs, spec)  # save for later use
 
     spec.meta[:lines] = OrderedDict{Symbol, SpectralLine}()
     set_lines_dict!(recipe, spec.meta[:lines])
-    
+
     spec.good[findall(spec.x .< recipe.wavelength_range[1])] .= false
     spec.good[findall(spec.x .> recipe.wavelength_range[2])] .= false
 
@@ -360,17 +362,23 @@ function preprocess_spec!(recipe::CRecipe{T}, spec::Spectrum) where T <: QSOGene
 end
 
 
-function postanalysis(recipe::CRecipe{<: QSOGeneric}, ith::Int, bestfit::GModelFit.ModelSnapshot)
+function postanalysis(recipe::CRecipe{<: QSOGeneric}, bestfit::GModelFit.ModelSnapshot)
     @track_recipe
     EW = OrderedDict{Symbol, Float64}()
 
+    cnames = Symbol[]
+    for i in 1:length(recipe.specs)
+        append!(cnames, keys(recipe.specs[i].meta[:lines]))
+    end
+    cnames = sort(unique(cnames))
+
     cont = deepcopy(bestfit())
-    for cname in keys(recipe.specs[ith].meta[:lines])
+    for cname in cnames
         haskey(bestfit, cname) || continue
         cont .-= bestfit(cname)
     end
     @assert all(cont .> 0) "Continuum model is zero or negative"
-    for cname in keys(recipe.specs[ith].meta[:lines])
+    for cname in cnames
         haskey(bestfit, cname) || continue
         EW[cname] = QSFit.int_tabulated(coords(bestfit.domain),
                                         bestfit(cname) ./ cont)[1]
