@@ -133,7 +133,7 @@ end
 function use_line!(recipe::CRecipe, dict::OrderedDict{Symbol, SpectralLine}, t::ATL.UnidentifiedTransition, template::Type{<: LineTemplate}) where T
     @track_recipe
     tid = get_id(t)
-    cname = tid
+    cname = Symbol(tid, line_suffix(recipe, template))
     @assert !(cname in keys(dict)) "Duplicated component name: $cname"
     group = line_group(recipe, template)
     comp = line_component(recipe, ATL.get_wavelengths(t)[1], template)

@@ -1,6 +1,6 @@
 module ATL  # Atomic Transitions List
 
-using Statistics, DataStructures, Printf
+using DataStructures, Printf
 
 export get_transition_ids, get_transition, get_label, get_id, get_wavelengths
 
@@ -58,7 +58,7 @@ struct UnidentifiedTransition <: AbstractTransition
     label::String
     lambda::Float64      # Angstrom (vacuum)
     UnidentifiedTransition(label::AbstractString, lambda::Float64) = new(replace(string(label), "." => "p"), lambda)
-    UnidentifiedTransition(lambda::Float64) = UnidentifiedTransition(@sprintf("λ%7.2f", lambda), lambda)
+    UnidentifiedTransition(lambda::Float64) = UnidentifiedTransition(@sprintf("l%7.1f", lambda), lambda)
 end
 
 # --------------------------------------------------------------------
@@ -66,7 +66,6 @@ get_label(t::AbstractTransition) = t.label
 get_id(t::AbstractTransition) = transition_id(get_label(t))
 
 get_wavelengths(t::Transition) = t.lambda
-get_wavelengths(t::UnidentifiedTransition) = [t.lambda]
 get_wavelengths(t::UnidentifiedTransition) = [t.lambda]
 
 ismultiplet(t::Transition{1,T}) where T = false

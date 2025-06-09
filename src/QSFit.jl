@@ -187,7 +187,7 @@ function analyze(_recipe::CRecipe{<: AbstractRecipe}, _specs::Vector{Spectrum})
     preprocess_spec!.(Ref(recipe), specs)
     data = spec2data.(Ref(recipe), specs)
     bestfit, fsumm = analyze(recipe, data)
-    post = [postanalysis(recipe, bestfit[i]) for i in 1:length(bestfit)]
+    post = [postanalysis(recipe, b) for b in bestfit]
 
     out = MultiResults(tstart,
                        Dates.value(convert(Millisecond, now() - tstart)) / 1000.,
