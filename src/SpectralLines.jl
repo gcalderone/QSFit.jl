@@ -130,7 +130,7 @@ end
 
 
 # Unidentified lines
-function use_line!(recipe::CRecipe, dict::OrderedDict{Symbol, SpectralLine}, t::ATL.UnidentifiedTransition, template::Type{<: LineTemplate}) where T
+function use_line!(recipe::CRecipe, dict::OrderedDict{Symbol, SpectralLine}, t::ATL.UnidentifiedTransition, template::Type{<: LineTemplate})
     @track_recipe
     tid = get_id(t)
     cname = Symbol(tid, line_suffix(recipe, template))
