@@ -4,9 +4,10 @@ abstract type Type1 <: QSOGeneric end
 
 # Special cases for emission lines
 abstract type MgIIBroadLine <: BroadLine end
-function line_component(recipe::CRecipe{<: Type1}, center::Float64, ::Type{<: MgIIBroadLine})
+
+function line_component(recipe::CRecipe, tid::Val{TID}, ::Type{<: MgIIBroadLine}) where TID
     @track_recipe
-    comp = line_component(recipe, center, BroadLine)
+    comp = line_component(recipe, tid, BroadLine)
     comp.fwhm.val = 3000
     comp.voff.low, comp.voff.val, comp.voff.high = -1e3, 0, 1e3
     return comp
@@ -27,42 +28,46 @@ end
 
 function lines_dict(recipe::CRecipe{T}) where T <: Type1
     @track_recipe
-    out = LineSet()
-    merge!(out, LineSet(recipe, :Lyb))
-    # merge!(out, LineSet(recipe, :OV_1213))  # 1213.8A, Ferland+92, Shields+95
-    merge!(out, LineSet(recipe, :Lya))
-    # merge!(out, LineSet(recipe, :OV_1218))  # 1218.3A, Ferland+92, Shields+95
-    merge!(out, LineSet(recipe, :NV_1241     , NarrowLine))
-    merge!(out, LineSet(recipe, :OI_1306     , BroadLine))
-    merge!(out, LineSet(recipe, :CII_1335    , BroadLine))
-    merge!(out, LineSet(recipe, :SiIV_1400   , BroadLine))
-    merge!(out, LineSet(recipe, :CIV_1549    , NarrowLine, BroadLine))
-    merge!(out, LineSet(recipe, :HeII_1640   , BroadLine))
-    merge!(out, LineSet(recipe, :OIII_1664   , BroadLine))
-    merge!(out, LineSet(recipe, :AlIII_1858  , BroadLine))
-    merge!(out, LineSet(recipe, :CIII_1909   , BroadLine))
-    merge!(out, LineSet(recipe, :CII_2326    , BroadLine))
-    merge!(out, LineSet(recipe, QSFit.ATL.UnidentifiedTransition(2420.0), BroadLine))
-    merge!(out, LineSet(recipe, :MgII_2798   , NarrowLine, MgIIBroadLine))
-    merge!(out, LineSet(recipe, :NeV_3345))
-    merge!(out, LineSet(recipe, :NeV_3426))
-    merge!(out, LineSet(recipe, :OII_3727))
-    merge!(out, LineSet(recipe, :NeIII_3869))
-    merge!(out, LineSet(recipe, :Hd          , BroadLine))
-    merge!(out, LineSet(recipe, :Hg          , BroadLine))
-    merge!(out, LineSet(recipe, :OIII_4363))
-    merge!(out, LineSet(recipe, :HeII_4686   , BroadLine))
-    merge!(out, LineSet(recipe, :Hb))
-    merge!(out, LineSet(recipe, :OIII_4959))
-    merge!(out, LineSet(recipe, :OIII_5007   , ForbiddenLine, BlueWing))
-    merge!(out, LineSet(recipe, :HeI_5876    , BroadLine))
-    merge!(out, LineSet(recipe, :OI_6300))
-    merge!(out, LineSet(recipe, :OI_6364))
-    merge!(out, LineSet(recipe, :NII_6549))
-    merge!(out, LineSet(recipe, :Ha          , NarrowLine, BroadLine, VeryBroadLine))
-    merge!(out, LineSet(recipe, :NII_6583))
-    merge!(out, LineSet(recipe, :SII_6716))
-    merge!(out, LineSet(recipe, :SII_6731))
+
+    # TODO: Identify the following feature
+    (:f2420 in ATL.get_transition_ids())  ||  ATL.register(ATL.Permitted, "f2420", (2420., NaN, NaN))
+
+    out = SpecLineSet()
+    add_line!(recipe, out, :Lyb)
+    # add_line!(recipe, out, :OV_1213)  # 1213.8A, Ferland+92, Shields+95
+    add_line!(recipe, out, :Lya)
+    # add_line!(recipe, out, :OV_1218)  # 1218.3A, Ferland+92, Shields+95
+    add_line!(recipe, out, :NV_1241     , NarrowLine)
+    add_line!(recipe, out, :OI_1306     , BroadLine)
+    add_line!(recipe, out, :CII_1335    , BroadLine)
+    add_line!(recipe, out, :SiIV_1400   , BroadLine)
+    add_line!(recipe, out, :CIV_1549    , NarrowLine, BroadLine)
+    add_line!(recipe, out, :HeII_1640   , BroadLine)
+    add_line!(recipe, out, :OIII_1664   , BroadLine)
+    add_line!(recipe, out, :AlIII_1858  , BroadLine)
+    add_line!(recipe, out, :CIII_1909   , BroadLine)
+    add_line!(recipe, out, :CII_2326    , BroadLine)
+    add_line!(recipe, out, :f2420       , BroadLine)
+    add_line!(recipe, out, :MgII_2798   , NarrowLine, MgIIBroadLine)
+    add_line!(recipe, out, :NeV_3345)
+    add_line!(recipe, out, :NeV_3426)
+    add_line!(recipe, out, :OII_3727)
+    add_line!(recipe, out, :NeIII_3869)
+    add_line!(recipe, out, :Hd          , BroadLine)
+    add_line!(recipe, out, :Hg          , BroadLine)
+    add_line!(recipe, out, :OIII_4363)
+    add_line!(recipe, out, :HeII_4686   , BroadLine)
+    add_line!(recipe, out, :Hb)
+    add_line!(recipe, out, :OIII_4959)
+    add_line!(recipe, out, :OIII_5007   , ForbiddenLine, BlueWing)
+    add_line!(recipe, out, :HeI_5876    , BroadLine)
+    add_line!(recipe, out, :OI_6300)
+    add_line!(recipe, out, :OI_6364)
+    add_line!(recipe, out, :NII_6549)
+    add_line!(recipe, out, :Ha          , NarrowLine, BroadLine, VeryBroadLine)
+    add_line!(recipe, out, :NII_6583)
+    add_line!(recipe, out, :SII_6716)
+    add_line!(recipe, out, :SII_6731)
     return out
 end
 

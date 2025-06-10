@@ -5,7 +5,7 @@ using Dierckx
 using ..QSFit, ..QSFit.ATL, GModelFit
 
 import GModelFit: domain
-import QSFit: init_recipe!, preprocess_spec!, LineSet, line_suffix, line_component, analyze, postanalysis, Results
+import QSFit: init_recipe!, preprocess_spec!, SpecLineSet, add_line!, line_suffix, line_component, analyze, postanalysis, Results
 
 abstract type QSOGeneric <: AbstractRecipe end
 
@@ -24,9 +24,9 @@ line_component(recipe::CRecipe{<: QSOGeneric}, center::Float64) = recipe.line_co
 abstract type BlueWing <: NarrowLine end
 line_suffix(recipe::CRecipe{<: QSOGeneric}, ::Type{BlueWing}) = :_bw
 
-function line_component(recipe::CRecipe, center::Float64, ::Type{<: BlueWing})
+function line_component(recipe::CRecipe, tid::Val{TID}, ::Type{<: BlueWing}) where TID
     @track_recipe
-    comp = line_component(recipe, center, NarrowLine)
+    comp = line_component(recipe, tid, NarrowLine)
     comp.fwhm.low, comp.fwhm.val, comp.fwhm.high = 0, 3e3, 5e3
     comp.voff.low, comp.voff.val, comp.voff.high = 0, 0, 2e3
     return comp
@@ -292,8 +292,8 @@ function add_nuisance_lines!(recipe::CRecipe{<: QSOGeneric}, fp::GModelFit.FitPr
     for i in 1:recipe.n_nuisance
         getmodel(fp, ith)[Symbol(:nuisance, i)] = line_component(recipe, 3000., NuisanceLine)
     end
-    getmodel(fp, ith)[QSFit.line_group(recipe, NuisanceLine)] = SumReducer([Symbol(:nuisance, i) for i in 1:recipe.n_nuisance])
-    push!(getmodel(fp, ith)[:main].list, QSFit.line_group(recipe, NuisanceLine))
+    getmodel(fp, ith)[:NuisanceLines] = SumReducer([Symbol(:nuisance, i) for i in 1:recipe.n_nuisance])
+    push!(getmodel(fp, ith)[:main].list, :NuisanceLines)
     scan_and_evaluate!(fp)
     for j in 1:recipe.n_nuisance
         freeze!(getmodel(fp, ith), Symbol(:nuisance, j))

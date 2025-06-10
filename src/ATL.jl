@@ -1,20 +1,21 @@
 module ATL  # Atomic Transitions List
 
-using DataStructures, Printf
+using Statistics, DataStructures, Printf
 
-export get_transition_ids, get_transition, get_label, get_id, get_wavelengths
+export get_transition_ids, get_transition, get_id, get_label, get_wavelength
 
 abstract type TransitionType end
 abstract type     Forbidden <: TransitionType  end
 abstract type SemiForbidden <: TransitionType  end
 abstract type     Permitted <: TransitionType  end
 
-abstract type AbstractTransition end
-struct Transition{N, T <: TransitionType} <: AbstractTransition
+
+struct Transition{T <: TransitionType}
+    tid::Symbol
     label::String
-    lambda::Vector{Float64}      # Angstrom (vacuum)
-    energy_low::Vector{Float64}  # eV
-    energy_high::Vector{Float64} # eV
+    lambda::Float64      # Angstrom (vacuum)
+    energy_low::Float64  # eV
+    energy_high::Float64 # eV
 end
 
 transition_id(label::String) =
@@ -33,11 +34,17 @@ const transition_list = OrderedDict{Symbol, Transition}()
 register(T::Type{<: TransitionType} , label::String, n::NTuple{3, Float64}) = register(T, label, [n])
 function register(T::Type{<: TransitionType}, label::String, n::Vector{NTuple{3, Float64}})
     global transition_list
-    k = transition_id(label)
-    if k in keys(transition_list)
-        @warn "Transition $k is already registered, overwriting previous values..."
+    tid = transition_id(label)
+    if tid in keys(transition_list)
+        @warn "Transition $tid is already registered, overwriting previous values..."
     end
-    transition_list[k] = Transition{length(n), T}(label, getindex.(n, 1), getindex.(n, 2), getindex.(n, 3))
+    transition_list[tid] = Transition{T}(tid, label, mean(getindex.(n, 1)), mean(getindex.(n, 2)), mean(getindex.(n, 3)))
+    if length(n) > 1
+        for i in 1:length(n)
+            id = Symbol(tid, :__, i)
+            transition_list[id] = Transition{T}(id, label, n[i]...)
+        end
+    end
     nothing
 end
 
@@ -53,28 +60,11 @@ function get_transition(tid::Symbol)
     return transition_list[tid]
 end
 
-# --------------------------------------------------------------------
-struct UnidentifiedTransition <: AbstractTransition
-    label::String
-    lambda::Float64      # Angstrom (vacuum)
-    UnidentifiedTransition(label::AbstractString, lambda::Float64) = new(replace(string(label), "." => "p"), lambda)
-    UnidentifiedTransition(lambda::Float64) = UnidentifiedTransition(@sprintf("l%7.1f", lambda), lambda)
-end
 
 # --------------------------------------------------------------------
-get_label(t::AbstractTransition) = t.label
-get_id(t::AbstractTransition) = transition_id(get_label(t))
-
-get_wavelengths(t::Transition) = t.lambda
-get_wavelengths(t::UnidentifiedTransition) = [t.lambda]
-
-ismultiplet(t::Transition{1,T}) where T = false
-ismultiplet(t::Transition{N,T}) where {N,T} = true
-ismultiplet(t::UnidentifiedTransition) = false
-
-get_label(tid::Symbol) = get_label(get_transition(tid))
-get_wavelengths(tid::Symbol) = get_wavelengths(get_transition(tid))
-ismultiplet(tid::Symbol) = ismultiplet(get_transition(tid))
+get_id(t::Transition) = t.tid
+get_label(t::Transition) = t.label
+get_wavelength(t::Transition) = t.lambda
 
 
 #=
