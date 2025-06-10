@@ -50,7 +50,59 @@ function init_recipe!(recipe::CRecipe{T}) where T <: QSOGeneric
     recipe.line_component = QSFit.SpecLineGauss
     recipe.solver = GModelFit.cmpfit()
     recipe.solver.config.ftol = 1.e-6
-    recipe.specs = Vector{Spectrum}()
+end
+
+
+function preprocess_spec!(recipe::CRecipe{T}, spec::Spectrum) where T <: QSOGeneric
+    @track_recipe
+    @invoke preprocess_spec!(recipe::CRecipe{<: AbstractRecipe}, spec)
+    (:specs in propertynames(recipe))   ||  (recipe.specs = Vector{Spectrum}())
+
+    push!(recipe.specs, spec)  # save for later use
+
+    spec.meta[:lines] = OrderedDict{Symbol, SpectralLine}()
+    set_lines_dict!(recipe, spec.meta[:lines])
+
+    spec.good[findall(spec.x .< recipe.wavelength_range[1])] .= false
+    spec.good[findall(spec.x .> recipe.wavelength_range[2])] .= false
+
+    #= Emission line are localized features whose parameter can be
+    reliably estimated only if there are sufficient samples to
+    constrain the corresponding parameters.  If data coverage is
+    not sufficient the component should not be added to the model,
+    and corresponding spectral samples should be ignored to avoid
+    worsening the fit due to missing model components. =#
+    println("Good samples before line coverage filter: ", count(spec.good) , " / ", length(spec.good))
+
+    # Collect line components
+    lines = spec.meta[:lines]
+    for loop in 1:2
+        # The second pass is required to neglect lines whose coverage
+        # has been affected by the neglected spectral samples.
+        if loop == 2
+            println()
+            println("Updated coverage:")
+        end
+        for (cname, line) in lines
+            threshold = get(recipe.min_spectral_coverage, cname, recipe.min_spectral_coverage[:default])
+            (λmin, λmax, coverage) = QSFit.spectral_coverage(spec.x[findall(spec.good)],
+                                                             spec.resolution, line.comp)
+            @printf("Line %-15s coverage: %5.3f on range %10.5g < λ < %10.5g", cname, coverage, λmin, λmax)
+            if coverage < threshold
+            @printf(", threshold is < %5.3f, neglecting...", threshold)
+                spec.good[λmin .<= spec.x .< λmax] .= false
+                delete!(lines, cname)
+            end
+            println()
+        end
+    end
+    println("Good samples after line coverage filter: ", count(spec.good) , " / ", length(spec.good))
+
+    # Sort lines according to center wavelength, and save list in recipe
+    kk = collect(keys(  lines))
+    vv = collect(values(lines))
+    ii = sortperm(getfield.(getfield.(getfield.(vv, :comp), :center), :val))
+    spec.meta[:lines] = OrderedDict(Pair.(kk[ii], vv[ii]))
 end
 
 
@@ -61,7 +113,6 @@ function fit!(recipe::CRecipe{<: QSOGeneric}, fp::GModelFit.FitProblem)
     show(fsumm)
     return bestfit, fsumm
 end
-
 
 
 function add_qso_continuum!(recipe::CRecipe{<: QSOGeneric}, fp::GModelFit.FitProblem)
@@ -308,57 +359,6 @@ function neglect_weak_features!(recipe::CRecipe{<: QSOGeneric}, fp::GModelFit.Fi
         end
     end
     return needs_fitting
-end
-
-
-function preprocess_spec!(recipe::CRecipe{T}, spec::Spectrum) where T <: QSOGeneric
-    @track_recipe
-    @invoke preprocess_spec!(recipe::CRecipe{<: AbstractRecipe}, spec)
-    push!(recipe.specs, spec)  # save for later use
-
-    spec.meta[:lines] = OrderedDict{Symbol, SpectralLine}()
-    set_lines_dict!(recipe, spec.meta[:lines])
-
-    spec.good[findall(spec.x .< recipe.wavelength_range[1])] .= false
-    spec.good[findall(spec.x .> recipe.wavelength_range[2])] .= false
-
-    #= Emission line are localized features whose parameter can be
-    reliably estimated only if there are sufficient samples to
-    constrain the corresponding parameters.  If data coverage is
-    not sufficient the component should not be added to the model,
-    and corresponding spectral samples should be ignored to avoid
-    worsening the fit due to missing model components. =#
-    println("Good samples before line coverage filter: ", count(spec.good) , " / ", length(spec.good))
-
-    # Collect line components
-    lines = spec.meta[:lines]
-    for loop in 1:2
-        # The second pass is required to neglect lines whose coverage
-        # has been affected by the neglected spectral samples.
-        if loop == 2
-            println()
-            println("Updated coverage:")
-        end
-        for (cname, line) in lines
-            threshold = get(recipe.min_spectral_coverage, cname, recipe.min_spectral_coverage[:default])
-            (λmin, λmax, coverage) = QSFit.spectral_coverage(spec.x[findall(spec.good)],
-                                                             spec.resolution, line.comp)
-            @printf("Line %-15s coverage: %5.3f on range %10.5g < λ < %10.5g", cname, coverage, λmin, λmax)
-            if coverage < threshold
-            @printf(", threshold is < %5.3f, neglecting...", threshold)
-                spec.good[λmin .<= spec.x .< λmax] .= false
-                delete!(lines, cname)
-            end
-            println()
-        end
-    end
-    println("Good samples after line coverage filter: ", count(spec.good) , " / ", length(spec.good))
-
-    # Sort lines according to center wavelength, and save list in recipe
-    kk = collect(keys(  lines))
-    vv = collect(values(lines))
-    ii = sortperm(getfield.(getfield.(getfield.(vv, :comp), :center), :val))
-    spec.meta[:lines] = OrderedDict(Pair.(kk[ii], vv[ii]))
 end
 
 

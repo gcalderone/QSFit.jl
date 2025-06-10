@@ -20,6 +20,18 @@ function Gnuplot.recipe(res::Results)
 end
 
 
+function Gnuplot.recipe(res::MultiResults)
+    out = Any[]
+    for ith in 1:length(res.spec)
+        ctypes = [comptype(res.bestfit[ith], cname) for cname in keys(res.bestfit[ith])]
+        i = findall(isnothing.(match.(r"SpecLine", ctypes)))
+        keep = keys(res.bestfit[ith])[i]
+        append!(out, [Gnuplot.recipe(res.spec[ith])..., Gnuplot.recipe(res.bestfit[ith], keep=keep)...])
+    end
+    return out
+end
+
+
 function residuals(bestfit::GModelFit.ModelSnapshot, data::Measures)
     resid = (values(data) .- bestfit()) ./ uncerts(data)
     return Gnuplot.parseSpecs(
