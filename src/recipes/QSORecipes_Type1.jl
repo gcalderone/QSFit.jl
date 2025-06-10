@@ -25,44 +25,45 @@ function init_recipe!(recipe::CRecipe{T}) where T <: Type1
 end
 
 
-function set_lines_dict!(recipe::CRecipe{T}, dict::OrderedDict{Symbol, SpectralLine}) where T <: Type1
+function lines_dict(recipe::CRecipe{T}) where T <: Type1
     @track_recipe
-    use_line!( recipe, dict, :Lyb)
-    # use_line!( recipe, dict, :OV_1213)  # 1213.8A, Ferland+92, Shields+95
-    use_line!( recipe, dict, :Lya)
-    # use_line!( recipe, dict, :OV_1218)  # 1218.3A, Ferland+92, Shields+95
-    use_line!( recipe, dict, :NV_1241    , NarrowLine)
-    use_line!( recipe, dict, :OI_1306    , BroadLine)
-    use_line!( recipe, dict, :CII_1335   , BroadLine)
-    use_line!( recipe, dict, :SiIV_1400  , BroadLine)
-    [use_line!(recipe, dict, :CIV_1549   , t) for t in [NarrowLine, BroadLine]]
-    use_line!( recipe, dict, :HeII_1640  , BroadLine)
-    use_line!( recipe, dict, :OIII_1664  , BroadLine)
-    use_line!( recipe, dict, :AlIII_1858 , BroadLine)
-    use_line!( recipe, dict, :CIII_1909  , BroadLine)
-    use_line!( recipe, dict, :CII_2326   , BroadLine)
-    use_line!( recipe, dict, QSFit.ATL.UnidentifiedTransition(2420.0), BroadLine)
-    [use_line!(recipe, dict, :MgII_2798  , t) for t in [NarrowLine, MgIIBroadLine]]
-    use_line!( recipe, dict, :NeV_3345)
-    use_line!( recipe, dict, :NeV_3426)
-    use_line!( recipe, dict, :OII_3727)
-    use_line!( recipe, dict, :NeIII_3869)
-    use_line!( recipe, dict, :Hd         , BroadLine)
-    use_line!( recipe, dict, :Hg         , BroadLine)
-    use_line!( recipe, dict, :OIII_4363)
-    use_line!( recipe, dict, :HeII_4686  , BroadLine)
-    use_line!( recipe, dict, :Hb)
-    use_line!( recipe, dict, :OIII_4959)
-    [use_line!(recipe, dict, :OIII_5007  , t)  for t in [ForbiddenLine, BlueWing]]
-    use_line!( recipe, dict, :HeI_5876   , BroadLine)
-    use_line!( recipe, dict, :OI_6300)
-    use_line!( recipe, dict, :OI_6364)
-    use_line!( recipe, dict, :NII_6549)
-    [use_line!(recipe, dict, :Ha         , t) for t in [NarrowLine, BroadLine, VeryBroadLine]]
-    use_line!( recipe, dict, :NII_6583)
-    use_line!( recipe, dict, :SII_6716)
-    use_line!( recipe, dict, :SII_6731)
-    return nothing
+    out = LineSet()
+    merge!(out, LineSet(recipe, :Lyb))
+    # merge!(out, LineSet(recipe, :OV_1213))  # 1213.8A, Ferland+92, Shields+95
+    merge!(out, LineSet(recipe, :Lya))
+    # merge!(out, LineSet(recipe, :OV_1218))  # 1218.3A, Ferland+92, Shields+95
+    merge!(out, LineSet(recipe, :NV_1241     , NarrowLine))
+    merge!(out, LineSet(recipe, :OI_1306     , BroadLine))
+    merge!(out, LineSet(recipe, :CII_1335    , BroadLine))
+    merge!(out, LineSet(recipe, :SiIV_1400   , BroadLine))
+    merge!(out, LineSet(recipe, :CIV_1549    , NarrowLine, BroadLine))
+    merge!(out, LineSet(recipe, :HeII_1640   , BroadLine))
+    merge!(out, LineSet(recipe, :OIII_1664   , BroadLine))
+    merge!(out, LineSet(recipe, :AlIII_1858  , BroadLine))
+    merge!(out, LineSet(recipe, :CIII_1909   , BroadLine))
+    merge!(out, LineSet(recipe, :CII_2326    , BroadLine))
+    merge!(out, LineSet(recipe, QSFit.ATL.UnidentifiedTransition(2420.0), BroadLine))
+    merge!(out, LineSet(recipe, :MgII_2798   , NarrowLine, MgIIBroadLine))
+    merge!(out, LineSet(recipe, :NeV_3345))
+    merge!(out, LineSet(recipe, :NeV_3426))
+    merge!(out, LineSet(recipe, :OII_3727))
+    merge!(out, LineSet(recipe, :NeIII_3869))
+    merge!(out, LineSet(recipe, :Hd          , BroadLine))
+    merge!(out, LineSet(recipe, :Hg          , BroadLine))
+    merge!(out, LineSet(recipe, :OIII_4363))
+    merge!(out, LineSet(recipe, :HeII_4686   , BroadLine))
+    merge!(out, LineSet(recipe, :Hb))
+    merge!(out, LineSet(recipe, :OIII_4959))
+    merge!(out, LineSet(recipe, :OIII_5007   , ForbiddenLine, BlueWing))
+    merge!(out, LineSet(recipe, :HeI_5876    , BroadLine))
+    merge!(out, LineSet(recipe, :OI_6300))
+    merge!(out, LineSet(recipe, :OI_6364))
+    merge!(out, LineSet(recipe, :NII_6549))
+    merge!(out, LineSet(recipe, :Ha          , NarrowLine, BroadLine, VeryBroadLine))
+    merge!(out, LineSet(recipe, :NII_6583))
+    merge!(out, LineSet(recipe, :SII_6716))
+    merge!(out, LineSet(recipe, :SII_6731))
+    return out
 end
 
 

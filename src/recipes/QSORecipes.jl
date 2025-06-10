@@ -5,7 +5,7 @@ using Dierckx
 using ..QSFit, ..QSFit.ATL, GModelFit
 
 import GModelFit: domain
-import QSFit: init_recipe!, preprocess_spec!, SpectralLine, line_suffix, line_component, analyze, postanalysis, Results
+import QSFit: init_recipe!, preprocess_spec!, LineSet, line_suffix, line_component, analyze, postanalysis, Results
 
 abstract type QSOGeneric <: AbstractRecipe end
 
@@ -57,11 +57,7 @@ function preprocess_spec!(recipe::CRecipe{T}, spec::Spectrum) where T <: QSOGene
     @track_recipe
     @invoke preprocess_spec!(recipe::CRecipe{<: AbstractRecipe}, spec)
     (:specs in propertynames(recipe))   ||  (recipe.specs = Vector{Spectrum}())
-
     push!(recipe.specs, spec)  # save for later use
-
-    spec.meta[:lines] = OrderedDict{Symbol, SpectralLine}()
-    set_lines_dict!(recipe, spec.meta[:lines])
 
     spec.good[findall(spec.x .< recipe.wavelength_range[1])] .= false
     spec.good[findall(spec.x .> recipe.wavelength_range[2])] .= false
@@ -75,14 +71,16 @@ function preprocess_spec!(recipe::CRecipe{T}, spec::Spectrum) where T <: QSOGene
     println("Good samples before line coverage filter: ", count(spec.good) , " / ", length(spec.good))
 
     # Collect line components
-    lines = spec.meta[:lines]
+    lines = lines_dict(recipe)
     for loop in 1:2
         # The second pass is required to neglect lines whose coverage
-        # has been affected by the neglected spectral samples.
+        # has been affected by the spectral samples discarded in the
+        # first iteration.
         if loop == 2
             println()
             println("Updated coverage:")
         end
+        toDelete = Symbol[]
         for (cname, line) in lines
             threshold = get(recipe.min_spectral_coverage, cname, recipe.min_spectral_coverage[:default])
             (λmin, λmax, coverage) = QSFit.spectral_coverage(spec.x[findall(spec.good)],
@@ -91,18 +89,17 @@ function preprocess_spec!(recipe::CRecipe{T}, spec::Spectrum) where T <: QSOGene
             if coverage < threshold
             @printf(", threshold is < %5.3f, neglecting...", threshold)
                 spec.good[λmin .<= spec.x .< λmax] .= false
-                delete!(lines, cname)
+                push!(toDelete, cname)
             end
             println()
         end
+        delete!.(Ref(lines), toDelete)
     end
     println("Good samples after line coverage filter: ", count(spec.good) , " / ", length(spec.good))
 
     # Sort lines according to center wavelength, and save list in recipe
-    kk = collect(keys(  lines))
-    vv = collect(values(lines))
-    ii = sortperm(getfield.(getfield.(getfield.(vv, :comp), :center), :val))
-    spec.meta[:lines] = OrderedDict(Pair.(kk[ii], vv[ii]))
+    QSFit.sort_by_wavelength!(lines)
+    spec.meta[:lines] = lines
 end
 
 
@@ -413,6 +410,6 @@ end
 
 
 include("QSORecipes_Type1.jl")
-include("QSORecipes_Type2.jl")
+# TODO include("QSORecipes_Type2.jl")
 
 end

@@ -5,7 +5,7 @@ export CRecipe, AbstractRecipe, analyze, @track_recipe
 import GModelFit: Domain, CompEval,
     Parameter, AbstractComponent, dependencies, prepare!, result_length, evaluate!
 
-import Base: propertynames, getproperty, setproperty!, show
+import Base: propertynames, getproperty, setproperty!, merge!, haskey, keys, iterate, getindex, setindex!, delete!, show
 
 using CMPFit, GModelFit, SortMerge
 using Pkg, Pkg.Artifacts
