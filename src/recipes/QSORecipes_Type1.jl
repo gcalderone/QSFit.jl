@@ -30,7 +30,7 @@ function lines_dict(recipe::CRecipe{T}) where T <: Type1
     @track_recipe
 
     # TODO: Identify the following feature
-    (:f2420 in ATL.get_transition_ids())  ||  ATL.register(ATL.Permitted, "f2420", (2420., NaN, NaN))
+    (:l2420p0 in ATL.get_transition_ids())  ||  ATL.register(ATL.Permitted, "l2420p0", (2420., NaN, NaN))
 
     out = SpecLineSet()
     add_line!(recipe, out, :Lyb)
@@ -47,7 +47,7 @@ function lines_dict(recipe::CRecipe{T}) where T <: Type1
     add_line!(recipe, out, :AlIII_1858  , BroadLine)
     add_line!(recipe, out, :CIII_1909   , BroadLine)
     add_line!(recipe, out, :CII_2326    , BroadLine)
-    add_line!(recipe, out, :f2420       , BroadLine)
+    add_line!(recipe, out, :l2420p0     , BroadLine)
     add_line!(recipe, out, :MgII_2798   , NarrowLine, MgIIBroadLine)
     add_line!(recipe, out, :NeV_3345)
     add_line!(recipe, out, :NeV_3426)
