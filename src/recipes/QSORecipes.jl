@@ -118,6 +118,17 @@ end
 function add_qso_continuum!(recipe::CRecipe{<: QSOGeneric}, fp::GModelFit.FitProblem)
     @track_recipe
     add_qso_continuum!.(Ref(recipe), Ref(fp), 1:length(fp.multi))
+    #=
+    for i in 2:length(fp.multi)
+        m1 = getmodel(fp, 1)
+        mi = getmodel(fp, i)
+        if haskey(mi, :QSOcont)  &&  haskey(m1, :QSOcont)
+            mi[:QSOcont].norm.mpatch  = @fd m -> m[1][:QSOcont].norm
+            mi[:QSOcont].x0.mpatch    = @fd m -> m[1][:QSOcont].x0
+            mi[:QSOcont].alpha.mpatch = @fd m -> m[1][:QSOcont].alpha
+        end
+    end
+    =#
     scan_and_evaluate!(fp)
 end
 function add_qso_continuum!(recipe::CRecipe{<: QSOGeneric}, fp::GModelFit.FitProblem, ith::Int)
@@ -140,7 +151,11 @@ function add_host_galaxy!(recipe::CRecipe{<: QSOGeneric}, fp::GModelFit.FitProbl
     @track_recipe
     add_host_galaxy!.(Ref(recipe), Ref(fp), 1:length(fp.multi))
     for i in 2:length(fp.multi)
-        getmodel(fp, i)[:Galaxy].norm.mpatch = @fd m -> m[1][:Galaxy].norm
+        m1 = getmodel(fp, 1)
+        mi = getmodel(fp, i)
+        if haskey(mi, :Galaxy)  &&  haskey(m1, :Galaxy)
+            mi[:Galaxy].norm.mpatch = @fd m -> m[1][:Galaxy].norm
+        end
     end
     scan_and_evaluate!(fp)
 end
@@ -227,6 +242,16 @@ end
 function add_emission_lines!(recipe::CRecipe{<: QSOGeneric}, fp::GModelFit.FitProblem)
     @track_recipe
     add_emission_lines!.(Ref(recipe), Ref(fp), 1:length(fp.multi))
+    for i in 2:length(fp.multi)
+        m1 = getmodel(fp, 1)
+        mi = getmodel(fp, i)
+        if haskey(mi, :OIII_5007)  &&  haskey(m1, :OIII_5007)
+            mi[:OIII_5007].norm.mpatch = @fd m -> m[1][:OIII_5007].norm
+        end
+        # if haskey(mi, :Ha_br)  &&  haskey(m1, :Hb_br)
+        #     mi[:Ha_br].fwhm.mpatch = @fd m -> m[1][:Hb_br].fwhm
+        # end
+    end
 end
 function add_emission_lines!(recipe::CRecipe{<: QSOGeneric}, fp::GModelFit.FitProblem, ith::Int)
     @track_recipe
