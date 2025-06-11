@@ -104,54 +104,69 @@ function analyze(recipe::CRecipe{T}, data::Vector{Measures{1}}) where T <: Type2
     for i in 1:length(data)
         model = Model(:main => SumReducer())
         select_maincomp!(model, :main)
-        model[:Continuum] = SumReducer()
-        push!(model[:main].list, :Continuum)
         push!(models, model)
     end
     fp = GModelFit.FitProblem(models, data)
 
     println("\nFit continuum components...")
+    for model in models
+        model[:Continuum] = SumReducer()
+        push!(model[:main].list, :Continuum)
+    end
     add_qso_continuum!(recipe, fp)
     add_host_galaxy!(recipe, fp)
     fit!(recipe, fp)
-    renorm_cont!(recipe, fp)
     for model in models
         freeze!(model, :QSOcont)
         haskey(model, :Galaxy)  &&  freeze!(model, :Galaxy)
     end
-    scan_and_evaluate!(fp)
+    renorm_cont!(recipe, fp)
 
     println("\nFit known emission lines...")
+    for i in 1:length(models)
+        model = models[i]
+        lines = recipe.specs[i].meta[:lines]
+        for group in unique(getfield.(values(lines), :group))
+            model[group] = SumReducer()
+            push!(model[:main].list, group)
+        end
+        for (cname, line) in lines
+            push!(model[line.group].list, cname)
+        end
+    end
     add_emission_lines!(recipe, fp)
     add_patch_functs!(recipe, fp)
     fit!(recipe, fp)
     for i in 1:length(models)
-        for cname in keys(recipe.specs[i].meta[:lines])
-            freeze!(models[i], cname)
+        model = models[i]
+        lines = recipe.specs[i].meta[:lines]
+        for (cname, line) in lines
+            freeze!(model, cname)
         end
     end
 
     println("\nFit nuisance emission lines...")
-    add_nuisance_lines!(recipe, fp)
+    fit_nuisance_lines!(recipe, fp)
 
     println("\nLast run with all parameters free...")
     for i in 1:length(models)
         model = models[i]
+        lines = recipe.specs[i].meta[:lines]
         thaw!(model, :QSOcont)
         haskey(model, :Galaxy   )  &&  thaw!(model, :Galaxy)
-        for cname in keys(recipe.specs[i].meta[:lines])
+        for cname in keys(lines)
             thaw!(model, cname)
         end
-        for j in 1:recipe.n_nuisance
-            cname = Symbol(:nuisance, j)
-            if model[cname].norm.val > 0
-                thaw!(model, cname)
-            else
-                freeze!(model, cname)
+        if :NuisanceLines in keys(model)
+            for cname in model[:NuisanceLines].list
+                if model[cname].norm.val > 0
+                    thaw!(model, cname)
+                else
+                    freeze!(model, cname)
+                end
             end
         end
     end
-    scan_and_evaluate!(fp)
     bestfit, fsumm = fit!(recipe, fp)
 
     if any(neglect_weak_features!(recipe, fp))
