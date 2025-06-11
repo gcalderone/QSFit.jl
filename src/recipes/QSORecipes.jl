@@ -265,11 +265,13 @@ function add_emission_lines!(recipe::CRecipe{<: QSOGeneric}, fp::GModelFit.FitPr
 end
 function add_emission_lines!(recipe::CRecipe{<: QSOGeneric}, fp::GModelFit.FitProblem, ith::Int)
     @track_recipe
+    model = getmodel(fp, ith)
     lines = recipe.specs[ith].meta[:lines]
 
     # Create model components
     for (cname, line) in lines
-        getmodel(fp, ith)[cname] = line.comp
+        model[cname] = line.comp
+        push!(model[line.group].list, cname)
     end
 
     # Guess normalizations

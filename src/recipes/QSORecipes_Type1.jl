@@ -263,9 +263,6 @@ function analyze(recipe::CRecipe{T}, data::Vector{Measures{1}}) where T <: Type1
             model[group] = SumReducer()
             push!(model[:main].list, group)
         end
-        for (cname, line) in lines
-            push!(model[line.group].list, cname)
-        end
     end
     add_emission_lines!(recipe, fp)
     add_patch_functs!(recipe, fp)
