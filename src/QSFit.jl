@@ -40,7 +40,9 @@ include("components/SpecLineLorentz.jl")
 include("components/SpecLineVoigt.jl")
 
 
-#TODO: is the following needed?
+# The following is needed to allow build model incrementally. More
+# specifically, it allows to evaluiate a model with a SumReducer
+# component having no dependency
 function evaluate!(::GModelFit.SumReducer, ::AbstractDomain, output)
     output .= 0.
 end
@@ -53,7 +55,11 @@ include("Spectrum.jl")
 
 qsfit_data() = artifact"qsfit_data"
 
-global _track_recipe = false
+global _track_recipe::Bool = false
+function track_recipe(enable::Bool)
+    global _track_recipe
+    _track_recipe = enable
+end
 macro track_recipe()
     return :(QSFit._track_recipe  &&  printstyled("* ", stacktrace()[1], "\n", color=:light_black))
 end
