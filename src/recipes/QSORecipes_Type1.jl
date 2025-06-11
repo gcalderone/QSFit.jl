@@ -3,11 +3,9 @@ export Type1
 abstract type Type1 <: QSOGeneric end
 
 # Special cases for emission lines
-abstract type MgIIBroadLine <: BroadLine end
-
-function line_component(recipe::CRecipe, tid::Val{TID}, ::Type{<: MgIIBroadLine}) where TID
+function line_component(recipe::CRecipe{T}, tid::Val{:MgII_2798}, ::Type{<: BroadLine}) where T <: Type1
     @track_recipe
-    comp = line_component(recipe, tid, BroadLine)
+    comp = @invoke line_component(recipe::CRecipe{<: supertype(T)}, tid::Val, BroadLine)
     comp.fwhm.val = 3000
     comp.voff.low, comp.voff.val, comp.voff.high = -1e3, 0, 1e3
     return comp
@@ -48,7 +46,7 @@ function lines_dict(recipe::CRecipe{T}) where T <: Type1
     add_line!(recipe, out, :CIII_1909   , BroadLine)
     add_line!(recipe, out, :CII_2326    , BroadLine)
     add_line!(recipe, out, :l2420p0     , BroadLine)
-    add_line!(recipe, out, :MgII_2798   , NarrowLine, MgIIBroadLine)
+    add_line!(recipe, out, :MgII_2798   , NarrowLine, BroadLine)
     add_line!(recipe, out, :NeV_3345)
     add_line!(recipe, out, :NeV_3426)
     add_line!(recipe, out, :OII_3727)
