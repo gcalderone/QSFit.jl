@@ -25,11 +25,13 @@ abstract type BlueWing <: QSFit.LineTemplate end
 line_suffix(recipe::CRecipe{<: QSOGeneric}, ::Type{BlueWing}) = :_bw
 line_group( recipe::CRecipe{<: QSOGeneric}, ::Type{BlueWing}) = :NarrowLines
 
-function line_component(recipe::CRecipe{<: QSOGeneric}, tid::Val{TID}, ::Type{<: BlueWing}) where TID
+function line_component(recipe::CRecipe{<: QSOGeneric}, tid::Val{:OIII_5007}, ::Type{<: BlueWing})
     @track_recipe
     comp = line_component(recipe, tid, NarrowLine)
     comp.fwhm.low, comp.fwhm.val, comp.fwhm.high = 0, 3e3, 5e3
     comp.voff.low, comp.voff.val, comp.voff.high = 0, 0, 2e3
+    # comp.voff.patch = @fd (m, v) -> v + m[:OIII_5007].voff
+    # comp.fwhm.patch = @fd (m, v) -> v + m[:OIII_5007].fwhm
     return comp
 end
 
@@ -106,7 +108,9 @@ end
 
 function fit!(recipe::CRecipe{<: QSOGeneric}, fp::GModelFit.FitProblem)
     @track_recipe
-    scan_and_evaluate!(fp)
+    GModelFit.scan_model!(fp.multi)
+    GModelFit.update_eval!(fp.multi)
+    (GModelFit.nfree(fp) == 0)  &&  (return nothing)
     bestfit, fsumm = GModelFit.fit!(fp, recipe.solver)
     show(fsumm)
     return bestfit, fsumm
@@ -155,7 +159,6 @@ function add_host_galaxy!(recipe::CRecipe{<: QSOGeneric}, fp::GModelFit.FitProbl
             mi[:Galaxy].norm.mpatch = @fd m -> m[1][:Galaxy].norm
         end
     end
-    scan_and_evaluate!(fp)
 end
 function add_host_galaxy!(recipe::CRecipe{<: QSOGeneric}, fp::GModelFit.FitProblem, ith::Int)
     @track_recipe
@@ -189,7 +192,6 @@ function renorm_cont!(recipe::CRecipe{<: QSOGeneric}, fp::GModelFit.FitProblem)
 end
 function renorm_cont!(recipe::CRecipe{<: QSOGeneric}, fp::GModelFit.FitProblem, ith::Int)
     @track_recipe
-    freeze!(getmodel(fp, ith), :QSOcont)
     c = getmodel(fp, ith)[:QSOcont]
     initialnorm = c.norm.val
     if c.norm.val > 0
@@ -253,51 +255,39 @@ function add_emission_lines!(recipe::CRecipe{<: QSOGeneric}, fp::GModelFit.FitPr
 end
 function add_emission_lines!(recipe::CRecipe{<: QSOGeneric}, fp::GModelFit.FitProblem, ith::Int)
     @track_recipe
-    groups = OrderedDict{Symbol, Vector{Symbol}}()
+    lines = recipe.specs[ith].meta[:lines]
 
     # Create model components
-    for (cname, line) in recipe.specs[ith].meta[:lines]
+    for (cname, line) in lines
         getmodel(fp, ith)[cname] = line.comp
-        haskey(groups, line.group)  ||  (groups[line.group] = Vector{Symbol}())
-        push!(groups[line.group], cname)
-    end
-
-    # Create reducers for groups
-    for (group, lnames) in groups
-        @assert group in [:BroadLines, :NarrowLines, :VeryBroadLines] "Unexpected group for emission lines: $group"
-        getmodel(fp, ith)[group] = SumReducer(lnames)
-        push!(getmodel(fp, ith)[:main].list, group)
     end
     scan_and_evaluate!(fp)
 
     # Guess normalizations
     for group in [:BroadLines, :NarrowLines, :VeryBroadLines]  # Note: order is important
-        if group in keys(groups)
-            for cname in groups[group]
-                guess_norm_factor!(recipe, fp, ith, cname)
-            end
+        for (cname, line) in lines
+            (group == line.group)  ||  continue
+            guess_norm_factor!(recipe, fp, ith, cname)
         end
     end
 end
 
 
-function add_nuisance_lines!(recipe::CRecipe{<: QSOGeneric}, fp::GModelFit.FitProblem)
+function fit_nuisance_lines!(recipe::CRecipe{<: QSOGeneric}, fp::GModelFit.FitProblem)
     @track_recipe
-    add_nuisance_lines!.(Ref(recipe), Ref(fp), 1:length(fp.multi))
+    fit_nuisance_lines!.(Ref(recipe), Ref(fp), 1:length(fp.multi))
 end
-function add_nuisance_lines!(recipe::CRecipe{<: QSOGeneric}, fp::GModelFit.FitProblem, ith::Int)
+function fit_nuisance_lines!(recipe::CRecipe{<: QSOGeneric}, fp::GModelFit.FitProblem, ith::Int)
     @track_recipe
     (recipe.n_nuisance > 0)  ||  (return nothing)
+    model = getmodel(fp, ith)
 
     # Prepare nuisance line components
+    model[:NuisanceLines] = SumReducer([Symbol(:nuisance, i) for i in 1:recipe.n_nuisance])
+    push!(model[:main].list, :NuisanceLines)
     for i in 1:recipe.n_nuisance
-        getmodel(fp, ith)[Symbol(:nuisance, i)] = line_component(recipe, 3000., NuisanceLine)
-    end
-    getmodel(fp, ith)[:NuisanceLines] = SumReducer([Symbol(:nuisance, i) for i in 1:recipe.n_nuisance])
-    push!(getmodel(fp, ith)[:main].list, :NuisanceLines)
-    scan_and_evaluate!(fp)
-    for j in 1:recipe.n_nuisance
-        freeze!(getmodel(fp, ith), Symbol(:nuisance, j))
+        model[Symbol(:nuisance, i)] = line_component(recipe, 3000., NuisanceLine)
+        freeze!(model, Symbol(:nuisance, i))
     end
     scan_and_evaluate!(fp)
 
@@ -329,28 +319,28 @@ function add_nuisance_lines!(recipe::CRecipe{<: QSOGeneric}, fp::GModelFit.FitPr
         push!(λnuisance, λ[iadd])
 
         cname = Symbol(:nuisance, length(λnuisance))
-        getmodel(fp, ith)[cname].norm.val = 1.
-        getmodel(fp, ith)[cname].center.val  = λ[iadd]
+        model[cname].norm.val = 1.
+        model[cname].center.val  = λ[iadd]
 
         # Allow to shift by a quantity equal to ...
         @assert recipe.nuisance_maxoffset_from_guess > 0
-        getmodel(fp, ith)[cname].center.low  = λ[iadd] * (1 - recipe.nuisance_maxoffset_from_guess / 3e5)
-        getmodel(fp, ith)[cname].center.high = λ[iadd] * (1 + recipe.nuisance_maxoffset_from_guess / 3e5)
+        model[cname].center.low  = λ[iadd] * (1 - recipe.nuisance_maxoffset_from_guess / 3e5)
+        model[cname].center.high = λ[iadd] * (1 + recipe.nuisance_maxoffset_from_guess / 3e5)
 
         # In any case, we must stay out of avoidance regions
         for rr in recipe.nuisance_avoid
             @assert !(rr[1] .< λ[iadd] .< rr[2])
             if rr[1] .>= λ[iadd]
-                getmodel(fp, ith)[cname].center.high = min(getmodel(fp, ith)[cname].center.high, rr[1])
+                model[cname].center.high = min(model[cname].center.high, rr[1])
             end
             if rr[2] .<= λ[iadd]
-                getmodel(fp, ith)[cname].center.low  = max(getmodel(fp, ith)[cname].center.low, rr[2])
+                model[cname].center.low  = max(model[cname].center.low, rr[2])
             end
         end
 
-        thaw!(getmodel(fp, ith), cname);     scan_and_evaluate!(fp)
+        thaw!(model, cname)
         fit!(recipe, fp)
-        freeze!(getmodel(fp, ith), cname);   scan_and_evaluate!(fp)
+        freeze!(model, cname)
     end
     scan_and_evaluate!(fp)
 end
@@ -358,28 +348,30 @@ end
 
 function neglect_weak_features!(recipe::CRecipe{<: QSOGeneric}, fp::GModelFit.FitProblem)
     @track_recipe
-    out = neglect_weak_features!.(Ref(recipe), Ref(fp), 1:length(fp.multi))
-    return out
+    return neglect_weak_features!.(Ref(recipe), Ref(fp), 1:length(fp.multi))
 end
 function neglect_weak_features!(recipe::CRecipe{<: QSOGeneric}, fp::GModelFit.FitProblem, ith::Int)
     @track_recipe
+    model = getmodel(fp, ith)
 
     # Disable "nuisance" lines whose normalization uncertainty is larger
     # than X times the normalization
     needs_fitting = false
-    for ii in 1:recipe.n_nuisance
-        cname = Symbol(:nuisance, ii)
-        isfreezed(getmodel(fp, ith), cname)  &&  continue
-        if getmodel(fp, ith)[cname].norm.val == 0.
-            freeze!(getmodel(fp, ith), cname)
-            needs_fitting = true
-            println("Disabling $cname (norm. = 0)")
-        elseif getmodel(fp, ith)[cname].norm.unc / getmodel(fp, ith)[cname].norm.val > 3
-            getmodel(fp, ith)[cname].norm.val = 0.
-            freeze!(getmodel(fp, ith), cname)
-            needs_fitting = true
-            println("Disabling $cname (unc. / norm. > 3)")
+    if :NuisanceLines in keys(model)
+        for cname in model[:NuisanceLines].list
+            isfreezed(model, cname)  &&  continue
+            if model[cname].norm.val == 0.
+                freeze!(model, cname)
+                needs_fitting = true
+                println("Disabling $cname (norm. = 0)")
+            elseif model[cname].norm.unc / model[cname].norm.val > 3
+                model[cname].norm.val = 0.
+                    freeze!(model, cname)
+                needs_fitting = true
+                println("Disabling $cname (unc. / norm. > 3)")
+            end
         end
+        scan_and_evaluate!(fp)
     end
     return needs_fitting
 end

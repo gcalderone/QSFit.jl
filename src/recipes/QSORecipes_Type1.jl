@@ -73,7 +73,6 @@ end
 function add_balmer_cont!(recipe::CRecipe{<: QSOGeneric}, fp::GModelFit.FitProblem)
     @track_recipe
     add_balmer_cont!.(Ref(recipe), Ref(fp), 1:length(fp.multi))
-    scan_and_evaluate!(fp)
 end
 function add_balmer_cont!(recipe::CRecipe{<: Type1}, fp::GModelFit.FitProblem, ith::Int)
     @track_recipe
@@ -226,24 +225,26 @@ function analyze(recipe::CRecipe{T}, data::Vector{Measures{1}}) where T <: Type1
     for i in 1:length(data)
         model = Model(:main => SumReducer())
         select_maincomp!(model, :main)
-        model[:Continuum] = SumReducer()
-        push!(model[:main].list, :Continuum)
         push!(models, model)
     end
     fp = GModelFit.FitProblem(models, data)
 
     println("\nFit continuum components...")
+    for model in models
+        model[:Continuum] = SumReducer()
+        push!(model[:main].list, :Continuum)
+    end
     add_qso_continuum!(recipe, fp)
     add_host_galaxy!(recipe, fp)
     add_balmer_cont!(recipe, fp)
     fit!(recipe, fp)
-    renorm_cont!(recipe, fp)
     for model in models
         freeze!(model, :QSOcont)
         haskey(model, :Galaxy)  &&  freeze!(model, :Galaxy)
         haskey(model, :Balmer)  &&  freeze!(model, :Balmer)
     end
     scan_and_evaluate!(fp)
+    renorm_cont!(recipe, fp)
 
     println("\nFit iron templates...")
     for model in models
@@ -252,48 +253,61 @@ function analyze(recipe::CRecipe{T}, data::Vector{Measures{1}}) where T <: Type1
     end
     add_iron_uv!(recipe, fp)
     add_iron_opt!(recipe, fp)
-
-    (GModelFit.nfree(fp) > 0)  &&  fit!(recipe, fp)
+    fit!(recipe, fp)
     for model in models
-        if length(model[:Iron].list) > 0
-            haskey(model, :Ironuv   )  &&  freeze!(model, :Ironuv)
-            haskey(model, :Ironoptbr)  &&  freeze!(model, :Ironoptbr)
-            haskey(model, :Ironoptna)  &&  freeze!(model, :Ironoptna)
-        end
+        haskey(model, :Ironuv   )  &&  freeze!(model, :Ironuv)
+        haskey(model, :Ironoptbr)  &&  freeze!(model, :Ironoptbr)
+        haskey(model, :Ironoptna)  &&  freeze!(model, :Ironoptna)
     end
     scan_and_evaluate!(fp)
 
     println("\nFit known emission lines...")
+    for i in 1:length(models)
+        model = models[i]
+        lines = recipe.specs[i].meta[:lines]
+        for group in unique(getfield.(values(lines), :group))
+            model[group] = SumReducer()
+            push!(model[:main].list, group)
+        end
+        for (cname, line) in lines
+            push!(model[line.group].list, cname)
+        end
+    end
     add_emission_lines!(recipe, fp)
     add_patch_functs!(recipe, fp)
     fit!(recipe, fp)
     for i in 1:length(models)
-        for cname in keys(recipe.specs[i].meta[:lines])
-            freeze!(models[i], cname)
+        model = models[i]
+        lines = recipe.specs[i].meta[:lines]
+        for (cname, line) in lines
+            freeze!(model, cname)
         end
     end
+    scan_and_evaluate!(fp)
 
     println("\nFit nuisance emission lines...")
-    add_nuisance_lines!(recipe, fp)
+    fit_nuisance_lines!(recipe, fp)
 
     println("\nLast run with all parameters free...")
     for i in 1:length(models)
         model = models[i]
+        lines = recipe.specs[i].meta[:lines]
         thaw!(model, :QSOcont)
         haskey(model, :Galaxy   )  &&  thaw!(model, :Galaxy)
         haskey(model, :Balmer   )  &&  thaw!(model, :Balmer)
         haskey(model, :Ironuv   )  &&  thaw!(model, :Ironuv)
         haskey(model, :Ironoptbr)  &&  thaw!(model, :Ironoptbr)
         haskey(model, :Ironoptna)  &&  thaw!(model, :Ironoptna)
-        for cname in keys(recipe.specs[i].meta[:lines])
+        for cname in keys(lines)
             thaw!(model, cname)
         end
-        for j in 1:recipe.n_nuisance
-            cname = Symbol(:nuisance, j)
-            if model[cname].norm.val > 0
-                thaw!(model, cname)
-            else
-                freeze!(model, cname)
+        if :NuisanceLines in keys(model)
+            for cname in model[:NuisanceLines].list
+                if model[cname].norm.val > 0
+                    thaw!(model, cname)
+                else
+                    freeze!(model, cname)
+                end
             end
         end
     end
