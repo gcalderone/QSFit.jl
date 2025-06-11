@@ -33,8 +33,8 @@ function line_component(recipe::CRecipe{<: QSOGeneric}, tid::Val{:OIII_5007}, ::
     comp = line_component(recipe, tid, NarrowLine)
     comp.fwhm.low, comp.fwhm.val, comp.fwhm.high = 0, 3e3, 5e3
     comp.voff.low, comp.voff.val, comp.voff.high = 0, 0, 2e3
-    # comp.voff.patch = @fd (m, v) -> v + m[:OIII_5007].voff
-    # comp.fwhm.patch = @fd (m, v) -> v + m[:OIII_5007].fwhm
+    comp.voff.patch = @fd (m, v) -> v + m[:OIII_5007].voff
+    comp.fwhm.patch = @fd (m, v) -> v + m[:OIII_5007].fwhm
     return comp
 end
 
@@ -43,8 +43,8 @@ function line_component(recipe::CRecipe{<: QSOGeneric}, tid::Val{:OIII_4959}, ::
     comp = line_component(recipe, tid, NarrowLine)
     comp.fwhm.low, comp.fwhm.val, comp.fwhm.high = 0, 3e3, 5e3
     comp.voff.low, comp.voff.val, comp.voff.high = 0, 0, 2e3
-    # comp.voff.patch = @fd (m, v) -> v + m[:OIII_5007].voff
-    # comp.fwhm.patch = @fd (m, v) -> v + m[:OIII_5007].fwhm
+    comp.voff.patch = @fd (m, v) -> v + m[:OIII_4959].voff
+    comp.fwhm.patch = @fd (m, v) -> v + m[:OIII_4959].fwhm
     return comp
 end
 
@@ -273,6 +273,9 @@ function add_emission_lines!(recipe::CRecipe{<: QSOGeneric}, fp::GModelFit.FitPr
         model[cname] = line.comp
         push!(model[line.group].list, cname)
     end
+
+    # Patch functions
+    add_patch_functs!(recipe, fp, ith)
 
     # Guess normalizations
     for group in [:BroadLines, :NarrowLines, :VeryBroadLines]  # Note: order is important

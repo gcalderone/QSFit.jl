@@ -68,16 +68,6 @@ function add_patch_functs!(recipe::CRecipe{<: Type2}, fp::GModelFit.FitProblem, 
         # model[:OIII_4959].norm.patch = @fd m -> m[:OIII_5007].norm / 3
         model[:OIII_4959].voff.patch = :OIII_5007
     end
-    if haskey(model, :OIII_5007) && haskey(model, :OIII_5007_bw)
-        model[:OIII_5007_bw].voff.patch = @fd (m, v) -> v + m[:OIII_5007].voff
-        model[:OIII_5007_bw].fwhm.patch = @fd (m, v) -> v + m[:OIII_5007].fwhm
-        #model[:OIII_5007_bw].norm.patch = @fd (m, v) -> v + m[:OIII_5007].norm
-    end
-    if haskey(model, :OIII_4959_bw) && haskey(model, :OIII_5007_bw)
-        model[:OIII_4959_bw].voff.patch = :OIII_5007_bw
-        model[:OIII_4959_bw].fwhm.patch = :OIII_5007_bw
-        # model[:OIII_4959_bw].norm.patch = @fd m -> m[:OIII_5007_bw].norm / 3
-    end
     if haskey(model, :OI_6300) && haskey(model, :OI_6364)
         # model[:OI_6300].norm.patch = @fd m -> m[:OI_6364].norm / 3
         model[:OI_6300].voff.patch = :OI_6364
@@ -132,7 +122,6 @@ function analyze(recipe::CRecipe{T}, data::Vector{Measures{1}}) where T <: Type2
         end
     end
     add_emission_lines!(recipe, fp)
-    add_patch_functs!(recipe, fp)
     fit!(recipe, fp)
     for i in 1:length(models)
         model = models[i]
