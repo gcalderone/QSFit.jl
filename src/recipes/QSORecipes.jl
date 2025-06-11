@@ -5,7 +5,7 @@ using Dierckx
 using ..QSFit, ..QSFit.ATL, GModelFit
 
 import GModelFit: domain
-import QSFit: init_recipe!, preprocess_spec!, SpecLineSet, add_line!, line_suffix, line_component, analyze, postanalysis, Results
+import QSFit: init_recipe!, preprocess_spec!, SpecLineSet, add_line!, line_group, line_suffix, line_component, analyze, postanalysis, Results
 
 abstract type QSOGeneric <: AbstractRecipe end
 
@@ -21,10 +21,11 @@ end
 
 line_component(recipe::CRecipe{<: QSOGeneric}, center::Float64) = recipe.line_component(center)
 
-abstract type BlueWing <: NarrowLine end
+abstract type BlueWing <: QSFit.LineTemplate end
 line_suffix(recipe::CRecipe{<: QSOGeneric}, ::Type{BlueWing}) = :_bw
+line_group( recipe::CRecipe{<: QSOGeneric}, ::Type{BlueWing}) = :NarrowLines
 
-function line_component(recipe::CRecipe, tid::Val{TID}, ::Type{<: BlueWing}) where TID
+function line_component(recipe::CRecipe{<: QSOGeneric}, tid::Val{TID}, ::Type{<: BlueWing}) where TID
     @track_recipe
     comp = line_component(recipe, tid, NarrowLine)
     comp.fwhm.low, comp.fwhm.val, comp.fwhm.high = 0, 3e3, 5e3
@@ -410,6 +411,6 @@ end
 
 
 include("QSORecipes_Type1.jl")
-# TODO include("QSORecipes_Type2.jl")
+include("QSORecipes_Type2.jl")
 
 end

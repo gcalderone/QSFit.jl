@@ -2,6 +2,21 @@ export Type2
 
 abstract type Type2 <: QSOGeneric end
 
+# Special cases for emission lines
+function line_component(recipe::CRecipe{T}, tid::Val{TID}, ::Type{<: NarrowLine}) where {TID, T <: Type2}
+    @track_recipe
+    comp = @invoke line_component(recipe::CRecipe{<: supertype(T)}, tid::Val, NarrowLine)
+    comp.fwhm.low = 10
+    return comp
+end
+
+function line_component(recipe::CRecipe{T}, tid::Val{TID}, ::Type{<: NuisanceLine}) where {TID, T <: Type2}
+    @track_recipe
+    comp = @invoke line_component(recipe::CRecipe{<: supertype(T)}, tid::Val, NarrowLine)
+    comp.fwhm.low, comp.fwhm.val, comp.fwhm.high = 10, 500, 2e3
+    return comp
+end
+
 function init_recipe!(recipe::CRecipe{T}) where T <: Type2
     @track_recipe
     @invoke init_recipe!(recipe::CRecipe{<: QSOGeneric})
@@ -12,29 +27,29 @@ function init_recipe!(recipe::CRecipe{T}) where T <: Type2
           5008 .+ [-1,1] .* 25)
 end
 
-function set_lines_dict!(recipe::CRecipe{T}) where T <: Type2
+function lines_dict(recipe::CRecipe{T}) where T <: Type2
     @track_recipe
-    (:lines in propertynames(recipe))  &&  (return get_lines_dict(recipe))
-    add_line!(recipe, :Lya       , NarrowLine)
-    add_line!(recipe, :NV_1241   , ForbiddenLine)
-    add_line!(recipe, :CIV_1549  , NarrowLine)
-    add_line!(recipe, :CIII_1909 , NarrowLine)
-    add_line!(recipe, :MgII_2798 , NarrowLine)
-    add_line!(recipe, :NeV_3426  , ForbiddenLine)
-    add_line!(recipe, :OII_3727  , ForbiddenLine)
-    add_line!(recipe, :NeIII_3869, ForbiddenLine)
-    add_line!(recipe, :Hg        , NarrowLine)
-    add_line!(recipe, :Hb        , NarrowLine)
-    add_line!(recipe, :OIII_4959 , ForbiddenLine, BlueWing)
-    add_line!(recipe, :OIII_5007 , ForbiddenLine, BlueWing)
-    add_line!(recipe, :OI_6300   , ForbiddenLine)
-    add_line!(recipe, :OI_6364   , ForbiddenLine)
-    add_line!(recipe, :NII_6549  , ForbiddenLine)
-    add_line!(recipe, :Ha        , NarrowLine)
-    add_line!(recipe, :NII_6583  , ForbiddenLine)
-    add_line!(recipe, :SII_6716  , ForbiddenLine)
-    add_line!(recipe, :SII_6731  , ForbiddenLine)
-    nothing
+    out = SpecLineSet()
+    add_line!(recipe, out, :Lya       , NarrowLine)
+    add_line!(recipe, out, :NV_1241   , ForbiddenLine)
+    add_line!(recipe, out, :CIV_1549  , NarrowLine)
+    add_line!(recipe, out, :CIII_1909 , NarrowLine)
+    add_line!(recipe, out, :MgII_2798 , NarrowLine)
+    add_line!(recipe, out, :NeV_3426  , ForbiddenLine)
+    add_line!(recipe, out, :OII_3727  , ForbiddenLine)
+    add_line!(recipe, out, :NeIII_3869, ForbiddenLine)
+    add_line!(recipe, out, :Hg        , NarrowLine)
+    add_line!(recipe, out, :Hb        , NarrowLine)
+    add_line!(recipe, out, :OIII_4959 , ForbiddenLine, BlueWing)
+    add_line!(recipe, out, :OIII_5007 , ForbiddenLine, BlueWing)
+    add_line!(recipe, out, :OI_6300   , ForbiddenLine)
+    add_line!(recipe, out, :OI_6364   , ForbiddenLine)
+    add_line!(recipe, out, :NII_6549  , ForbiddenLine)
+    add_line!(recipe, out, :Ha        , NarrowLine)
+    add_line!(recipe, out, :NII_6583  , ForbiddenLine)
+    add_line!(recipe, out, :SII_6716  , ForbiddenLine)
+    add_line!(recipe, out, :SII_6731  , ForbiddenLine)
+    return out
 end
 
 
@@ -42,20 +57,6 @@ function add_qso_continuum!(recipe::CRecipe{<: Type2}, fp::GModelFit.FitProblem,
     @track_recipe
     @invoke add_qso_continuum!(recipe::CRecipe{<: QSOGeneric}, fp, ith)
     getmodel(fp, ith)[:QSOcont].alpha.val = -1.8
-end
-
-
-function set_constraints!(recipe::CRecipe{<: Type2}, ::Type{NarrowLine}, comp::QSFit.AbstractSpecLineComp)
-    @track_recipe
-    @invoke set_constraints!(recipe::CRecipe{<: QSOGeneric}, NarrowLine, comp)
-    comp.fwhm.low = 10
-end
-
-
-function set_constraints!(recipe::CRecipe{<: Type2}, ::Type{NuisanceLine}, comp::QSFit.AbstractSpecLineComp)
-    @track_recipe
-    @invoke set_constraints!(recipe::CRecipe{<: QSOGeneric}, NuisanceLine, comp)
-    comp.fwhm.low, comp.fwhm.val, comp.fwhm.high = 10, 500, 2e3
 end
 
 
@@ -92,31 +93,41 @@ function add_patch_functs!(recipe::CRecipe{<: Type2}, fp::GModelFit.FitProblem, 
 end
 
 
-function analyze(recipe::CRecipe{<: Type2}, data::Vector{Measures{1}})
+function analyze(recipe::CRecipe{T}, data::Measures{1}) where T <: Type2
+    bestfit, fsumm = analyze(recipe, [data])
+    return bestfit[1], fsumm
+end
+
+function analyze(recipe::CRecipe{T}, data::Vector{Measures{1}}) where T <: Type2
     @track_recipe
-    model = Model(:main => SumReducer())
-    select_maincomp!(model, :main)
-    fp = GModelFit.FitProblem([model], data)
+    models = Vector{Model}()
+    for i in 1:length(data)
+        model = Model(:main => SumReducer())
+        select_maincomp!(model, :main)
+        model[:Continuum] = SumReducer()
+        push!(model[:main].list, :Continuum)
+        push!(models, model)
+    end
+    fp = GModelFit.FitProblem(models, data)
 
     println("\nFit continuum components...")
-    model[:Continuum] = SumReducer()
-    push!(model[:main].list, :Continuum)
     add_qso_continuum!(recipe, fp)
     add_host_galaxy!(recipe, fp)
     fit!(recipe, fp)
     renorm_cont!(recipe, fp)
-    freeze!(model, :QSOcont)
-    haskey(model, :Galaxy)  &&  freeze!(model, :Galaxy)
+    for model in models
+        freeze!(model, :QSOcont)
+        haskey(model, :Galaxy)  &&  freeze!(model, :Galaxy)
+    end
     scan_and_evaluate!(fp)
 
-    if (:lines in propertynames(recipe))  &&  (length(recipe.lines) > 0)
-        println("\nFit known emission lines...")
-        add_emission_lines!(recipe, fp)
-        add_patch_functs!(recipe, fp)
-
-        fit!(recipe, fp)
-        for cname in keys(recipe.lines)
-            freeze!(model, cname)
+    println("\nFit known emission lines...")
+    add_emission_lines!(recipe, fp)
+    add_patch_functs!(recipe, fp)
+    fit!(recipe, fp)
+    for i in 1:length(models)
+        for cname in keys(recipe.specs[i].meta[:lines])
+            freeze!(models[i], cname)
         end
     end
 
@@ -124,19 +135,23 @@ function analyze(recipe::CRecipe{<: Type2}, data::Vector{Measures{1}})
     add_nuisance_lines!(recipe, fp)
 
     println("\nLast run with all parameters free...")
-    thaw!(model, :QSOcont)
-    haskey(model, :Galaxy   )  &&  thaw!(model, :Galaxy)
-    for cname in keys(recipe.lines)
-        thaw!(model, cname)
-    end
-    for j in 1:recipe.n_nuisance
-        cname = Symbol(:nuisance, j)
-        if model[cname].norm.val > 0
+    for i in 1:length(models)
+        model = models[i]
+        thaw!(model, :QSOcont)
+        haskey(model, :Galaxy   )  &&  thaw!(model, :Galaxy)
+        for cname in keys(recipe.specs[i].meta[:lines])
             thaw!(model, cname)
-        else
-            freeze!(model, cname)
+        end
+        for j in 1:recipe.n_nuisance
+            cname = Symbol(:nuisance, j)
+            if model[cname].norm.val > 0
+                thaw!(model, cname)
+            else
+                freeze!(model, cname)
+            end
         end
     end
+    scan_and_evaluate!(fp)
     bestfit, fsumm = fit!(recipe, fp)
 
     if any(neglect_weak_features!(recipe, fp))

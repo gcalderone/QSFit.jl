@@ -277,17 +277,16 @@ function analyze(recipe::CRecipe{T}, data::Vector{Measures{1}}) where T <: Type1
     add_nuisance_lines!(recipe, fp)
 
     println("\nLast run with all parameters free...")
-    for model in models
+    for i in 1:length(models)
+        model = models[i]
         thaw!(model, :QSOcont)
         haskey(model, :Galaxy   )  &&  thaw!(model, :Galaxy)
         haskey(model, :Balmer   )  &&  thaw!(model, :Balmer)
         haskey(model, :Ironuv   )  &&  thaw!(model, :Ironuv)
         haskey(model, :Ironoptbr)  &&  thaw!(model, :Ironoptbr)
         haskey(model, :Ironoptna)  &&  thaw!(model, :Ironoptna)
-        for i in 1:length(models)
-            for cname in keys(recipe.specs[i].meta[:lines])
-                thaw!(models[i], cname)
-            end
+        for cname in keys(recipe.specs[i].meta[:lines])
+            thaw!(model, cname)
         end
         for j in 1:recipe.n_nuisance
             cname = Symbol(:nuisance, j)
