@@ -20,6 +20,7 @@ function geteval(fp::GModelFit.FitProblem, ith::Int, cname=nothing)
     end
     return GModelFit.last_eval(fp.multi, ith, cname)
 end
+nmodels(fp::GModelFit.FitProblem) = length(fp.multi)
 
 line_component(recipe::CRecipe{<: QSOGeneric}, center::Float64) = recipe.line_component(center)
 
@@ -110,8 +111,7 @@ end
 
 function fit!(recipe::CRecipe{<: QSOGeneric}, fp::GModelFit.FitProblem)
     @track_recipe
-    GModelFit.scan_model!(fp.multi)
-    GModelFit.update_eval!(fp.multi)
+    geteval(fp, 1)  # ensure model is updated
     (GModelFit.nfree(fp) == 0)  &&  (return nothing)
     bestfit, fsumm = GModelFit.fit!(fp, recipe.solver)
     show(fsumm)
@@ -121,9 +121,9 @@ end
 
 function add_qso_continuum!(recipe::CRecipe{<: QSOGeneric}, fp::GModelFit.FitProblem)
     @track_recipe
-    add_qso_continuum!.(Ref(recipe), Ref(fp), 1:length(fp.multi))
+    add_qso_continuum!.(Ref(recipe), Ref(fp), 1:nmodels(fp))
     #=
-    for i in 2:length(fp.multi)
+    for i in 2:nmodels(fp)
         m1 = getmodel(fp, 1)
         mi = getmodel(fp, i)
         if haskey(mi, :QSOcont)  &&  haskey(m1, :QSOcont)
@@ -152,8 +152,8 @@ end
 
 function add_host_galaxy!(recipe::CRecipe{<: QSOGeneric}, fp::GModelFit.FitProblem)
     @track_recipe
-    add_host_galaxy!.(Ref(recipe), Ref(fp), 1:length(fp.multi))
-    for i in 2:length(fp.multi)
+    add_host_galaxy!.(Ref(recipe), Ref(fp), 1:nmodels(fp))
+    for i in 2:nmodels(fp)
         m1 = getmodel(fp, 1)
         mi = getmodel(fp, i)
         if haskey(mi, :Galaxy)  &&  haskey(m1, :Galaxy)
@@ -189,7 +189,7 @@ end
 
 function renorm_cont!(recipe::CRecipe{<: QSOGeneric}, fp::GModelFit.FitProblem)
     @track_recipe
-    renorm_cont!.(Ref(recipe), Ref(fp), 1:length(fp.multi))
+    renorm_cont!.(Ref(recipe), Ref(fp), 1:nmodels(fp))
 end
 function renorm_cont!(recipe::CRecipe{<: QSOGeneric}, fp::GModelFit.FitProblem, ith::Int)
     @track_recipe
@@ -214,7 +214,7 @@ end
 
 function guess_norm_factor!(recipe::CRecipe{<: QSOGeneric}, fp::GModelFit.FitProblem)
     @track_recipe
-    guess_norm_factor!.(Ref(recipe), Ref(fp), 1:length(fp.multi))
+    guess_norm_factor!.(Ref(recipe), Ref(fp), 1:nmodels(fp))
 end
 function guess_norm_factor!(recipe::CRecipe{<: QSOGeneric}, fp::GModelFit.FitProblem, ith::Int, name::Symbol; quantile=0.95)
     @track_recipe
@@ -241,8 +241,8 @@ end
 
 function add_emission_lines!(recipe::CRecipe{<: QSOGeneric}, fp::GModelFit.FitProblem)
     @track_recipe
-    add_emission_lines!.(Ref(recipe), Ref(fp), 1:length(fp.multi))
-    for i in 2:length(fp.multi)
+    add_emission_lines!.(Ref(recipe), Ref(fp), 1:nmodels(fp))
+    for i in 2:nmodels(fp)
         m1 = getmodel(fp, 1)
         mi = getmodel(fp, i)
         if haskey(mi, :OIII_5007)  &&  haskey(m1, :OIII_5007)
@@ -274,7 +274,7 @@ end
 
 function fit_nuisance_lines!(recipe::CRecipe{<: QSOGeneric}, fp::GModelFit.FitProblem)
     @track_recipe
-    fit_nuisance_lines!.(Ref(recipe), Ref(fp), 1:length(fp.multi))
+    fit_nuisance_lines!.(Ref(recipe), Ref(fp), 1:nmodels(fp))
 end
 function fit_nuisance_lines!(recipe::CRecipe{<: QSOGeneric}, fp::GModelFit.FitProblem, ith::Int)
     @track_recipe
@@ -344,7 +344,7 @@ end
 
 function neglect_weak_features!(recipe::CRecipe{<: QSOGeneric}, fp::GModelFit.FitProblem)
     @track_recipe
-    return neglect_weak_features!.(Ref(recipe), Ref(fp), 1:length(fp.multi))
+    return neglect_weak_features!.(Ref(recipe), Ref(fp), 1:nmodels(fp))
 end
 function neglect_weak_features!(recipe::CRecipe{<: QSOGeneric}, fp::GModelFit.FitProblem, ith::Int)
     @track_recipe
