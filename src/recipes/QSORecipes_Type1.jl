@@ -108,9 +108,7 @@ function add_iron_uv!(recipe::CRecipe{<: Type1}, fp::GModelFit.FitProblem, ith::
             getmodel(fp, ith)[:Ironuv] = comp
             getmodel(fp, ith)[:Ironuv].norm.val = 1.
             push!(getmodel(fp, ith)[:Iron].list, :Ironuv)
-            scan_and_evaluate!(fp)
             guess_norm_factor!(recipe, fp, ith, :Ironuv)
-            scan_and_evaluate!(fp)
         else
             println("Ignoring ironuv component (threshold: $threshold)")
         end
@@ -121,7 +119,6 @@ end
 function add_iron_opt!(recipe::CRecipe{<: QSOGeneric}, fp::GModelFit.FitProblem)
     @track_recipe
     add_iron_opt!.(Ref(recipe), Ref(fp), 1:length(fp.multi))
-    scan_and_evaluate!(fp)
 end
 function add_iron_opt!(recipe::CRecipe{<: Type1}, fp::GModelFit.FitProblem, ith::Int)
     @track_recipe
@@ -140,7 +137,6 @@ function add_iron_opt!(recipe::CRecipe{<: Type1}, fp::GModelFit.FitProblem, ith:
             getmodel(fp, ith)[:Ironoptna].norm.fixed = false
             push!(getmodel(fp, ith)[:Iron].list, :Ironoptbr)
             push!(getmodel(fp, ith)[:Iron].list, :Ironoptna)
-            scan_and_evaluate!(fp)
             guess_norm_factor!(recipe, fp, ith, :Ironoptbr)
         else
             println("Ignoring ironopt component (threshold: $threshold)")
@@ -243,7 +239,6 @@ function analyze(recipe::CRecipe{T}, data::Vector{Measures{1}}) where T <: Type1
         haskey(model, :Galaxy)  &&  freeze!(model, :Galaxy)
         haskey(model, :Balmer)  &&  freeze!(model, :Balmer)
     end
-    scan_and_evaluate!(fp)
     renorm_cont!(recipe, fp)
 
     println("\nFit iron templates...")
@@ -259,7 +254,6 @@ function analyze(recipe::CRecipe{T}, data::Vector{Measures{1}}) where T <: Type1
         haskey(model, :Ironoptbr)  &&  freeze!(model, :Ironoptbr)
         haskey(model, :Ironoptna)  &&  freeze!(model, :Ironoptna)
     end
-    scan_and_evaluate!(fp)
 
     println("\nFit known emission lines...")
     for i in 1:length(models)
@@ -283,7 +277,6 @@ function analyze(recipe::CRecipe{T}, data::Vector{Measures{1}}) where T <: Type1
             freeze!(model, cname)
         end
     end
-    scan_and_evaluate!(fp)
 
     println("\nFit nuisance emission lines...")
     fit_nuisance_lines!(recipe, fp)
@@ -311,7 +304,6 @@ function analyze(recipe::CRecipe{T}, data::Vector{Measures{1}}) where T <: Type1
             end
         end
     end
-    scan_and_evaluate!(fp)
     bestfit, fsumm = fit!(recipe, fp)
 
     if any(neglect_weak_features!(recipe, fp))
