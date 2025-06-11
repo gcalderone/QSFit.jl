@@ -142,6 +142,7 @@ function add_iron_opt!(recipe::CRecipe{<: Type1}, fp::GModelFit.FitProblem, ith:
             push!(getmodel(fp, ith)[:Iron].list, :Ironoptna)
             scan_and_evaluate!(fp)
             guess_norm_factor!(recipe, fp, ith, :Ironoptbr)
+            scan_and_evaluate!(fp)
         else
             println("Ignoring ironopt component (threshold: $threshold)")
         end

@@ -268,6 +268,7 @@ function add_emission_lines!(recipe::CRecipe{<: QSOGeneric}, fp::GModelFit.FitPr
         for (cname, line) in lines
             (group == line.group)  ||  continue
             guess_norm_factor!(recipe, fp, ith, cname)
+            scan_and_evaluate!(fp)
         end
     end
 end
