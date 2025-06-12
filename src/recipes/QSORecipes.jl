@@ -110,6 +110,8 @@ function preprocess_spec!(recipe::CRecipe{T}, spec::Spectrum) where T <: QSOGene
             println()
         end
         delete!.(Ref(lines), toDelete)
+        !(:OIII_4959 in keys(lines))  &&  (:OIII_4959_bw in keys(lines))  &&  delete!(lines, :OIII_4959_bw)
+        !(:OIII_5007 in keys(lines))  &&  (:OIII_5007_bw in keys(lines))  &&  delete!(lines, :OIII_5007_bw)
     end
     println("Good samples after line coverage filter: ", count(spec.good) , " / ", length(spec.good))
 
