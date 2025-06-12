@@ -12,12 +12,15 @@ abstract type QSOGeneric <: AbstractRecipe end
 getmodel( fp::GModelFit.FitProblem, ith::Int) = fp.multi.v[ith].model
 getdomain(fp::GModelFit.FitProblem, ith::Int) = fp.multi.v[ith].domain
 getdata(  fp::GModelFit.FitProblem, ith::Int) = fp.data[ith]
-
-
-function scan_and_evaluate!(fp::GModelFit.FitProblem)
+function geteval(fp::GModelFit.FitProblem, ith::Int, cname=nothing)
     GModelFit.scan_model!(fp.multi)
     GModelFit.update_eval!(fp.multi)
+    if isnothing(cname)
+        return GModelFit.last_eval(fp.multi, ith)
+    end
+    return GModelFit.last_eval(fp.multi, ith, cname)
 end
+nmodels(fp::GModelFit.FitProblem) = length(fp.multi)
 
 line_component(recipe::CRecipe{<: QSOGeneric}, center::Float64) = recipe.line_component(center)
 
@@ -30,8 +33,18 @@ function line_component(recipe::CRecipe{<: QSOGeneric}, tid::Val{:OIII_5007}, ::
     comp = line_component(recipe, tid, NarrowLine)
     comp.fwhm.low, comp.fwhm.val, comp.fwhm.high = 0, 3e3, 5e3
     comp.voff.low, comp.voff.val, comp.voff.high = 0, 0, 2e3
-    # comp.voff.patch = @fd (m, v) -> v + m[:OIII_5007].voff
-    # comp.fwhm.patch = @fd (m, v) -> v + m[:OIII_5007].fwhm
+    comp.voff.patch = @fd (m, v) -> v + m[:OIII_5007].voff
+    comp.fwhm.patch = @fd (m, v) -> v + m[:OIII_5007].fwhm
+    return comp
+end
+
+function line_component(recipe::CRecipe{<: QSOGeneric}, tid::Val{:OIII_4959}, ::Type{<: BlueWing})
+    @track_recipe
+    comp = line_component(recipe, tid, NarrowLine)
+    comp.fwhm.low, comp.fwhm.val, comp.fwhm.high = 0, 3e3, 5e3
+    comp.voff.low, comp.voff.val, comp.voff.high = 0, 0, 2e3
+    comp.voff.patch = @fd (m, v) -> v + m[:OIII_4959].voff
+    comp.fwhm.patch = @fd (m, v) -> v + m[:OIII_4959].fwhm
     return comp
 end
 
@@ -97,6 +110,8 @@ function preprocess_spec!(recipe::CRecipe{T}, spec::Spectrum) where T <: QSOGene
             println()
         end
         delete!.(Ref(lines), toDelete)
+        !(:OIII_4959 in keys(lines))  &&  (:OIII_4959_bw in keys(lines))  &&  delete!(lines, :OIII_4959_bw)
+        !(:OIII_5007 in keys(lines))  &&  (:OIII_5007_bw in keys(lines))  &&  delete!(lines, :OIII_5007_bw)
     end
     println("Good samples after line coverage filter: ", count(spec.good) , " / ", length(spec.good))
 
@@ -108,8 +123,7 @@ end
 
 function fit!(recipe::CRecipe{<: QSOGeneric}, fp::GModelFit.FitProblem)
     @track_recipe
-    GModelFit.scan_model!(fp.multi)
-    GModelFit.update_eval!(fp.multi)
+    geteval(fp, 1)  # ensure model is updated
     (GModelFit.nfree(fp) == 0)  &&  (return nothing)
     bestfit, fsumm = GModelFit.fit!(fp, recipe.solver)
     show(fsumm)
@@ -119,9 +133,9 @@ end
 
 function add_qso_continuum!(recipe::CRecipe{<: QSOGeneric}, fp::GModelFit.FitProblem)
     @track_recipe
-    add_qso_continuum!.(Ref(recipe), Ref(fp), 1:length(fp.multi))
+    add_qso_continuum!.(Ref(recipe), Ref(fp), 1:nmodels(fp))
     #=
-    for i in 2:length(fp.multi)
+    for i in 2:nmodels(fp)
         m1 = getmodel(fp, 1)
         mi = getmodel(fp, i)
         if haskey(mi, :QSOcont)  &&  haskey(m1, :QSOcont)
@@ -131,7 +145,6 @@ function add_qso_continuum!(recipe::CRecipe{<: QSOGeneric}, fp::GModelFit.FitPro
         end
     end
     =#
-    scan_and_evaluate!(fp)
 end
 function add_qso_continuum!(recipe::CRecipe{<: QSOGeneric}, fp::GModelFit.FitProblem, ith::Int)
     @track_recipe
@@ -151,8 +164,8 @@ end
 
 function add_host_galaxy!(recipe::CRecipe{<: QSOGeneric}, fp::GModelFit.FitProblem)
     @track_recipe
-    add_host_galaxy!.(Ref(recipe), Ref(fp), 1:length(fp.multi))
-    for i in 2:length(fp.multi)
+    add_host_galaxy!.(Ref(recipe), Ref(fp), 1:nmodels(fp))
+    for i in 2:nmodels(fp)
         m1 = getmodel(fp, 1)
         mi = getmodel(fp, i)
         if haskey(mi, :Galaxy)  &&  haskey(m1, :Galaxy)
@@ -180,7 +193,7 @@ function add_host_galaxy!(recipe::CRecipe{<: QSOGeneric}, fp::GModelFit.FitProbl
             getmodel(fp, ith)[:Galaxy].norm.val   = 0.
         else
             getmodel(fp, ith)[:Galaxy].norm.val   = 1/2 * vv
-            getmodel(fp, ith)[:QSOcont].norm.val *= 1/2 * vv / Dierckx.Spline1D(λ, GModelFit.last_eval(fp.multi, ith, :QSOcont), k=1, bc="extrapolate")(refwl)
+            getmodel(fp, ith)[:QSOcont].norm.val *= 1/2 * vv / Dierckx.Spline1D(λ, geteval(fp, ith, :QSOcont), k=1, bc="extrapolate")(refwl)
         end
     end
 end
@@ -188,7 +201,7 @@ end
 
 function renorm_cont!(recipe::CRecipe{<: QSOGeneric}, fp::GModelFit.FitProblem)
     @track_recipe
-    renorm_cont!.(Ref(recipe), Ref(fp), 1:length(fp.multi))
+    renorm_cont!.(Ref(recipe), Ref(fp), 1:nmodels(fp))
 end
 function renorm_cont!(recipe::CRecipe{<: QSOGeneric}, fp::GModelFit.FitProblem, ith::Int)
     @track_recipe
@@ -198,12 +211,11 @@ function renorm_cont!(recipe::CRecipe{<: QSOGeneric}, fp::GModelFit.FitProblem, 
         println("Cont. norm. (before): ", c.norm.val)
         scaling = 0.99
         while c.norm.val * scaling > c.norm.low
-            residuals = (GModelFit.last_eval(fp.multi, ith) - values(getdata(fp, ith))) ./ uncerts(getdata(fp, ith))
+            residuals = (geteval(fp, ith) - values(getdata(fp, ith))) ./ uncerts(getdata(fp, ith))
             ratio = count(residuals .< 0) / length(residuals)
             (ratio > 0.9)  &&  break
             (c.norm.val < (initialnorm / 5))  &&  break # give up
             c.norm.val *= scaling
-            scan_and_evaluate!(fp)
         end
         println("Cont. norm. (after) : ", c.norm.val)
     else
@@ -214,12 +226,12 @@ end
 
 function guess_norm_factor!(recipe::CRecipe{<: QSOGeneric}, fp::GModelFit.FitProblem)
     @track_recipe
-    guess_norm_factor!.(Ref(recipe), Ref(fp), 1:length(fp.multi))
+    guess_norm_factor!.(Ref(recipe), Ref(fp), 1:nmodels(fp))
 end
 function guess_norm_factor!(recipe::CRecipe{<: QSOGeneric}, fp::GModelFit.FitProblem, ith::Int, name::Symbol; quantile=0.95)
     @track_recipe
     @assert getmodel(fp, ith)[name].norm.val != 0
-    m = GModelFit.last_eval(fp.multi, ith, name)
+    m = geteval(fp, ith, name)
     c = cumsum(m)
     @assert maximum(c) != 0. "Model for $name evaluates to zero over the whole domain"
     c ./= maximum(c)
@@ -228,7 +240,7 @@ function guess_norm_factor!(recipe::CRecipe{<: QSOGeneric}, fp::GModelFit.FitPro
     if i1 >= i2
         return #Can't calculate normalization for component
     end
-    r = values(getdata(fp, ith)) - GModelFit.last_eval(fp.multi, ith)
+    r = values(getdata(fp, ith)) - geteval(fp, ith)
     ratio = getmodel(fp, ith)[name].norm.val / sum(m[i1:i2])
     off = sum(r[i1:i2]) * ratio
     getmodel(fp, ith)[name].norm.val += off
@@ -241,8 +253,8 @@ end
 
 function add_emission_lines!(recipe::CRecipe{<: QSOGeneric}, fp::GModelFit.FitProblem)
     @track_recipe
-    add_emission_lines!.(Ref(recipe), Ref(fp), 1:length(fp.multi))
-    for i in 2:length(fp.multi)
+    add_emission_lines!.(Ref(recipe), Ref(fp), 1:nmodels(fp))
+    for i in 2:nmodels(fp)
         m1 = getmodel(fp, 1)
         mi = getmodel(fp, i)
         if haskey(mi, :OIII_5007)  &&  haskey(m1, :OIII_5007)
@@ -255,13 +267,17 @@ function add_emission_lines!(recipe::CRecipe{<: QSOGeneric}, fp::GModelFit.FitPr
 end
 function add_emission_lines!(recipe::CRecipe{<: QSOGeneric}, fp::GModelFit.FitProblem, ith::Int)
     @track_recipe
+    model = getmodel(fp, ith)
     lines = recipe.specs[ith].meta[:lines]
 
     # Create model components
     for (cname, line) in lines
-        getmodel(fp, ith)[cname] = line.comp
+        model[cname] = line.comp
+        push!(model[line.group].list, cname)
     end
-    scan_and_evaluate!(fp)
+
+    # Patch functions
+    add_patch_functs!(recipe, fp, ith)
 
     # Guess normalizations
     for group in [:BroadLines, :NarrowLines, :VeryBroadLines]  # Note: order is important
@@ -276,7 +292,7 @@ end
 
 function fit_nuisance_lines!(recipe::CRecipe{<: QSOGeneric}, fp::GModelFit.FitProblem)
     @track_recipe
-    fit_nuisance_lines!.(Ref(recipe), Ref(fp), 1:length(fp.multi))
+    fit_nuisance_lines!.(Ref(recipe), Ref(fp), 1:nmodels(fp))
 end
 function fit_nuisance_lines!(recipe::CRecipe{<: QSOGeneric}, fp::GModelFit.FitProblem, ith::Int)
     @track_recipe
@@ -290,7 +306,6 @@ function fit_nuisance_lines!(recipe::CRecipe{<: QSOGeneric}, fp::GModelFit.FitPr
         model[Symbol(:nuisance, i)] = line_component(recipe, 3000., NuisanceLine)
         freeze!(model, Symbol(:nuisance, i))
     end
-    scan_and_evaluate!(fp)
 
     # Set "nuisance" line center wavelength where there is a maximum in
     # the fit residuals, and re-run a fit.
@@ -298,8 +313,7 @@ function fit_nuisance_lines!(recipe::CRecipe{<: QSOGeneric}, fp::GModelFit.FitPr
     λnuisance = Vector{Float64}()
     while true
         (length(λnuisance) >= recipe.n_nuisance)  &&  break
-        scan_and_evaluate!(fp)
-        Δ = (values(getdata(fp, ith)) - GModelFit.last_eval(fp.multi, ith)) ./ uncerts(getdata(fp, ith))
+        Δ = (values(getdata(fp, ith)) - geteval(fp, ith)) ./ uncerts(getdata(fp, ith))
 
         # Avoid considering again the same region (within 1A) TODO: within resolution
         for l in λnuisance
@@ -343,13 +357,12 @@ function fit_nuisance_lines!(recipe::CRecipe{<: QSOGeneric}, fp::GModelFit.FitPr
         fit!(recipe, fp)
         freeze!(model, cname)
     end
-    scan_and_evaluate!(fp)
 end
 
 
 function neglect_weak_features!(recipe::CRecipe{<: QSOGeneric}, fp::GModelFit.FitProblem)
     @track_recipe
-    return neglect_weak_features!.(Ref(recipe), Ref(fp), 1:length(fp.multi))
+    return neglect_weak_features!.(Ref(recipe), Ref(fp), 1:nmodels(fp))
 end
 function neglect_weak_features!(recipe::CRecipe{<: QSOGeneric}, fp::GModelFit.FitProblem, ith::Int)
     @track_recipe
@@ -372,7 +385,6 @@ function neglect_weak_features!(recipe::CRecipe{<: QSOGeneric}, fp::GModelFit.Fi
                 println("Disabling $cname (unc. / norm. > 3)")
             end
         end
-        scan_and_evaluate!(fp)
     end
     return needs_fitting
 end
