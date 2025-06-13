@@ -32,7 +32,7 @@ line_group( ::CRecipe, ::Type{<: VeryBroadLine})     = :VeryBroadLines
 line_component(::CRecipe, center::Float64) = SpecLineGauss(center)
 line_component(recipe::CRecipe, tid::Val{TID}) where TID = line_component(recipe, get_wavelength(get_transition(TID)))
 
-function line_component(recipe::CRecipe, tid::Val{TID}, template::Type{<: ForbiddenLine}) where TID
+function line_component(recipe::CRecipe, tid::Union{Val{TID}, Float64}, template::Type{<: ForbiddenLine}) where TID
     @track_recipe
     comp = line_component(recipe, tid)
     comp.fwhm.low, comp.fwhm.val, comp.fwhm.high = 100, 5e2, 2e3
@@ -40,12 +40,12 @@ function line_component(recipe::CRecipe, tid::Val{TID}, template::Type{<: Forbid
     return comp
 end
 
-function line_component(recipe::CRecipe, tid::Val{TID}, template::Type{<: SemiForbiddenLine}) where TID
+function line_component(recipe::CRecipe, tid::Union{Val{TID}, Float64}, template::Type{<: SemiForbiddenLine}) where TID
     @track_recipe
     return line_component(recipe, tid, BroadLine)
 end
 
-function line_component(recipe::CRecipe, tid::Val{TID}, template::Type{<: NarrowLine}) where TID
+function line_component(recipe::CRecipe, tid::Union{Val{TID}, Float64}, template::Type{<: NarrowLine}) where TID
     @track_recipe
     comp = line_component(recipe, tid)
     comp.fwhm.low, comp.fwhm.val, comp.fwhm.high = 100, 5e2, 1e3 # avoid confusion with the broad component
@@ -53,7 +53,7 @@ function line_component(recipe::CRecipe, tid::Val{TID}, template::Type{<: Narrow
     return comp
 end
 
-function line_component(recipe::CRecipe, tid::Val{TID}, template::Type{<: BroadLine}) where TID
+function line_component(recipe::CRecipe, tid::Union{Val{TID}, Float64}, template::Type{<: BroadLine}) where TID
     @track_recipe
     comp = line_component(recipe, tid)
     comp.fwhm.low, comp.fwhm.val, comp.fwhm.high = 900, 5e3, 1.5e4
@@ -61,7 +61,7 @@ function line_component(recipe::CRecipe, tid::Val{TID}, template::Type{<: BroadL
     return comp
 end
 
-function line_component(recipe::CRecipe, tid::Val{TID}, template::Type{<: VeryBroadLine}) where TID
+function line_component(recipe::CRecipe, tid::Union{Val{TID}, Float64}, template::Type{<: VeryBroadLine}) where TID
     @track_recipe
     comp = line_component(recipe, tid)
     comp.fwhm.low, comp.fwhm.val, comp.fwhm.high = 1e4, 2e4, 3e4
@@ -93,11 +93,11 @@ struct SpecLine{T <: LineTemplate}
         comp = line_component(recipe, Val(tid), T)
         return new{T}(wl, comp, line_group(recipe, T))
     end
-end
-
-function show(io::IO, line::SpecLine)
-    println(io, line.tid, " (", string(typeof(get_transition(line.tid))))
-    show(io, line.comp)
+    function SpecLine{T}(recipe::CRecipe, wl::Float64) where T <: LineTemplate
+        @track_recipe
+        comp = line_component(recipe, wl, T)
+        return new{T}(wl, comp, line_group(recipe, T))
+    end
 end
 
 struct SpecLineSet <: AbstractDict{Symbol, SpecLine}
@@ -137,5 +137,13 @@ function add_line!(recipe::CRecipe, lines::SpecLineSet, tid::Symbol, templates..
     for template in templates
         cname = Symbol(tid, line_suffix(recipe, template))
         lines[cname] = SpecLine{template}(recipe, tid)
+    end
+end
+
+function add_line!(recipe::CRecipe, lines::SpecLineSet, wl::Float64, templates...)
+    @track_recipe
+    for template in templates
+        cname = Symbol(@sprintf("l%.1f_", wl), line_suffix(recipe, template))
+        lines[cname] = SpecLine{template}(recipe, wl)
     end
 end
