@@ -47,9 +47,10 @@ using QSFit, QSFit.LineFitRecipes
 filename = download("http://dr10.sdss3.org/sas/dr10/sdss/spectro/redux/26/spectra/0752/spec-0752-52251-0323.fits")
 spec = Spectrum(Val(:SDSS_DR10), filename)
 recipe = CRecipe{LineFit}(redshift=0.3806)
-recipe.wavelength_range = [4610.1157888384, 5130.00163811462]
-add_line!(recipe, QSFit.ATL.UnidentifiedTransition(4866.45), NarrowLine,BroadLine)
-add_line!(recipe, QSFit.ATL.UnidentifiedTransition(5008.98), ForbiddenLine)
+recipe.wavelength_range = [4530.90809628009, 5392.50547045952]
+recipe.lines = QSFit.SpecLineSet()
+QSFit.add_line!(recipe, recipe.lines, 4864.77, NarrowLine, BroadLine)
+QSFit.add_line!(recipe, recipe.lines, 5010.88, ForbiddenLine)
 res = analyze(recipe, spec)
 ```
 
@@ -121,7 +122,7 @@ The above pattern allows to maximize code reuse (i.e., avoid reinventing the whe
 
 The actual recipes code follows the above pattern except for two details:
 - we use the `CRecipe{}` type in place of `::Type{}` since the latter is just an abstract type and can not contain any data, while the fomer is a concrete one and can store the recipe options;
-- by convention, each recipe step should invoke the `@track_recipe` macro as first statement.  This way it is possible to track down which method is actually being executed (this requires setting `QSFit._track_recipe = true`);
+- by convention, each recipe step should invoke the `@track_recipe` macro as first statement.  This way it is possible to track down which method is actually being executed (this requires invoking `QSFit.track_recipe(true)`);
 
 
 
@@ -131,35 +132,36 @@ In the following example we will define a new recipe named `MyRecipe` inheriting
 
 ```julia
 using GModelFit, QSFit, QSFit.QSORecipes, Statistics
+import QSFit.QSORecipes: getdomain, getmodel, getdata
 
 abstract type MyRecipe <: Type1 end
 
 import QSFit.QSORecipes.add_qso_continuum!
-function add_qso_continuum!(recipe::CRecipe{T}, resid::GModelFit.Residuals) where T <: MyRecipe
+function add_qso_continuum!(recipe::CRecipe{T}, fp::GModelFit.FitProblem, ith::Int) where T <: MyRecipe
     @track_recipe
-    λ = coords(resid.meval.domain)
+    λ = coords(getdomain(fp, ith))
 
     comp = QSFit.sbpl(3000)
     comp.x0.val = median(λ)
-    comp.norm.val = median(values(resid.data))
+    comp.norm.val = median(values(getdata(fp, ith)))
     comp.norm.low = comp.norm.val / 1000.  # ensure contiuum remains positive (needed to estimate EWs)
     comp.delta.val = 0.001
     comp.delta.fixed = true
-    resid.meval.model[:QSOcont] = comp
-    push!(resid.meval.model[:Continuum].list, :QSOcont)
-    GModelFit.update!(resid.meval)
+	getmodel(fp, ith)[:QSOcont] = comp
+    push!(getmodel(fp, ith)[:Continuum].list, :QSOcont)
 end
 
 import QSFit.QSORecipes.add_host_galaxy!
-function add_host_galaxy!(recipe::CRecipe{T}, resid::GModelFit.Residuals) where T <: MyRecipe
-    @invoke add_host_galaxy!(recipe::CRecipe{<: Type1}, resid)
-    t = resid.meval.model[:Galaxy].template
+function add_host_galaxy!(recipe::CRecipe{T}, fp::GModelFit.FitProblem, ith::Int) where T <: MyRecipe
+    @track_recipe
+    @invoke add_host_galaxy!(recipe::CRecipe{<: Type1}, fp, ith)
+	model = getmodel(fp, ith)
+    t = model[:Galaxy].template
     n = 50
-    resid.meval.model[:Galaxy].template[1+n:length(t)-n] .= [mean(t[i-n:i+n]) for i in 1+n:length(t)-n]
-    GModelFit.update!(resid.meval)
+	model[:Galaxy].template[1+n:length(t)-n] .= [mean(t[i-n:i+n]) for i in 1+n:length(t)-n]
 end
 
-QSFit._track_recipe = true
+QSFit.track_recipe(true)
 filename = download("http://dr10.sdss3.org/sas/dr10/sdss/spectro/redux/26/spectra/0752/spec-0752-52251-0323.fits")
 spec = Spectrum(Val(:SDSS_DR10), filename)
 recipe = CRecipe{MyRecipe}(redshift=0.3806, Av=0.21)

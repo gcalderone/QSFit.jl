@@ -4,7 +4,7 @@ QSFit._track_recipe = false
 
 makedocs(sitename="QSFit.jl",
          authors = "Giorgio Calderone",
-         format = Documenter.HTML(prettyurls = false),  # uncomment for local use, comment for deployment
+         # format = Documenter.HTML(prettyurls = false),  # uncomment for local use, comment for deployment
          modules=[QSFit],
          pages = [
              "QSFit" => "index.md",
