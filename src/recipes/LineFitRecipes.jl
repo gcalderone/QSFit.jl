@@ -84,27 +84,27 @@ function preprocess_spec!(recipe::CRecipe{T}, spec::QSFit.Spectrum) where T <: I
                      NuisanceLine]
     println()
     printstyled("Step 2: ", color=:green);  println("Identify emission lines by click on the peaks (CTRL+left click to stop)")
+    recipe.lines = QSFit.SpecLineSet()
     accum_lines = String[]
+    push!(accum_lines, "recipe.lines = QSFit.SpecLineSet()")
     while true
         print("Waiting for a click...")
         vars = wait_mouse(:LineFit)
         (vars.MOUSE_CTRL != 0)  &&  break
         print("\r")
         λ = round(vars.MOUSE_X * 1e2) / 1e2
-        if length(get_lines_dict(recipe)) == 0
-            println()
-            println("List of line templates:")
-            for i in 1:length(linetemplates)
-                println("$(i): ", linetemplates[i])
-            end
-            println("0: skip this line")
+        println()
+        println("List of line templates:")
+        for i in 1:length(linetemplates)
+            println("$(i): ", linetemplates[i])
         end
+        println("0: skip this line")
         print("Insert space separated list of line template(s) for the emission line at $λ ", spec.unit_x, ": ")
         i = Int.(Meta.parse.(string.(split(readline()))))
         (0 in i)  &&  continue
         @assert all(1 .<= i .<= length(linetemplates))
-        add_line!(recipe, λ, linetemplates[i]...)
-        push!(accum_lines, "add_line!(recipe, $λ, " * join(string.(linetemplates[i]), ",") * ")")
+        QSFit.add_line!(recipe, recipe.lines, λ, linetemplates[i]...)
+        push!(accum_lines, "QSFit.add_line!(recipe, recipe.lines, $λ, " * join(string.(linetemplates[i]), ", ") * ")")
     end
     println()
     Gnuplot.quit(:LineFit)
