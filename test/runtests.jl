@@ -9,6 +9,13 @@ rm(GModelFitViewer.serialize_html(res))
 @test res.fsumm.ndata == 3309
 @test res.fsumm.nfree == 70
 
+res = analyze(recipe, [spec, deepcopy(spec)])
+display(res.bestfit)
+display(res.fsumm)
+rm(GModelFitViewer.serialize_html(res))
+@test res.fsumm.ndata == 6618
+@test res.fsumm.nfree == 156
+
 
 recipe = CRecipe{LineFit}(redshift=0.3806)
 recipe.wavelength_range = [4530.90809628009, 5392.50547045952]
@@ -16,14 +23,8 @@ recipe.lines = QSFit.SpecLineSet()
 QSFit.add_line!(recipe, recipe.lines, 4864.77, NarrowLine, BroadLine)
 QSFit.add_line!(recipe, recipe.lines, 5010.88, ForbiddenLine)
 res = analyze(recipe, spec)
-
-
-res = analyze(recipe, [spec, deepcopy(spec)])
-display(res.bestfit)
-display(res.fsumm)
-rm(GModelFitViewer.serialize_html(res))
-@test res.fsumm.ndata == 6618
-@test res.fsumm.nfree == 156
+@test res.fsumm.ndata == 711
+@test res.fsumm.nfree == 11
 
 
 spec = Spectrum(Val(:SDSS_DR10), joinpath(QSFit.qsfit_data(), "test", "spec-2233-53845-0594.fits"))
