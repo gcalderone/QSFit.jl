@@ -87,14 +87,12 @@ struct SpecLine{T <: LineTemplate}
     group::Symbol
 
     function SpecLine{T}(recipe::CRecipe, tid::Symbol) where T <: LineTemplate
-        @track_recipe
         transition = get_transition(tid)
         wl = get_wavelength(transition)
         comp = line_component(recipe, Val(tid), T)
         return new{T}(wl, comp, line_group(recipe, T))
     end
     function SpecLine{T}(recipe::CRecipe, wl::Float64) where T <: LineTemplate
-        @track_recipe
         comp = line_component(recipe, wl, T)
         return new{T}(wl, comp, line_group(recipe, T))
     end
@@ -133,7 +131,6 @@ end
 add_line!(recipe::CRecipe, lines::SpecLineSet, tid::Symbol)  = add_line!(recipe, lines, tid, default_line_templates(recipe, get_transition(tid))...)
 
 function add_line!(recipe::CRecipe, lines::SpecLineSet, tid::Symbol, templates...)
-    @track_recipe
     for template in templates
         cname = Symbol(tid, line_suffix(recipe, template))
         lines[cname] = SpecLine{template}(recipe, tid)
@@ -141,7 +138,6 @@ function add_line!(recipe::CRecipe, lines::SpecLineSet, tid::Symbol, templates..
 end
 
 function add_line!(recipe::CRecipe, lines::SpecLineSet, wl::Float64, templates...)
-    @track_recipe
     for template in templates
         cname = Symbol(@sprintf("l%.1f_", wl), line_suffix(recipe, template))
         lines[cname] = SpecLine{template}(recipe, wl)

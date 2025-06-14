@@ -132,10 +132,10 @@ In the following example we will define a new recipe named `MyRecipe` inheriting
 
 ```julia
 using GModelFit, QSFit, QSFit.QSORecipes, Statistics
-import QSFit.QSORecipes: getdomain, getmodel, getdata
 
 abstract type MyRecipe <: Type1 end
 
+import QSFit.QSORecipes: getdomain, getmodel, getdata
 import QSFit.QSORecipes.add_qso_continuum!
 function add_qso_continuum!(recipe::CRecipe{T}, fp::GModelFit.FitProblem, ith::Int) where T <: MyRecipe
     @track_recipe
