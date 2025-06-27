@@ -18,7 +18,9 @@ i.e.
 λ_i+1 / λ_i = 1/R + 1
 logstep = log10(1/R + 1)
 
-The resolution can also be specified in km/s:
+Note distinction between sampling resolution and spectral resolution: typically Rsampling >~ 2 Rspec
+
+The resolution can also be expressed in km/s:
 R = c / σ_kms
 =#
 
@@ -33,14 +35,14 @@ function sampling_resolutions(x::AbstractVector{<: Real})
     return 1 ./ (x[2:end] ./ x[1:end-1] .- 1)
 end
 
-# Calculate number of logsteps corresponding to a width sigma_kms on a
-# logregular grid with resolution R = λ / Δλ.
-nlogsteps(R, sigma_kms) = logstep(3e5 / sigma_kms)  /  logstep(R)
+# Calculate number of logsteps corresponding to a spectral resolution Rspec on a
+# logregular grid with sampling resolution Rsampling.
+nlogsteps(Rsampling, Rspec) = logstep(Rspec)  /  logstep(Rsampling)
 
-# Generate a gaussian kernel with sigma=sigma_kms on a logregular grid
-# with resolution R, extending in the range +/-nsigma.
-function gauss_kernel(R, sigma_kms, nsigma=5)
-    N = nlogsteps(R, sigma_kms)
+# Generate a gaussian kernel with spectral resolution Rspec on a logregular grid
+# with resolution Rspec, extending in the range +/-nsigma.
+function gauss_kernel(Rsampling, Rspec, nsigma=5)
+    N = nlogsteps(Rsampling, Rspec)
     grid = -ceil(N * nsigma):ceil(N * nsigma)
     return gauss(grid, 0., N)
 end

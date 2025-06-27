@@ -84,7 +84,7 @@ end
 function gauss_broadening(x, y, σ_kms)
     Rsampling = 2 * maximum(sampling_resolutions(x))
     grid_x, grid_y = interpolate_on_logregular_grid(x, y, Rsampling)
-    kernel = gauss_kernel(Rsampling, σ_kms)
+    kernel = gauss_kernel(Rsampling, 3e5/σ_kms)
     @assert isodd(length(kernel))
     convolved = direct_conv1d(grid_y, kernel)
     # Interpolate back to original domain
