@@ -3,7 +3,7 @@ import GModelFitViewer: ViewerData
 
 function ViewerData(res::Results; kws...)
     ctypes = [comptype(res.bestfit, cname) for cname in keys(res.bestfit)]
-    i = findall(isnothing.(match.(r"SpecLine", ctypes)))
+    i = findall(isnothing.(match.(r"SpecLine", ctypes))  .&   isnothing.(match.(r"GaussConv", ctypes)))
     keep = string.(keys(res.bestfit))[i]
     meta = GModelFitViewer.Meta(; title=res.spec.label,
                                 xlabel="Wavelength",
@@ -42,7 +42,7 @@ function ViewerData(res::MultiResults; kws...)
     meta = Vector{GModelFitViewer.Meta}()
     for ith in 1:length(res.bestfit)
         ctypes = [comptype(res.bestfit[ith], cname) for cname in keys(res.bestfit[ith])]
-        i = findall(isnothing.(match.(r"SpecLine", ctypes)))
+        i = findall(isnothing.(match.(r"SpecLine", ctypes))  .&   isnothing.(match.(r"GaussConv", ctypes)))
         keep = string.(keys(res.bestfit[ith]))[i]
         push!(meta, GModelFitViewer.Meta(; title=res.spec[ith].label,
                                          xlabel="Wavelength",
