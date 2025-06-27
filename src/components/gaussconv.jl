@@ -5,22 +5,28 @@
 #
 mutable struct GaussConv <: AbstractComponent
     input::Symbol
+    center::Float64
     R::Float64 # λ / Δλ
     kernel::Vector{Float64}
-    GaussConv(input, R) = new(input, R, Vector{Float64}())
+    GaussConv(input, center, R) = new(input, center, R, Vector{Float64}())
 end
 
 dependencies(comp::GaussConv) = [comp.input]
 
 function prepare!(comp::GaussConv, domain::Domain{1})
     x = coords(domain)
-    # Check sampling resolutions in input grid is approximately constant
-    Rsampling = sampling_resolutions(x)
+    # Check sampling resolution around central point
+    i = argmin(abs.(comp.center .- x))
+    i1 = i - 10;  (i1 < 1)          &&  (i1 = 1)
+    i2 = i + 10;  (i2 > length(x))  &&  (i2 = length(x))
+    Rsampling = sampling_resolutions(x[i1:i2])
     # Ensure sampling resolution is approximately constant
-    @assert 0 <= ((maximum(Rsampling) - minimum(Rsampling)) / mean(Rsampling)) < 1.e-2 "Grid is not log-regular"
+    if !(0 <= ((maximum(Rsampling) - minimum(Rsampling)) / mean(Rsampling)) < 5.e-2)
+        @warn "Grid may not be log-regular for component $(comp.input), hence broadening may not be reliable"
+    end
     Rsampling = mean(Rsampling)
-    @assert Rsampling > comp.R "Sampling resolution is too small for the required broadening"
-    comp.kernel = gauss_kernel(Rsampling, 3e5/comp.R)
+    (Rsampling < comp.R)  &&  (@warn  "Sampling resolution for $(comp.input) ($(Rsampling)) is too small w.r.t spectral resolution ($(comp.R)) for the required broadening")
+    comp.kernel = gauss_kernel(Rsampling, comp.R)
 end
 
 function evaluate!(comp::GaussConv, domain::Domain{1}, output::Vector, deps)
