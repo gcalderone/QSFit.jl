@@ -64,6 +64,7 @@ function init_recipe!(recipe::CRecipe{T}) where T <: QSOGeneric
                              6565 .+ [-1,1] .* 150]
     recipe.nuisance_maxoffset_from_guess = 1e3  # km/s
     recipe.line_component = QSFit.SpecLineGauss
+    recipe.line_broadening = true
     recipe.solver = GModelFit.cmpfit()
     recipe.solver.config.ftol = 1.e-6
 end
@@ -152,6 +153,8 @@ function add_qso_continuum!(recipe::CRecipe{<: QSOGeneric}, fp::GModelFit.FitPro
     comp = QSFit.powerlaw(3000)
     comp.x0.val = median(λ)
     comp.norm.val = median(values(getdata(fp, ith))) # Can't use Dierckx.Spline1D since it may fail when data is segmented (non-good channels)
+    (comp.norm.val < 0)  &&  (comp.norm.val = mad(values(getdata(fp, ith))))
+    @assert comp.norm.val > 0 "Continuum guess normalization is zero or negative"
     comp.norm.low = comp.norm.val / 1000.  # ensure contiuum remains positive (needed to estimate EWs)
     comp.alpha.val  = -1.5
     comp.alpha.low  = -3
@@ -273,7 +276,12 @@ function add_emission_lines!(recipe::CRecipe{<: QSOGeneric}, fp::GModelFit.FitPr
     # Create model components
     for (cname, line) in lines
         model[cname] = line.comp
-        push!(model[line.group].list, cname)
+        if recipe.line_broadening
+            model[Symbol(:c_, cname)] = QSFit.GaussConv(cname, line.wavelength, recipe.specs[ith].resolution)
+            push!(model[line.group].list, Symbol(:c_, cname))
+        else
+            push!(model[line.group].list, cname)
+        end
     end
 
     # Patch functions
@@ -379,7 +387,7 @@ function neglect_weak_features!(recipe::CRecipe{<: QSOGeneric}, fp::GModelFit.Fi
                 println("Disabling $cname (norm. = 0)")
             elseif model[cname].norm.unc / model[cname].norm.val > 3
                 model[cname].norm.val = 0.
-                    freeze!(model, cname)
+                freeze!(model, cname)
                 needs_fitting = true
                 println("Disabling $cname (unc. / norm. > 3)")
             end
@@ -399,11 +407,9 @@ function postanalysis(recipe::CRecipe{<: QSOGeneric}, bestfit::GModelFit.ModelSn
     end
     cnames = sort(unique(cnames))
 
-    cont = deepcopy(bestfit())
-    for cname in cnames
-        haskey(bestfit, cname) || continue
-        cont .-= bestfit(cname)
-    end
+    cont = deepcopy(bestfit(:Continuum))
+    (:Iron in keys(bestfit))           &&  (cont .+= bestfit(:Iron))
+    (:NuisanceLines in keys(bestfit))  &&  (cont .+= bestfit(:NuisanceLines))
     @assert all(cont .> 0) "Continuum model is zero or negative"
     for cname in cnames
         haskey(bestfit, cname) || continue
