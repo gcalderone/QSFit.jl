@@ -1,7 +1,7 @@
 # Direct convolution is faster than FFT-based convolution when the
 # kernel is small. This is the case for the convolution to simulate
 # instrumental resolution since the instrumental sampling is typically
-# ~2 times netter than the instrument resolution, resulting in kernels
+# ~2 imes better than the instrument resolution, resulting in kernels
 # being 21 points long (for a 5sigma kernel)
 
 # See https://www.nv5geospatialsoftware.com/docs/CONVOL.html for "edge" mode meaning

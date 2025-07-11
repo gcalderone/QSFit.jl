@@ -3,7 +3,7 @@ module QSFit
 export CRecipe, AbstractRecipe, analyze, @track_recipe
 
 import GModelFit: Domain, CompEval,
-    Parameter, AbstractComponent, dependencies, prepare!, result_length, evaluate!
+    Parameter, AbstractComponent, dependencies, dependency_domain, prepare!, result_length, evaluate!
 
 import Base: propertynames, getproperty, setproperty!, haskey, keys, values, iterate, getindex, setindex!, delete!, show
 

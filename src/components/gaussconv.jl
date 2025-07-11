@@ -1,51 +1,90 @@
+#=
+Notes on spectral resolution
+A regular log-λ grid is characterized by a constant step:
+logstep = log10(λ_i+1) - log10(λ_i)  =  log10(λ_i+1 / λ_i)
+
+hence:
+λ_i+1 / λ_i  =  const.
+
+by subtracting a constant 1 to both sides
+λ_i+1 / λ_i - 1  =  (λ_i+1 - λ_i) / λ_i  =  Δλ / λ  = const.
+
+We interpret the constant as the reciprocal of the resolution:
+Δλ / λ  =  1/R
+
+i.e.
+λ_i+1 / λ_i = 1/R + 1
+logstep = log10(1/R + 1)
+
+The resolution can also be expressed in km/s:
+R = c / σ_kms
+=#
+
+# Calculate logstep corresponding to resolution R = λ / Δλ
+logstep(R) = log10(1/R + 1)
+
+function logregular_grid(x, R)
+    ee = extrema(x)
+    ee = (ee[1] - ee[1]/R, ee[2] + ee[2]/R)
+    return 10. .^collect(log10(ee[1]):logstep(R):log10(ee[2]))
+end
+
+
+
 # ____________________________________________________________________
 # GaussConv
 #
 # Convolution of a spectrum sampled on a log-regular grid with a Gaussian kernel
 #
 mutable struct GaussConv <: AbstractComponent
-    input::Symbol
-    center::Float64
+    depcname::Symbol
     R::Float64 # λ / Δλ
     kernel::Vector{Float64}
-    GaussConv(input, center, R) = new(input, center, R, Vector{Float64}())
+    buffer::Vector{Float64}
+    depdomain::Domain{1}
+    GaussConv(depcname, R) = new(depcname, R, Vector{Float64}(), Vector{Float64}(), Domain(1))
 end
 
-dependencies(comp::GaussConv) = [comp.input]
+dependencies(comp::GaussConv) = [comp.depcname]
+dependency_domain(comp::GaussConv, ::Domain) = comp.depdomain
 
 function prepare!(comp::GaussConv, domain::Domain{1})
-    x = coords(domain)
-    # Check sampling resolution around central point
-    i = argmin(abs.(comp.center .- x))
-    i1 = i - 10;  (i1 < 1)          &&  (i1 = 1)
-    i2 = i + 10;  (i2 > length(x))  &&  (i2 = length(x))
-    Rsampling = sampling_resolutions(x[i1:i2])
-    # Ensure sampling resolution is approximately constant
-    if !(0 <= ((maximum(Rsampling) - minimum(Rsampling)) / mean(Rsampling)) < 5.e-2)
-        @warn "Grid may not be log-regular for component $(comp.input), hence broadening may not be reliable"
-    end
-    Rsampling = mean(Rsampling)
-    (Rsampling < comp.R)  &&  (@warn  "Sampling resolution for $(comp.input) ($(Rsampling)) is too small w.r.t spectral resolution ($(comp.R)) for the required broadening")
-    comp.kernel = gauss_kernel(Rsampling, comp.R)
+    comp.depdomain = Domain(logregular_grid(coords(domain), 2 * comp.R))  # sampling is twice the resolution
+    comp.buffer = fill(0., length(comp.depdomain))
+    nsigma = 5
+    grid = -ceil(2 * nsigma):ceil(2 * nsigma)
+    comp.kernel = gauss(grid, 0., 2.)
 end
 
 function evaluate!(comp::GaussConv, domain::Domain{1}, output::Vector, deps)
-    direct_conv1d!(output, deps[1], comp.kernel, Val(:edge_mirror))
+    direct_conv1d!(comp.buffer, deps[1], comp.kernel, Val(:edge_mirror))
+    output .= Dierckx.Spline1D(coords(comp.depdomain), comp.buffer, k=1)(coords(domain))
 end
 
-#=
-x = 10 .^(3:0.0001:3.5);
-y = x .* 0.;
-mm = div(length(y), 6);
-y[ mm] = 1.;
-y[3mm] = 1.;
-y[5mm] = 1.;
-comp = QSFit.GaussConv(:a, 2000)
-ceval = GModelFit.CompEval(comp, Domain(x))
-push!(ceval.tpar.deps, GModelFit.CompEvalT{Float64}(y))
-c = GModelFit.update_eval!(ceval, Float64[])
 
-QSFit.int_tabulated(x, y), QSFit.int_tabulated(x, c)  # <-- these should be equal
-@gp xlog=true xr=extrema(x) x y "w l notit" x c "w l notit"
-QSFit.estimate_fwhm(x[2mm:4mm], c[2mm:4mm]) / x[3mm] * 3e5 / 2.355  # should be ~150 km/s, i.e. 3e5 / 2000
+
+#=
+function mydelta(x)
+    out = x .* 0.
+    mm = div(length(out), 6)
+    out[argmin(abs.(x .- 1250))] = 1.;
+    out[argmin(abs.(x .- 1750))] = 1.;
+    out[argmin(abs.(x .- 2600))] = 1.;
+    return out
+end
+
+x = 10 .^(3:0.0001:3.5);
+
+model = Model(:orig => @fd(x -> mydelta(x)), :convol => QSFit.GaussConv(:orig, 2000))
+meval = GModelFit.ModelEval(model, Domain(x))
+GModelFit.scan_model!(meval)
+c = GModelFit.update_eval!(meval)
+
+ox = coords(meval.cevals[:orig].domain)
+oy = meval.cevals[:orig].tpar.buffer
+QSFit.int_tabulated(ox, oy), QSFit.int_tabulated(x, c)  # <-- these should be equal
+@gp xlog=true xr=extrema(x) ox oy "w lp" x c "w lp notit"
+
+i = argmin(abs.(x .- 1250))
+QSFit.estimate_fwhm(x[(i-20):(i+20)], c[(i-20):(i+20)]) / x[i] * 3e5 / 2.355  # should be ~150 km/s, i.e. 3e5 / 2000
 =#

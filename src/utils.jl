@@ -1,32 +1,5 @@
 gauss(x, μ, σ) = exp.(-0.5 .* ((x .- μ) ./ σ).^2) ./ sqrt(2pi) ./ σ
 
-#=
-Notes on spectral resolution
-A regular log-λ grid is characterized by a constant step:
-logstep = log10(λ_i+1) - log10(λ_i)  =  log10(λ_i+1 / λ_i)
-
-hence:
-λ_i+1 / λ_i  =  const.
-
-by subtracting a constant 1 to both sides
-λ_i+1 / λ_i - 1  =  (λ_i+1 - λ_i) / λ_i  =  Δλ / λ  = const.
-
-We interpret the constant as the reciprocal of the resolution:
-Δλ / λ  =  1/R
-
-i.e.
-λ_i+1 / λ_i = 1/R + 1
-logstep = log10(1/R + 1)
-
-Note distinction between sampling resolution and spectral resolution: typically Rsampling >~ 2 Rspec
-
-The resolution can also be expressed in km/s:
-R = c / σ_kms
-=#
-
-# Calculate logstep corresponding to resolution R = λ / Δλ
-logstep(R) = log10(1/R + 1)
-
 # Calculate sampling resolutions of a wavelength vector
 function sampling_resolutions(x::AbstractVector{<: Real})
     if !issorted(x)

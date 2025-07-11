@@ -64,7 +64,7 @@ function init_recipe!(recipe::CRecipe{T}) where T <: QSOGeneric
                              6565 .+ [-1,1] .* 150]
     recipe.nuisance_maxoffset_from_guess = 1e3  # km/s
     recipe.line_component = QSFit.SpecLineGauss
-    recipe.line_broadening = true
+    recipe.instrumental_broadening = true
     recipe.solver = GModelFit.cmpfit()
     recipe.solver.config.ftol = 1.e-6
 end
@@ -276,12 +276,7 @@ function add_emission_lines!(recipe::CRecipe{<: QSOGeneric}, fp::GModelFit.FitPr
     # Create model components
     for (cname, line) in lines
         model[cname] = line.comp
-        if recipe.line_broadening
-            model[Symbol(:c_, cname)] = QSFit.GaussConv(cname, line.wavelength, recipe.specs[ith].resolution)
-            push!(model[line.group].list, Symbol(:c_, cname))
-        else
-            push!(model[line.group].list, cname)
-        end
+        push!(model[line.group].list, cname)
     end
 
     # Patch functions
