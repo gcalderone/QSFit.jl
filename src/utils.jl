@@ -28,6 +28,17 @@ function interpolate_on_logregular_grid(x, y, R)
 end
 
 
+function gauss_broadening(x, y, σ_kms)
+    Rsampling = 2 * maximum(sampling_resolutions(x))
+    grid_x, grid_y = interpolate_on_logregular_grid(x, y, Rsampling)
+    kernel = gauss_kernel(Rsampling, 3e5/σ_kms)
+    @assert isodd(length(kernel))
+    convolved = direct_conv1d(grid_y, kernel)
+    # Interpolate back to original domain
+    return Dierckx.Spline1D(grid_x, convolved, k=1, bc="extrapolate")(x)
+end
+
+
 # This provides results similar to https://docs.sciml.ai/Integrals/stable/basics/SampledIntegralProblem/, while being significantly simpler.
 function int_tabulated(x, y)
     @assert all(isfinite.(x))

@@ -83,7 +83,7 @@ c = GModelFit.update_eval!(meval)
 ox = coords(meval.cevals[:orig].domain)
 oy = meval.cevals[:orig].tpar.buffer
 QSFit.int_tabulated(ox, oy), QSFit.int_tabulated(x, c)  # <-- these should be equal
-@gp xlog=true xr=extrema(x) ox oy "w lp" x c "w lp notit"
+@gp xlog=true xr=extrema(x) ox oy "w lp" x c "w lp" ox QSFit.gauss_broadening(ox, oy, 150.) "w lp"
 
 i = argmin(abs.(x .- 1250))
 QSFit.estimate_fwhm(x[(i-20):(i+20)], c[(i-20):(i+20)]) / x[i] * 3e5 / 2.355  # should be ~150 km/s, i.e. 3e5 / 2000

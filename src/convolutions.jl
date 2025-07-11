@@ -78,15 +78,3 @@ function direct_conv1d!(z::Vector{T}, x::Vector{T}, y::Matrix{T}) where T
     end
     return z
 end
-
-
-
-function gauss_broadening(x, y, σ_kms)
-    Rsampling = 2 * maximum(sampling_resolutions(x))
-    grid_x, grid_y = interpolate_on_logregular_grid(x, y, Rsampling)
-    kernel = gauss_kernel(Rsampling, 3e5/σ_kms)
-    @assert isodd(length(kernel))
-    convolved = direct_conv1d(grid_y, kernel)
-    # Interpolate back to original domain
-    return Dierckx.Spline1D(grid_x, convolved, k=1, bc="extrapolate")(x)
-end
