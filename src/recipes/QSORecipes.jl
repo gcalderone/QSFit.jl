@@ -183,13 +183,14 @@ function add_host_galaxy!(recipe::CRecipe{<: QSOGeneric}, fp::GModelFit.FitProbl
         (recipe.host_template_range[1] .< maximum(λ))  &&
         (recipe.host_template_range[2] .> minimum(λ))
         getmodel(fp, ith)[:Galaxy] = QSFit.hostgalaxy(recipe.host_template[:template],
-                                                library=recipe.host_template[:library],
-                                                refwl=recipe.host_template[:ref_wavelength])
+                                                      library=recipe.host_template[:library],
+                                                      refwl=recipe.host_template[:ref_wavelength])
         push!(getmodel(fp, ith)[:Continuum].list, :Galaxy)
 
         # Split total flux between continuum and host galaxy
         refwl = recipe.host_template[:ref_wavelength]
-        vv = Dierckx.Spline1D(λ, values(getdata(fp, ith)), k=1, bc="extrapolate")(refwl)
+        dd = getdata(fp, ith)
+        vv = Dierckx.Spline1D(coords(domain(dd)), values(dd), k=1, bc="extrapolate")(refwl)
         @assert !isnan(vv) "Predicted L_λ at $(refwl)A is NaN"
         if vv <= 0
             @warn "Predicted L_λ at $(refwl)A is negative, set host galaxy guess value at zero."
