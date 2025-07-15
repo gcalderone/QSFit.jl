@@ -1,3 +1,5 @@
+using SparseArrays
+
 #=
 Notes on spectral resolution
 A regular log-λ grid is characterized by a constant step:
@@ -36,7 +38,7 @@ mutable struct GaussConv <: GModelFit.AbstractInstrumentResponse
     R::Float64 # λ / Δλ
     kernel::Vector{Float64}
     buffer::Vector{Float64}
-    M::Matrix{Float64}
+    M::SparseMatrixCSC{Float64, Int64}
     function GaussConv(R)
         nsigma = 5
         grid = -ceil(2 * nsigma):ceil(2 * nsigma)
@@ -61,7 +63,7 @@ function model_domain(IR::GaussConv, data_domain::GModelFit.AbstractDomain)
         M[i1, j] = 1. - f
         M[i2, j] = f
     end
-    IR.M = collect(M')
+    IR.M = sparse(collect(M'))
     return d
 end
 
@@ -69,8 +71,7 @@ function apply_ir!(IR::GaussConv,
                    data_domain::GModelFit.AbstractDomain, folded::Vector,
                    model_domain::GModelFit.AbstractDomain, unfolded::Vector)
     direct_conv1d!(IR.buffer, unfolded, IR.kernel, Val(:edge_mirror))
-    # folded .= IR.M * IR.buffer
-    folded .= Dierckx.Spline1D(coords(model_domain), IR.buffer, k=1)(coords(data_domain))
+    folded .= IR.M * IR.buffer
 end
 
 #=
