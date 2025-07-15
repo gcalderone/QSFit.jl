@@ -12,6 +12,8 @@ abstract type QSOGeneric <: AbstractRecipe end
 getmodel( fp::GModelFit.FitProblem, ith::Int) = fp.multi.v[ith].model
 getdomain(fp::GModelFit.FitProblem, ith::Int) = fp.multi.v[ith].domain
 getdata(  fp::GModelFit.FitProblem, ith::Int) = fp.data[ith]
+getfolded(fp::GModelFit.FitProblem, ith::Int) = fp.multi.v[ith].IR.folded
+
 function geteval(fp::GModelFit.FitProblem, ith::Int, cname=nothing)
     GModelFit.scan_model!(fp.multi)
     GModelFit.update_eval!(fp.multi)
@@ -244,7 +246,7 @@ function guess_norm_factor!(recipe::CRecipe{<: QSOGeneric}, fp::GModelFit.FitPro
     if i1 >= i2
         return #Can't calculate normalization for component
     end
-    r = values(getdata(fp, ith)) - geteval(fp, ith)
+    r = values(getdata(fp, ith)) - getfolded(fp, ith)
     ratio = getmodel(fp, ith)[name].norm.val / sum(m[i1:i2])
     off = sum(r[i1:i2]) * ratio
     getmodel(fp, ith)[name].norm.val += off
@@ -316,7 +318,7 @@ function fit_nuisance_lines!(recipe::CRecipe{<: QSOGeneric}, fp::GModelFit.FitPr
     λnuisance = Vector{Float64}()
     while true
         (length(λnuisance) >= recipe.n_nuisance)  &&  break
-        Δ = (values(getdata(fp, ith)) - geteval(fp, ith)) ./ uncerts(getdata(fp, ith))
+        Δ = (values(getdata(fp, ith)) - getfolded(fp, ith)) ./ uncerts(getdata(fp, ith))
 
         # Avoid considering again the same region (within 1A) TODO: within resolution
         for l in λnuisance

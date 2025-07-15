@@ -30,38 +30,48 @@ function logregular_grid(x, R)
 end
 
 
+import GModelFit: model_domain, apply_ir!
 
-# ____________________________________________________________________
-# GaussConv
-#
-# Convolution of a spectrum sampled on a log-regular grid with a Gaussian kernel
-#
-mutable struct GaussConv <: AbstractComponent
-    depcname::Symbol
+mutable struct GaussConv <: GModelFit.AbstractInstrumentResponse
     R::Float64 # λ / Δλ
     kernel::Vector{Float64}
     buffer::Vector{Float64}
-    depdomain::Domain{1}
-    GaussConv(depcname, R) = new(depcname, R, Vector{Float64}(), Vector{Float64}(), Domain(1))
+    M::Matrix{Float64}
+    function GaussConv(R)
+        nsigma = 5
+        grid = -ceil(2 * nsigma):ceil(2 * nsigma)
+        kernel = gauss(grid, 0., 2.)
+        return new(R, kernel, Vector{Float64}())
+    end
 end
 
-dependencies(comp::GaussConv) = [comp.depcname]
-dependency_domain(comp::GaussConv, ::Domain) = comp.depdomain
+# Sampling resolution is twice the spectral resolution
+function model_domain(IR::GaussConv, data_domain::GModelFit.AbstractDomain)
+    d = Domain(logregular_grid(coords(data_domain), 2 * IR.R))
+    append!(IR.buffer, fill(0., length(d)))
 
-function prepare!(comp::GaussConv, domain::Domain{1})
-    comp.depdomain = Domain(logregular_grid(coords(domain), 2 * comp.R))  # sampling is twice the resolution
-    comp.buffer = fill(0., length(comp.depdomain))
-    nsigma = 5
-    grid = -ceil(2 * nsigma):ceil(2 * nsigma)
-    comp.kernel = gauss(grid, 0., 2.)
+    x = coords(d)
+    X = coords(data_domain)
+    @assert issorted(x)
+    M = fill(0., length(x), length(X))
+    for j in 1:length(X)
+        i1 = findlast( x .< X[j])
+        i2 = findfirst(x .> X[j])
+        f = (X[j] - x[i1]) / (x[i2] - x[i1])
+        M[i1, j] = 1. - f
+        M[i2, j] = f
+    end
+    IR.M = collect(M')
+    return d
 end
 
-function evaluate!(comp::GaussConv, domain::Domain{1}, output::Vector, deps)
-    direct_conv1d!(comp.buffer, deps[1], comp.kernel, Val(:edge_mirror))
-    output .= Dierckx.Spline1D(coords(comp.depdomain), comp.buffer, k=1)(coords(domain))
+function apply_ir!(IR::GaussConv,
+                   data_domain::GModelFit.AbstractDomain, folded::Vector,
+                   model_domain::GModelFit.AbstractDomain, unfolded::Vector)
+    direct_conv1d!(IR.buffer, unfolded, IR.kernel, Val(:edge_mirror))
+    # folded .= IR.M * IR.buffer
+    folded .= Dierckx.Spline1D(coords(model_domain), IR.buffer, k=1)(coords(data_domain))
 end
-
-
 
 #=
 function mydelta(x)
