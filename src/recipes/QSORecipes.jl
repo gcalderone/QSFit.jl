@@ -12,7 +12,11 @@ abstract type QSOGeneric <: AbstractRecipe end
 getmodel( fp::GModelFit.FitProblem, ith::Int) = fp.multi.v[ith].model
 getdomain(fp::GModelFit.FitProblem, ith::Int) = fp.multi.v[ith].domain
 getdata(  fp::GModelFit.FitProblem, ith::Int) = fp.data[ith]
-getfolded(fp::GModelFit.FitProblem, ith::Int) = fp.multi.v[ith].ireval.folded
+
+function getfolded(fp::GModelFit.FitProblem, ith::Int)
+    geteval(fp, ith)
+    return fp.multi.v[ith].ireval.folded
+end
 
 function geteval(fp::GModelFit.FitProblem, ith::Int, cname=nothing)
     GModelFit.scan_model!(fp.multi)
@@ -217,7 +221,7 @@ function renorm_cont!(recipe::CRecipe{<: QSOGeneric}, fp::GModelFit.FitProblem, 
         println("Cont. norm. (before): ", c.norm.val)
         scaling = 0.99
         while c.norm.val * scaling > c.norm.low
-            residuals = (geteval(fp, ith) - values(getdata(fp, ith))) ./ uncerts(getdata(fp, ith))
+            residuals = (getfolded(fp, ith) - values(getdata(fp, ith))) ./ uncerts(getdata(fp, ith))
             ratio = count(residuals .< 0) / length(residuals)
             (ratio > 0.9)  &&  break
             (c.norm.val < (initialnorm / 5))  &&  break # give up
