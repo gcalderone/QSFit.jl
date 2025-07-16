@@ -35,21 +35,22 @@ end
 import GModelFit: model_domain, apply_ir!
 
 mutable struct GaussConv <: GModelFit.AbstractInstrumentResponse
-    R::Float64 # λ / Δλ
+    oversampling::Int
+    Rspec::Float64 # λ / Δλ
     kernel::Vector{Float64}
     buffer::Vector{Float64}
     M::SparseMatrixCSC{Float64, Int64}
-    function GaussConv(R)
+    function GaussConv(Rspec; oversampling::Int=2)
         nsigma = 5
         grid = -ceil(2 * nsigma):ceil(2 * nsigma)
         kernel = gauss(grid, 0., 2.)
-        return new(R, kernel, Vector{Float64}())
+        return new(oversampling, Rspec, kernel, Vector{Float64}())
     end
 end
 
 # Sampling resolution is twice the spectral resolution
 function model_domain(IR::GaussConv, data_domain::GModelFit.AbstractDomain)
-    d = Domain(logregular_grid(coords(data_domain), 2 * IR.R))
+    d = Domain(logregular_grid(coords(data_domain), IR.oversampling * IR.Rspec))
     append!(IR.buffer, fill(0., length(d)))
 
     x = coords(d)

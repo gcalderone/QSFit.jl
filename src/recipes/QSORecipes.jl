@@ -12,7 +12,7 @@ abstract type QSOGeneric <: AbstractRecipe end
 getmodel( fp::GModelFit.FitProblem, ith::Int) = fp.multi.v[ith].model
 getdomain(fp::GModelFit.FitProblem, ith::Int) = fp.multi.v[ith].domain
 getdata(  fp::GModelFit.FitProblem, ith::Int) = fp.data[ith]
-getfolded(fp::GModelFit.FitProblem, ith::Int) = fp.multi.v[ith].IR.folded
+getfolded(fp::GModelFit.FitProblem, ith::Int) = fp.multi.v[ith].ireval.folded
 
 function geteval(fp::GModelFit.FitProblem, ith::Int, cname=nothing)
     GModelFit.scan_model!(fp.multi)
