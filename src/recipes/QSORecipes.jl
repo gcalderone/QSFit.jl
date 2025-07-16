@@ -15,7 +15,12 @@ getdata(  fp::GModelFit.FitProblem, ith::Int) = fp.data[ith]
 
 function getfolded(fp::GModelFit.FitProblem, ith::Int)
     geteval(fp, ith)
-    return fp.multi.v[ith].ireval.folded
+    return GModelFit.last_eval_folded(fp.multi, ith)
+end
+
+function getfolded(fp::GModelFit.FitProblem, ith::Int, cname::Symbol)
+    geteval(fp, ith)
+    return GModelFit.fold_model(fp.multi, ith, cname)
 end
 
 function geteval(fp::GModelFit.FitProblem, ith::Int, cname=nothing)
@@ -241,8 +246,10 @@ end
 function guess_norm_factor!(recipe::CRecipe{<: QSOGeneric}, fp::GModelFit.FitProblem, ith::Int, name::Symbol; quantile=0.95)
     @track_recipe
     @assert getmodel(fp, ith)[name].norm.val != 0
-    m = geteval(fp, ith, name)
+
+    m = getfolded(fp, ith, name)
     c = cumsum(m)
+    @assert minimum(c) >= 0. "Model for $name evaluates to negative values"
     @assert maximum(c) != 0. "Model for $name evaluates to zero over the whole domain"
     c ./= maximum(c)
     i1 = findfirst(c .> ((1 - quantile)/2))
@@ -250,11 +257,13 @@ function guess_norm_factor!(recipe::CRecipe{<: QSOGeneric}, fp::GModelFit.FitPro
     if i1 >= i2
         return #Can't calculate normalization for component
     end
-    r = values(getdata(fp, ith)) - getfolded(fp, ith)
+
     ratio = getmodel(fp, ith)[name].norm.val / sum(m[i1:i2])
+    r = values(getdata(fp, ith)) - getfolded(fp, ith)
     off = sum(r[i1:i2]) * ratio
-    getmodel(fp, ith)[name].norm.val += off
+
     @assert !isnan(off) "Norm. offset is NaN for $name"
+    getmodel(fp, ith)[name].norm.val += off
     if getmodel(fp, ith)[name].norm.val < 0  # ensure line has positive normalization
         getmodel(fp, ith)[name].norm.val = abs(off)
     end
@@ -318,7 +327,7 @@ function fit_nuisance_lines!(recipe::CRecipe{<: QSOGeneric}, fp::GModelFit.FitPr
 
     # Set "nuisance" line center wavelength where there is a maximum in
     # the fit residuals, and re-run a fit.
-    λ = coords(getdomain(fp, ith))
+    λ = coords(domain(getdata(fp, ith)))
     λnuisance = Vector{Float64}()
     while true
         (length(λnuisance) >= recipe.n_nuisance)  &&  break

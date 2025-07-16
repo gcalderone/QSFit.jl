@@ -3,7 +3,7 @@ module QSFit
 export CRecipe, AbstractRecipe, analyze, @track_recipe
 
 import GModelFit: Domain, CompEval,
-    Parameter, AbstractComponent, dependencies, prepare!, result_length, evaluate!
+    Parameter, AbstractComponent, dependencies, prepare!, evaluate!
 
 import Base: propertynames, getproperty, setproperty!, haskey, keys, values, iterate, getindex, setindex!, delete!, show
 
@@ -31,7 +31,6 @@ include("components/ironopt.jl")
 include("components/ironuv.jl")
 include("components/balmercont.jl")
 include("components/gaussconv.jl")
-include("components/interpolator.jl")
 
 abstract type AbstractSpecLineComp <: AbstractComponent end
 include("components/SpecLineGauss.jl")
