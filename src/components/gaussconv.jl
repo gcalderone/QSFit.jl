@@ -32,7 +32,7 @@ function logregular_grid(x, R)
 end
 
 
-import GModelFit: model_domain, apply_ir!
+import GModelFit: unfolded_domain, prepare!, apply_ir!
 
 mutable struct GaussConv <: GModelFit.AbstractInstrumentResponse
     oversampling::Int
@@ -40,21 +40,20 @@ mutable struct GaussConv <: GModelFit.AbstractInstrumentResponse
     kernel::Vector{Float64}
     buffer::Vector{Float64}
     M::SparseMatrixCSC{Float64, Int64}
-    function GaussConv(Rspec; oversampling::Int=2)
+    function GaussConv(Rspec; oversampling::Int=1)
         nsigma = 5
         grid = -ceil(2 * nsigma):ceil(2 * nsigma)
-        kernel = gauss(grid, 0., 2.)
+        kernel = gauss(grid, 0., 2 * oversampling)
         return new(oversampling, Rspec, kernel, Vector{Float64}())
     end
 end
 
-# Sampling resolution is twice the spectral resolution
-function model_domain(IR::GaussConv, data_domain::GModelFit.AbstractDomain)
-    d = Domain(logregular_grid(coords(data_domain), IR.oversampling * IR.Rspec))
+function prepare!(IR::GaussConv, folded_domain::GModelFit.AbstractDomain)
+    d = unfolded_domain(IR, folded_domain)
     append!(IR.buffer, fill(0., length(d)))
 
     x = coords(d)
-    X = coords(data_domain)
+    X = coords(folded_domain)
     @assert issorted(x)
     M = fill(0., length(x), length(X))
     for j in 1:length(X)
@@ -68,9 +67,14 @@ function model_domain(IR::GaussConv, data_domain::GModelFit.AbstractDomain)
     return d
 end
 
+
+# Sampling resolution is twice the spectral resolution
+unfolded_domain(IR::GaussConv, folded_domain::GModelFit.AbstractDomain) =
+    Domain(logregular_grid(coords(folded_domain), IR.oversampling * 2 * IR.Rspec))
+
 function apply_ir!(IR::GaussConv,
-                   data_domain::GModelFit.AbstractDomain, folded::Vector,
-                   model_domain::GModelFit.AbstractDomain, unfolded::Vector)
+                   folded_domain::GModelFit.AbstractDomain, folded::Vector,
+                   unfolded_domain::GModelFit.AbstractDomain, unfolded::Vector)
     direct_conv1d!(IR.buffer, unfolded, IR.kernel, Val(:edge_mirror))
     folded .= IR.M * IR.buffer
 end
