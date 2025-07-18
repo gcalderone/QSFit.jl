@@ -40,18 +40,20 @@ mutable struct GaussConv <: GModelFit.AbstractInstrumentResponse
     kernel::Vector{Float64}
     buffer::Vector{Float64}
     M::SparseMatrixCSC{Float64, Int64}
-    function GaussConv(Rspec; oversampling::Int=1)
-        nsigma = 5
-        grid = -ceil(2 * nsigma):ceil(2 * nsigma)
-        kernel = gauss(grid, 0., 2 * oversampling)
-        return new(oversampling, Rspec, kernel, Vector{Float64}())
+    function GaussConv(Rspec; oversampling::Int=2)
+        @assert oversampling >= 2 "Oversampling must be at least 2"
+        grid = -5:(1. / oversampling):5
+        kernel = gauss(grid, 0., 1) ./ oversampling # divided by "oversampling" to ensure sum(kernel) = 1
+        return new(oversampling, Rspec, kernel, Vector{Float64}(), sparse([0.]))
     end
 end
 
 function prepare!(IR::GaussConv, folded_domain::GModelFit.AbstractDomain)
     d = unfolded_domain(IR, folded_domain)
+    empty!(IR.buffer)
     append!(IR.buffer, fill(0., length(d)))
 
+    # Pre-compute interpolation matrix
     x = coords(d)
     X = coords(folded_domain)
     @assert issorted(x)
@@ -64,13 +66,12 @@ function prepare!(IR::GaussConv, folded_domain::GModelFit.AbstractDomain)
         M[i2, j] = f
     end
     IR.M = sparse(collect(M'))
-    return d
 end
 
 
 # Sampling resolution is twice the spectral resolution
 unfolded_domain(IR::GaussConv, folded_domain::GModelFit.AbstractDomain) =
-    Domain(logregular_grid(coords(folded_domain), IR.oversampling * 2 * IR.Rspec))
+    Domain(logregular_grid(coords(folded_domain), IR.oversampling * IR.Rspec))
 
 function apply_ir!(IR::GaussConv,
                    folded_domain::GModelFit.AbstractDomain, folded::Vector,
@@ -78,29 +79,3 @@ function apply_ir!(IR::GaussConv,
     direct_conv1d!(IR.buffer, unfolded, IR.kernel, Val(:edge_mirror))
     folded .= IR.M * IR.buffer
 end
-
-#=
-function mydelta(x)
-    out = x .* 0.
-    mm = div(length(out), 6)
-    out[argmin(abs.(x .- 1250))] = 1.;
-    out[argmin(abs.(x .- 1750))] = 1.;
-    out[argmin(abs.(x .- 2600))] = 1.;
-    return out
-end
-
-x = 10 .^(3:0.0001:3.5);
-
-model = Model(:orig => @fd(x -> mydelta(x)), :convol => QSFit.GaussConv(:orig, 2000))
-meval = GModelFit.ModelEval(model, Domain(x))
-GModelFit.scan_model!(meval)
-c = GModelFit.update_eval!(meval)
-
-ox = coords(meval.cevals[:orig].domain)
-oy = meval.cevals[:orig].tpar.buffer
-QSFit.int_tabulated(ox, oy), QSFit.int_tabulated(x, c)  # <-- these should be equal
-@gp xlog=true xr=extrema(x) ox oy "w lp" x c "w lp" ox QSFit.gauss_broadening(ox, oy, 150.) "w lp"
-
-i = argmin(abs.(x .- 1250))
-QSFit.estimate_fwhm(x[(i-20):(i+20)], c[(i-20):(i+20)]) / x[i] * 3e5 / 2.355  # should be ~150 km/s, i.e. 3e5 / 2000
-=#
