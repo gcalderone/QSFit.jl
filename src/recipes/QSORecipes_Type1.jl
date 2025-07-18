@@ -213,7 +213,7 @@ function analyze(recipe::CRecipe{T}, data::Vector{Measures{1}}) where T <: Type1
     for i in 1:length(data)
         model = Model(:main => SumReducer())
         select_maincomp!(model, :main)
-        recipe.instrumental_broadening  &&  set_IR!(model, QSFit.GaussConv(2000.))
+        recipe.instrumental_broadening  &&  set_IR!(model, QSFit.GaussConv(recipe.specs[i].resolution))
         push!(models, model)
     end
     fp = GModelFit.FitProblem(models, data)
