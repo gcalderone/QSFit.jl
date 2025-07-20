@@ -17,22 +17,25 @@ function ViewerData(res::Results; kws...)
     d = GModelFitViewer.ViewerData(res.bestfit, res.fsumm, res.data, meta=meta)
 
     # Add further content
-    if haskey(res.post, :EW)
+    extra = Vector{OrderedDict{Symbol, Any}}()
+
+    if length(res.post) > 0
         m = OrderedDict{Symbol, Any}()
-        m[:EW] = OrderedDict{Symbol, Any}()
-        m[:EW][:label] = "Em. lines EW"
-        m[:EW][:fields] = OrderedDict{Symbol, Any}()
-        m[:EW][:fields][:Label] = OrderedDict{Symbol, Any}()
-        m[:EW][:fields][:Label][:meta] = OrderedDict{Symbol, Any}()
-        m[:EW][:fields][:Label][:meta][:desc] = "Em. line"
-        m[:EW][:fields][:Label][:data] = collect(keys(res.post[:EW]))
-        m[:EW][:fields][:Value] = OrderedDict{Symbol, Any}()
-        m[:EW][:fields][:Value][:meta] = OrderedDict{Symbol, Any}()
-        m[:EW][:fields][:Value][:meta][:desc] = "EW [A]"
-        m[:EW][:fields][:Value][:data] = collect(values(res.post[:EW]))
-        d.data[1]["extra"] = [m]
+        m[:post] = OrderedDict{Symbol, Any}()
+        m[:post][:label] = "Post-analysis"
+        m[:post][:fields] = OrderedDict{Symbol, Any}()
+        m[:post][:fields][:Label] = OrderedDict{Symbol, Any}()
+        m[:post][:fields][:Label][:meta] = OrderedDict{Symbol, Any}()
+        m[:post][:fields][:Label][:meta][:desc] = "Key"
+        m[:post][:fields][:Label][:data] = collect(keys(res.post))
+        m[:post][:fields][:Value] = OrderedDict{Symbol, Any}()
+        m[:post][:fields][:Value][:meta] = OrderedDict{Symbol, Any}()
+        m[:post][:fields][:Value][:meta][:desc] = "Value"
+        m[:post][:fields][:Value][:data] = collect(values(res.post))
+        push!(extra, m)
     end
 
+    d.data[1]["extra"] = extra
     return d
 end
 
