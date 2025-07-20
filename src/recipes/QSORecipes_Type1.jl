@@ -203,8 +203,8 @@ end
 
 
 function analyze(recipe::CRecipe{T}, data::Measures{1}) where T <: Type1
-    bestfit, fsumm = analyze(recipe, [data])
-    return bestfit[1], fsumm
+    bestfit, fsumm, post = analyze(recipe, [data])
+    return bestfit[1], fsumm, post[1]
 end
 
 function analyze(recipe::CRecipe{T}, data::Vector{Measures{1}}) where T <: Type1
@@ -300,5 +300,6 @@ function analyze(recipe::CRecipe{T}, data::Vector{Measures{1}}) where T <: Type1
         bestfit, fsumm = fit!(recipe, fp)
     end
 
-    return bestfit, fsumm
+    post = postanalysis(recipe, fp)
+    return bestfit, fsumm, post
 end

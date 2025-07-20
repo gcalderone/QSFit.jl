@@ -52,7 +52,7 @@ function analyze(recipe::CRecipe{<: LineFit}, data::Measures{1})
     solver = GModelFit.cmpfit()
     solver.config.ftol = 1.e-6
     bestfit, fsumm = GModelFit.fit!(model, data, solver)
-    return bestfit, fsumm
+    return bestfit, fsumm, OrderedDict{Symbol, Any}()
 end
 
 

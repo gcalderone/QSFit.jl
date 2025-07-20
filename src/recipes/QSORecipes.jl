@@ -5,7 +5,7 @@ using Dierckx
 using ..QSFit, ..QSFit.ATL, GModelFit
 
 import GModelFit: domain
-import QSFit: init_recipe!, preprocess_spec!, SpecLineSet, add_line!, line_group, line_suffix, line_component, analyze, postanalysis, Results
+import QSFit: init_recipe!, preprocess_spec!, SpecLineSet, add_line!, line_group, line_suffix, line_component, analyze
 
 abstract type QSOGeneric <: AbstractRecipe end
 
@@ -408,30 +408,8 @@ function neglect_weak_features!(recipe::CRecipe{<: QSOGeneric}, fp::GModelFit.Fi
 end
 
 
-function postanalysis(recipe::CRecipe{<: QSOGeneric}, bestfit::GModelFit.ModelSnapshot)
-    @track_recipe
-    EW = OrderedDict{Symbol, Float64}()
-
-    cnames = Symbol[]
-    for i in 1:length(recipe.specs)
-        append!(cnames, keys(recipe.specs[i].meta[:lines]))
-    end
-    cnames = sort(unique(cnames))
-
-    cont = deepcopy(bestfit(:Continuum))
-    (:Iron in keys(bestfit))           &&  (cont .+= bestfit(:Iron))
-    (:NuisanceLines in keys(bestfit))  &&  (cont .+= bestfit(:NuisanceLines))
-    @assert all(cont .> 0) "Continuum model is zero or negative"
-    for cname in cnames
-        haskey(bestfit, cname) || continue
-        EW[cname] = QSFit.int_tabulated(coords(bestfit.domain),
-                                        bestfit(cname) ./ cont)[1]
-    end
-    return OrderedDict{Symbol, Any}(:EW => EW)
-end
-
-
 include("QSORecipes_Type1.jl")
 include("QSORecipes_Type2.jl")
+include("QSORecipes_postanalysis.jl")
 
 end
