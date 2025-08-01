@@ -1,11 +1,11 @@
 using GModelFitViewer
 import GModelFitViewer: ViewerData
 
-function ViewerData(res::Results; kws...)
+function ViewerData_meta(res::Results; kws...)
     ctypes = [comptype(res.bestfit, cname) for cname in keys(res.bestfit)]
     i = findall(isnothing.(match.(r"SpecLine", ctypes))  .&   isnothing.(match.(r"GaussConv", ctypes)))
     keep = string.(keys(res.bestfit))[i]
-    meta = GModelFitViewer.Meta(; title=res.spec.label,
+    return GModelFitViewer.Meta(; title=res.spec.label,
                                 xlabel="Wavelength",
                                 xunit=string(unit(res.spec.unit_x)),
                                 xscale=ustrip(res.spec.unit_x),
@@ -13,50 +13,60 @@ function ViewerData(res::Results; kws...)
                                 yunit=string(unit(res.spec.unit_y)),
                                 yscale=ustrip(res.spec.unit_y),
                                 keep=keep, kws...)
-
-    d = GModelFitViewer.ViewerData(res.bestfit, res.fsumm, res.data, meta=meta)
-
-    # Add further content
-    extra = Vector{OrderedDict{Symbol, Any}}()
-
-    if length(res.post) > 0
-        m = OrderedDict{Symbol, Any}()
-        m[:post] = OrderedDict{Symbol, Any}()
-        m[:post][:label] = "Post-analysis"
-        m[:post][:fields] = OrderedDict{Symbol, Any}()
-        m[:post][:fields][:Label] = OrderedDict{Symbol, Any}()
-        m[:post][:fields][:Label][:meta] = OrderedDict{Symbol, Any}()
-        m[:post][:fields][:Label][:meta][:desc] = "Key"
-        m[:post][:fields][:Label][:data] = collect(keys(res.post))
-        m[:post][:fields][:Value] = OrderedDict{Symbol, Any}()
-        m[:post][:fields][:Value][:meta] = OrderedDict{Symbol, Any}()
-        m[:post][:fields][:Value][:meta][:desc] = "Value"
-        m[:post][:fields][:Value][:data] = collect(values(res.post))
-        push!(extra, m)
-    end
-
-    d.data[1]["extra"] = extra
-    return d
 end
 
 
+function ViewerData_extra(res::Results)
+    out = OrderedDict{Symbol, Any}()
+    for (majorkey, dict) in res.post
+        out[majorkey] = OrderedDict{Symbol, Any}()
+        out[majorkey][:label] = replace(string(majorkey), "_" => " ")
+        out[majorkey][:fields] = OrderedDict{Symbol, Any}()
+        out[majorkey][:fields][:Key] = OrderedDict{Symbol, Any}()
+        out[majorkey][:fields][:Key][:meta] = OrderedDict{Symbol, Any}()
+        out[majorkey][:fields][:Key][:meta][:desc] = "Key"
+        out[majorkey][:fields][:Key][:data] = collect(keys(dict))
 
-function ViewerData(res::MultiResults; kws...)
-    meta = Vector{GModelFitViewer.Meta}()
-    for ith in 1:length(res.bestfit)
-        ctypes = [comptype(res.bestfit[ith], cname) for cname in keys(res.bestfit[ith])]
-        i = findall(isnothing.(match.(r"SpecLine", ctypes))  .&   isnothing.(match.(r"GaussConv", ctypes)))
-        keep = string.(keys(res.bestfit[ith]))[i]
-        push!(meta, GModelFitViewer.Meta(; title=res.spec[ith].label,
-                                         xlabel="Wavelength",
-                                         xunit=string(unit(res.spec[ith].unit_x)),
-                                         xscale=ustrip(res.spec[ith].unit_x),
-                                         ylabel="Lum. density",
-                                         yunit=string(unit(res.spec[ith].unit_y)),
-                                         yscale=ustrip(res.spec[ith].unit_y),
-                                         keep=keep, kws...))
+        out[majorkey][:fields][:Value] = OrderedDict{Symbol, Any}()
+        out[majorkey][:fields][:Value][:meta] = OrderedDict{Symbol, Any}()
+        out[majorkey][:fields][:Value][:meta][:desc] = "Value"
+        vv = collect(values(dict))
+        if isa(vv, Vector{Float64})
+            out[majorkey][:fields][:Value][:data] = vv
+        elseif isa(vv, Vector{NTuple{2, Float64}})
+            out[majorkey][:fields][:Value][:data] = getindex.(vv, 1)
+            out[majorkey][:fields][:Uncert] = OrderedDict{Symbol, Any}()
+            out[majorkey][:fields][:Uncert][:meta] = OrderedDict{Symbol, Any}()
+            out[majorkey][:fields][:Uncert][:meta][:desc] = "Uncertainty"
+            out[majorkey][:fields][:Uncert][:data] = getindex.(vv, 2)
+        end
     end
+    return [out]
+end
 
-    d = GModelFitViewer.ViewerData(res.bestfit, res.fsumm, res.data, meta=meta)
-    return d
+
+function ViewerData(res::Results; kws...)
+    meta = ViewerData_meta(res; kws...)
+    out = GModelFitViewer.ViewerData(res.bestfit, res.fsumm, res.data, meta=meta)
+    out.data[1]["extra"] = ViewerData_extra(res)
+    return out
+end
+
+
+function ViewerData(multires::MultiResults; kws...)
+    N = length(multires.bestfit)
+    res = [Results(multires.timestamp,
+                   multires.elapsed,
+                   multires.spec[i],
+                   multires.data[i],
+                   multires.bestfit[i],
+                   multires.fsumm::GModelFit.FitSummary,
+                   multires.post[i]) for i in 1:N]
+
+    meta = [ViewerData_meta(res[i]; kws...) for i in 1:N]
+    out = GModelFitViewer.ViewerData(multires.bestfit, multires.fsumm, multires.data, meta=meta)
+    for i in 1:N
+        out.data[1][i]["extra"] = ViewerData_extra(res[i])
+    end
+    return out
 end
