@@ -257,15 +257,15 @@ function guess_norm_factor!(recipe::CRecipe{<: QSOGeneric}, fp::GModelFit.FitPro
     if i1 >= i2
         return #Can't calculate normalization for component
     end
+    norm_integral_ratio = getmodel(fp, ith)[name].norm.val / sum(m[i1:i2])
 
-    ratio = getmodel(fp, ith)[name].norm.val / sum(m[i1:i2])
-    r = values(getdata(fp, ith)) - getfolded(fp, ith)
-    off = sum(r[i1:i2]) * ratio
-
-    @assert !isnan(off) "Norm. offset is NaN for $name"
-    getmodel(fp, ith)[name].norm.val += off
-    if getmodel(fp, ith)[name].norm.val < 0  # ensure line has positive normalization
-        getmodel(fp, ith)[name].norm.val = abs(off)
+    tmp = values(getdata(fp, ith)) ./ getfolded(fp, ith)
+    tmp = tmp[i1:i2]
+    println(tmp)
+    tmp = tmp[findall(isfinite.(tmp))]
+    mult = median(tmp) * norm_integral_ratio
+    if mult > 0
+        getmodel(fp, ith)[name].norm.val *= mult
     end
 end
 
