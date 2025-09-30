@@ -261,7 +261,6 @@ function guess_norm_factor!(recipe::CRecipe{<: QSOGeneric}, fp::GModelFit.FitPro
 
     tmp = values(getdata(fp, ith)) ./ getfolded(fp, ith)
     tmp = tmp[i1:i2]
-    println(tmp)
     tmp = tmp[findall(isfinite.(tmp))]
     mult = median(tmp) * norm_integral_ratio
     if mult > 0
