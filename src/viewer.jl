@@ -3,8 +3,6 @@ import GModelFitViewer: ViewerData
 
 function ViewerData_meta(res::Results; kws...)
     ctypes = [comptype(res.bestfit, cname) for cname in keys(res.bestfit)]
-    i = findall(isnothing.(match.(r"SpecLine", ctypes))  .&   isnothing.(match.(r"GaussConv", ctypes)))
-    keep = string.(keys(res.bestfit))[i]
     return GModelFitViewer.Meta(; title=res.spec.label,
                                 xlabel="Wavelength",
                                 xunit=string(unit(res.spec.unit_x)),
@@ -12,7 +10,7 @@ function ViewerData_meta(res::Results; kws...)
                                 ylabel="Lum. density",
                                 yunit=string(unit(res.spec.unit_y)),
                                 yscale=ustrip(res.spec.unit_y),
-                                keep=keep, kws...)
+                                kws...)
 end
 
 
