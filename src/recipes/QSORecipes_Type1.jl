@@ -15,8 +15,8 @@ end
 function init_recipe!(recipe::CRecipe{T}) where T <: Type1
     @track_recipe
     @invoke init_recipe!(recipe::CRecipe{<: QSOGeneric})
-    recipe.min_spectral_coverage[:Ironuv]  = 0.3
-    recipe.min_spectral_coverage[:Ironopt] = 0.3
+    recipe.min_spectral_coverage[:Ironuv]  = 0.1
+    recipe.min_spectral_coverage[:Ironopt] = 0.1
 
     recipe.use_balmer = true
     recipe.use_ironuv = true;      recipe.Ironuv_fwhm    = 3000.
@@ -110,7 +110,7 @@ function add_iron_uv!(recipe::CRecipe{<: Type1}, fp::GModelFit.FitProblem, ith::
             push!(getmodel(fp, ith)[:Iron].list, :Ironuv)
             guess_norm_factor!(recipe, fp, ith, :Ironuv)
         else
-            println("Ignoring ironuv component (threshold: $threshold)")
+            println("Ignoring ironuv component (coverage: $coverage, threshold: $threshold)")
         end
     end
 end
@@ -139,7 +139,7 @@ function add_iron_opt!(recipe::CRecipe{<: Type1}, fp::GModelFit.FitProblem, ith:
             push!(getmodel(fp, ith)[:Iron].list, :Ironoptna)
             guess_norm_factor!(recipe, fp, ith, :Ironoptbr)
         else
-            println("Ignoring ironopt component (threshold: $threshold)")
+            println("Ignoring ironopt component (coverage: $coverage, threshold: $threshold)")
         end
     end
 end
