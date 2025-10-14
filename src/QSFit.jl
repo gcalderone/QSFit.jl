@@ -17,7 +17,6 @@ using InteractiveUtils
 using SpecialFunctions
 using Polyester
 using Gnuplot
-using TextParse
 using Cosmology
 using DustExtinction
 
