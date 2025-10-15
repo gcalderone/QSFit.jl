@@ -49,7 +49,7 @@ function postanalysis(recipe::CRecipe{<: QSOGeneric}, fp::GModelFit.FitProblem)
                         ((par.unc / abs(par.val)) > recipe.qflag_relunc_threshold)   &&  (qflag += 2^3)
                     end
                     dict[Symbol(cname, :_, pname)] = qflag
-                    dict[cname] = 2^1  # set also component flag
+                    (qflag != 0)  &&  (dict[cname] = 2^1)  # set also component flag
                 end
             end
         end
