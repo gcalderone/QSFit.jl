@@ -78,6 +78,8 @@ function init_recipe!(recipe::CRecipe{T}) where T <: QSOGeneric
     recipe.instrumental_broadening = true
     recipe.solver = GModelFit.cmpfit()
     recipe.solver.config.ftol = 1.e-6
+
+    recipe.qflag_relunc_threshold = 1.
 end
 
 
