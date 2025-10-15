@@ -38,13 +38,18 @@ function postanalysis(recipe::CRecipe{<: QSOGeneric}, fp::GModelFit.FitProblem)
         # Parameter quality flags
         dict = OrderedDict{Symbol, Int64}()
         for (cname, comp) in model
+            dict[cname] = 0
             for (pname, par) in GModelFit.getparams(comp)
+                dict[Symbol(cname, :_, pname)] = 0
                 if !par.fixed
                     qflag = 0
-                    isnan(par.unc)                                                &&  (qflag += 2^1)
-                    ((par.unc / abs(par.val)) > recipe.qflag_relunc_threshold)    &&  (qflag += 2^2)
-                    (par.val in [par.low, par.high])                              &&  (qflag += 2^3)
-                    (qflag != 0)  &&  (dict[Symbol(cname, :_, pname)] = qflag)
+                    isnan(par.unc)                                                   &&  (qflag += 2^1)
+                    (par.val in [par.low, par.high])                                 &&  (qflag += 2^2)
+                    if (par.low < 0)  &&  (par.high > 0)
+                        ((par.unc / abs(par.val)) > recipe.qflag_relunc_threshold)   &&  (qflag += 2^3)
+                    end
+                    dict[Symbol(cname, :_, pname)] = qflag
+                    dict[cname] = 2^1  # set also component flag
                 end
             end
         end
