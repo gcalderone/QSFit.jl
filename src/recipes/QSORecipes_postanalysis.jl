@@ -35,7 +35,7 @@ function postanalysis(recipe::CRecipe{<: QSOGeneric}, fp::GModelFit.FitProblem)
         end
         out[:Equivalent_widths] = dict
 
-        # Parameter quality flags
+        # Component and parameter quality flags
         dict = OrderedDict{Symbol, Int64}()
         for (cname, comp) in model
             dict[cname] = 0
