@@ -102,6 +102,21 @@ function preprocess_spec!(recipe::CRecipe{T}, spec::Spectrum) where T <: QSOGene
 
     # Collect line components
     lines = lines_dict(recipe)
+
+    # Print list of lines being considered in the fit
+    k = collect(keys(lines.dict))
+    v = getproperty.(collect(values(lines.dict)), :wavelength)
+    i = sortperm(v)
+    k = k[i]
+    v = v[i]
+    println()
+    println("Lines considered in the fit:")
+    for i in 1:length(k)
+        @printf("Line %-15s: %9.3fA   %s\n", k[i], v[i], string(typeof(lines.dict[k[i]]).parameters[1]))
+    end
+    println()
+
+    # Check lines coverage
     for loop in 1:2
         # The second pass is required to neglect lines whose coverage
         # has been affected by the spectral samples discarded in the
