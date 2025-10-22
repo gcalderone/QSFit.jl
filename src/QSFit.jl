@@ -108,6 +108,7 @@ end
 struct Results
     timestamp::DateTime
     elapsed::Float64
+    spec::OrderedDict{Symbol, Any}
     data::GModelFit.AbstractMeasures
     bestfit::GModelFit.ModelSnapshot
     fsumm::GModelFit.FitSummary
@@ -117,7 +118,7 @@ end
 struct MultiResults
     timestamp::DateTime
     elapsed::Float64
-    spec::Vector{Spectrum}
+    spec::Vector{OrderedDict{Symbol, Any}}
     data::Vector{<: GModelFit.AbstractMeasures}
     bestfit::Vector{GModelFit.ModelSnapshot}
     fsumm::GModelFit.FitSummary
@@ -170,6 +171,11 @@ function analyze(_recipe::CRecipe{<: AbstractRecipe}, _spec::Spectrum)
 
     out = Results(tstart,
                   Dates.value(convert(Millisecond, now() - tstart)) / 1000.,
+                  OrderedDict{Symbol, Any}(:label  => spec.label,
+                                           :xunit  => string(unit(spec.unit_x)),
+                                           :xscale => ustrip(spec.unit_x),
+                                           :yunit  => string(unit(spec.unit_y)),
+                                           :yscale => ustrip(spec.unit_y)),
                   data, bestfit, fsumm, post)
     println("\nTotal elapsed time: $(out.elapsed) s")
     return out
@@ -192,6 +198,11 @@ function analyze(_recipe::CRecipe{<: AbstractRecipe}, _specs::Vector{Spectrum})
 
     out = MultiResults(tstart,
                        Dates.value(convert(Millisecond, now() - tstart)) / 1000.,
+                       [OrderedDict{Symbol, Any}(:label  => spec.label,
+                                                 :xunit  => string(unit(spec.unit_x)),
+                                                 :xscale => ustrip(spec.unit_x),
+                                                 :yunit  => string(unit(spec.unit_y)),
+                                                 :yscale => ustrip(spec.unit_y)) for spec in specs],
                        data, bestfit, fsumm, post)
     println("\nTotal elapsed time: $(out.elapsed) s")
     return out

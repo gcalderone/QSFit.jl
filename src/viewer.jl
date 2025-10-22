@@ -3,13 +3,13 @@ import GModelFitViewer: ViewerData
 
 function ViewerData_meta(res::Results; kws...)
     ctypes = [comptype(res.bestfit, cname) for cname in keys(res.bestfit)]
-    return GModelFitViewer.Meta(; title=res.spec.label,
+    return GModelFitViewer.Meta(; title=res.spec[:label],
                                 xlabel="Wavelength",
-                                xunit=string(unit(res.spec.unit_x)),
-                                xscale=ustrip(res.spec.unit_x),
+                                xunit=res.spec[:xunit],
+                                xscale=res.spec[:xscale],
                                 ylabel="Lum. density",
-                                yunit=string(unit(res.spec.unit_y)),
-                                yscale=ustrip(res.spec.unit_y),
+                                yunit=res.spec[:yunit],
+                                yscale=res.spec[:yscale],
                                 kws...)
 end
 
