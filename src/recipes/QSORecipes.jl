@@ -1,6 +1,6 @@
 module QSORecipes
 
-using Printf, DataStructures, Statistics, Dates
+using Printf, DataStructures, Statistics, StatsBase, Dates
 using Dierckx
 using ..QSFit, ..QSFit.ATL, GModelFit
 
