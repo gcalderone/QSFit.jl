@@ -29,7 +29,7 @@ function ViewerData_extra(res::Results)
         out[majorkey][:fields][:Value][:meta] = OrderedDict{Symbol, Any}()
         out[majorkey][:fields][:Value][:meta][:desc] = "Value"
         vv = collect(values(dict))
-        if isa(vv, Vector{Float64})  ||  isa(vv, Vector{Int64})
+        if isa(vv, Vector)
             out[majorkey][:fields][:Value][:data] = vv
         elseif isa(vv, Vector{NTuple{2, Float64}})
             out[majorkey][:fields][:Value][:data] = getindex.(vv, 1)

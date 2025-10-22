@@ -10,7 +10,8 @@ mutable struct Spectrum
     good::Vector{Bool}
     resolution::Float64
     localtorestfactor::Float64
-    meta::Dict{Symbol, Any}
+    ctx::Dict{Symbol, Any}
+
     function Spectrum(x::Vector{T}, y::Vector{T}, err::Vector{T};
                       good::Union{Nothing, Vector{Bool}}=nothing,
                       unit_x=u"angstrom",

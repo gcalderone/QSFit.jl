@@ -251,7 +251,7 @@ function analyze(recipe::CRecipe{T}, data::Vector{Measures{1}}) where T <: Type1
     println("\nFit known emission lines...")
     for i in 1:length(models)
         model = models[i]
-        lines = recipe.specs[i].meta[:lines]
+        lines = recipe.specs[i].ctx[:lines]
         for group in unique(getfield.(values(lines), :group))
             model[group] = SumReducer()
             push!(model[:main].list, group)
@@ -261,7 +261,7 @@ function analyze(recipe::CRecipe{T}, data::Vector{Measures{1}}) where T <: Type1
     fit!(recipe, fp)
     for i in 1:length(models)
         model = models[i]
-        lines = recipe.specs[i].meta[:lines]
+        lines = recipe.specs[i].ctx[:lines]
         for (cname, line) in lines
             freeze!(model, cname)
         end
@@ -273,7 +273,7 @@ function analyze(recipe::CRecipe{T}, data::Vector{Measures{1}}) where T <: Type1
     println("\nLast run with all parameters free...")
     for i in 1:length(models)
         model = models[i]
-        lines = recipe.specs[i].meta[:lines]
+        lines = recipe.specs[i].ctx[:lines]
         thaw!(model, :QSOcont)
         haskey(model, :Galaxy   )  &&  thaw!(model, :Galaxy)
         haskey(model, :Balmer   )  &&  thaw!(model, :Balmer)

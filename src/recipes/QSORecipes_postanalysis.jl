@@ -7,7 +7,7 @@ function postanalysis(recipe::CRecipe{<: QSOGeneric}, fp::GModelFit.FitProblem)
         out = OrderedDict{Symbol, Any}()
         model = getmodel(fp, ith)
 
-        # Continuum
+        # Data stats
         dict = OrderedDict{Symbol, Float64}()
         data = getdata(fp, ith)
         dict[:min_wavelength] = minimum(coords(getdomain(fp ,ith)))
@@ -31,12 +31,54 @@ function postanalysis(recipe::CRecipe{<: QSOGeneric}, fp::GModelFit.FitProblem)
         dict[:SNR] = median(abs.(values(data) ./ uncerts(data)))
         out[:Data_stats] = dict
 
+        # Issues
+        dict = OrderedDict{Symbol, String}()
+        for cname in reverse(getfield.(GModelFit.flatten(GModelFit.deptree(model)), :cname))
+            comp = model[cname]
+            comp_issues = String[]
+            for (pname, par) in GModelFit.getparams(comp)
+                par_issues = String[]
+                if !par.fixed
+                    isnan(par.unc)                                                   &&  push!(par_issues, "uncertainty is NaN")
+                    (par.val in [par.low, par.high])                                 &&  push!(par_issues, "value hit a limit")
+                    if (par.low < 0)  &&  (par.high > 0)
+                        ((par.unc / abs(par.val)) > recipe.qflag_relunc_threshold)   &&  push!(par_issues, "relative uncertainty exceeds threshold")
+                    end
+                end
+                if length(par_issues) > 0
+                    push!(comp_issues, string(pname) * " (" * join(par_issues, ", ") * ")")
+                end
+            end
+
+            dep_issues = String[]
+            for dep in GModelFit.dependencies(model, cname)
+                if dep in keys(dict)
+                    push!(dep_issues, string(dep))
+                end
+            end
+            if length(dep_issues) > 0
+                push!(comp_issues, "Issue in depedencies: " * join(dep_issues, ", "))
+            end
+
+            if length(comp_issues) > 0
+                dict[cname] = join(comp_issues, ", ")
+            end
+        end
+        kk = reverse(collect(keys(dict)))
+        out[:Issues] = OrderedDict([k => dict[k] for k in kk])
+
         # Continuum
         dict = OrderedDict{Symbol, Float64}()
-        comp = deepcopy(model[:QSOcont])
-        dict[:l1450] = comp(Domain([1450.]))[1]
-        dict[:l3000] = comp(Domain([3000.]))[1]
-        dict[:l5100] = comp(Domain([5100.]))[1]
+        if :QSOcont in keys(out[:Issues])
+            dict[:l1450] = NaN
+            dict[:l3000] = NaN
+            dict[:l5100] = NaN
+        else
+            comp = deepcopy(model[:QSOcont])
+            dict[:l1450] = comp(Domain([1450.]))[1]
+            dict[:l3000] = comp(Domain([3000.]))[1]
+            dict[:l5100] = comp(Domain([5100.]))[1]
+        end
         out[:Continuum_luminosity] = dict
 
         # Equivalent widths of emission lines
@@ -46,32 +88,16 @@ function postanalysis(recipe::CRecipe{<: QSOGeneric}, fp::GModelFit.FitProblem)
         @assert all(cont .> 0) "Continuum model is zero or negative"
 
         dict = OrderedDict{Symbol, Float64}()
-        for cname in keys(recipe.specs[ith].meta[:lines])
+        for cname in keys(recipe.specs[ith].ctx[:lines])
             haskey(model, cname) || continue
-            dict[Symbol(cname)] = QSFit.int_tabulated(coords(getdomain(fp ,ith)),
-                                                      geteval(fp, ith, cname) ./ cont)[1]
-        end
-        out[:Equivalent_widths] = dict
-
-        # Component and parameter quality flags
-        dict = OrderedDict{Symbol, Int64}()
-        for (cname, comp) in model
-            dict[cname] = 0
-            for (pname, par) in GModelFit.getparams(comp)
-                dict[Symbol(cname, :_, pname)] = 0
-                if !par.fixed
-                    qflag = 0
-                    isnan(par.unc)                                                   &&  (qflag += 2^0)
-                    (par.val in [par.low, par.high])                                 &&  (qflag += 2^1)
-                    if (par.low < 0)  &&  (par.high > 0)
-                        ((par.unc / abs(par.val)) > recipe.qflag_relunc_threshold)   &&  (qflag += 2^2)
-                    end
-                    dict[Symbol(cname, :_, pname)] = qflag
-                    (qflag != 0)  &&  (dict[cname] = 2^0)  # set also component flag
-                end
+            if cname in keys(out[:Issues])
+                dict[Symbol(cname)] = NaN
+            else
+                dict[Symbol(cname)] = QSFit.int_tabulated(coords(getdomain(fp ,ith)),
+                                                          geteval(fp, ith, cname) ./ cont)[1]
             end
         end
-        out[:Quality_flags] = dict
+        out[:Equivalent_widths] = dict
 
         push!(outm, out)
     end

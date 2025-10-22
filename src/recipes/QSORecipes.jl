@@ -146,7 +146,7 @@ function preprocess_spec!(recipe::CRecipe{T}, spec::Spectrum) where T <: QSOGene
 
     # Sort lines according to center wavelength, and save list in recipe
     QSFit.sort_by_wavelength!(lines)
-    spec.meta[:lines] = lines
+    spec.ctx[:lines] = lines
 end
 
 
@@ -303,7 +303,7 @@ end
 function add_emission_lines!(recipe::CRecipe{<: QSOGeneric}, fp::GModelFit.FitProblem, ith::Int)
     @track_recipe
     model = getmodel(fp, ith)
-    lines = recipe.specs[ith].meta[:lines]
+    lines = recipe.specs[ith].ctx[:lines]
 
     # Create model components
     for (cname, line) in lines
