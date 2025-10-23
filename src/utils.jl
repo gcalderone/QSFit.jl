@@ -168,3 +168,46 @@ macro batch_when_threaded(args...)
         end
     end
 end
+
+
+function estimate_fwhm_voff(_x, _y, center)
+    x = collect(range(extrema(_x)..., length(_x) * 100)) # oversample
+    y = Dierckx.Spline1D(_x, _y, k=1)(x)                # interpolate on oversampled domain
+
+    icen = argmin(abs.(x .- center))
+    imax = argmax(y)
+    ihw1 = findlast( y[1:(imax-1)]   .< y[imax]/2)
+    ihw2 = findfirst(y[(imax+1):end] .< y[imax]/2)
+
+    if ((imax < 10)           ||   # TODO: avoid hardcoding limit
+        (imax > length(x)-10) ||
+        isnothing(ihw1)       ||
+        isnothing(ihw2))
+        error("The peak is too close to the edge, could not esitmate FWHM for emission line at $(center)A")
+    end
+    ihw2 += imax
+
+    xr = [extrema(x)...]
+    #=
+    @gp xr=xr "unset grid" "set key left" xlab="Wavelength [arb. units]" ylab="Flux density (F_{/Symbol l}) [arb. units]" :-
+    @gp :- x y "w l t 'Em. line' lw 2 lc rgb 'black'"
+    @gp :- x[icen] .* [1,1] [0, y[imax]] "w l dt 5 lw 2 lc rgb 'red' t '{/Symbol l}_{Ref}'"
+    @gp :- [x[icen], x[imax]] y[imax] .* [1,1] "w l lt 2 lw 2 lc rgb 'red' t 'V_{off}'"
+    @gp :- [x[ihw1], x[ihw2]]  y[imax] ./ 2 .* [1,1] "w l t 'Half max' lw 2 dt 2 lc rgb 'dark-green'"
+    @gp :- x[ihw1] .* [1,1] y[ihw1] .* [0, 1] "w l t 'FWHM' dt 4 lw 2 lc rgb 'blue'"
+    @gp :- x[ihw2] .* [1,1] y[ihw2] .* [0, 1] "w l notitle  dt 4 lw 2 lc rgb 'blue'"
+    =#
+    fwhm = (x[ihw2] - x[ihw1]) / x[imax]
+    voff = (x[icen] - x[imax]) / x[icen]
+    @assert fwhm > 0
+
+    return (fwhm=fwhm, voff=voff)
+end
+
+#=
+x = 1:0.1:5
+y   = QSFit.gauss(x, 3  , 0.2)
+#y .+= QSFit.gauss(x, 3.3, 0.5)
+y .+= QSFit.gauss(x, 3, 2.5)
+estimate_fwhm_voff(x, y, 2.9)
+=#

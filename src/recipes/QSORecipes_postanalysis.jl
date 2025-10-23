@@ -99,6 +99,24 @@ function postanalysis(recipe::CRecipe{<: QSOGeneric}, fp::GModelFit.FitProblem)
         end
         out[:Equivalent_widths] = dict
 
+        dict = OrderedDict{Symbol, Any}()
+        if  (:Ha_br in keys(model))  &&
+            (:Ha_bb in keys(model))
+            if  !(:Ha_br in keys(out[:Issues]))  &&
+                !(:Ha_bb in keys(out[:Issues]))
+                dict[:Ha_ncomp] = 2
+                dict[:Ha_comps] = "Ha_br Ha_bb"
+                dict[:Ha_norm] = model[:Ha_br].norm.val + model[:Ha_bb].norm.val
+                fwhm, voff = QSFit.estimate_fwhm_voff(coords(getdomain(fp ,ith)),
+                                                      geteval(fp, ith, :Ha_br) +
+                                                      geteval(fp, ith, :Ha_bb),
+                                                      model[:Ha_br].center.val)
+                dict[:Ha_fwhm] = fwhm * 3e5
+                dict[:Ha_voff] = voff * 3e5
+            end
+        end
+        out[:Line_associations] = dict
+
         push!(outm, out)
     end
 
