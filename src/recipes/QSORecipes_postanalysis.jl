@@ -1,3 +1,20 @@
+function measure_line_profile(x, y, center, comps::Vector{T}) where T <: QSFit.AbstractSpecLineComp
+    fwhm, voff = QSFit.estimate_fwhm_voff(x, y, center)
+    fwhm *= 3e5
+    voff *= 3e5
+    norms = [comp.norm.val for comp in comps]
+    weights = norms ./ sum(norms)
+    out = OrderedDict{Symbol, Any}()
+    out[:ncomp]    = length(norms)
+    out[:norm]     = sum(norms)
+    out[:norm_unc] = sum(weights .* [comp.norm.unc                 for comp in comps])
+    out[:fwhm]     = fwhm
+    out[:fwhm_unc] = sum(weights .* [comp.fwhm.unc / comp.fwhm.val for comp in comps]) * fwhm
+    out[:voff]     = voff
+    out[:fwhm_unc] = sum(weights .* [comp.fwhm.unc                 for comp in comps])
+    return out
+end
+
 function postanalysis(recipe::CRecipe{<: QSOGeneric}, fp::GModelFit.FitProblem)
     @track_recipe
 
@@ -39,10 +56,11 @@ function postanalysis(recipe::CRecipe{<: QSOGeneric}, fp::GModelFit.FitProblem)
             for (pname, par) in GModelFit.getparams(comp)
                 par_issues = String[]
                 if !par.fixed
-                    isnan(par.unc)                                                   &&  push!(par_issues, "uncertainty is NaN")
-                    (par.val in [par.low, par.high])                                 &&  push!(par_issues, "value hit a limit")
+                    !isnothing(par.patch)                                                  &&  push!(par_issues, "patched value")
+                    isnan(par.unc)                                                         &&  push!(par_issues, "uncertainty is NaN")
+                    (par.val in [par.low, par.high])                                       &&  push!(par_issues, "value hit a limit")
                     if (par.low < 0)  &&  (par.high > 0)
-                        ((par.unc / abs(par.val)) > recipe.qflag_relunc_threshold)   &&  push!(par_issues, "relative uncertainty exceeds threshold")
+                        ((par.unc / abs(par.val)) > recipe.reliability_relunc_threshold)   &&  push!(par_issues, "relative uncertainty exceeds threshold")
                     end
                 end
                 if length(par_issues) > 0
@@ -99,24 +117,61 @@ function postanalysis(recipe::CRecipe{<: QSOGeneric}, fp::GModelFit.FitProblem)
         end
         out[:Equivalent_widths] = dict
 
+
         # Line associations
-        dict = OrderedDict{Symbol, Any}()
-        if  (:Ha_br in keys(model))  &&
-            (:Ha_bb in keys(model))
-            if  !(:Ha_br in keys(out[:Issues]))  &&
-                !(:Ha_bb in keys(out[:Issues]))
-                dict[:Ha_ncomp] = 2
-                dict[:Ha_comps] = "Ha_br Ha_bb"
-                dict[:Ha_norm] = model[:Ha_br].norm.val + model[:Ha_bb].norm.val
-                fwhm, voff = QSFit.estimate_fwhm_voff(coords(getdomain(fp ,ith)),
-                                                      geteval(fp, ith, :Ha_br) +
-                                                      geteval(fp, ith, :Ha_bb),
-                                                      model[:Ha_br].center.val)
-                dict[:Ha_fwhm] = fwhm * 3e5
-                dict[:Ha_voff] = voff * 3e5
+        nuisance_cnames = (:NuisanceLines in keys(model)  ?  GModelFit.dependencies(model, :NuisanceLines)  :  Symbol[])
+        for cname in keys(recipe.check_for_line_assoc)
+            if cname in keys(model)
+                assoc = [cname]
+                assoc_lines_with_issues = Symbol[]
+
+                for d in recipe.check_for_line_assoc[cname]
+                    if d in keys(model)
+                        println("Line association: $cname - $d")
+                        if d in keys(out[:Issues])
+                            push!(assoc_lines_with_issues, d)
+                        else
+                            push!(assoc, d)
+                        end
+                    end
+                end
+
+                center = model[cname].center.val * (1 - (model[cname].voff.val / 3e5))
+                i = 1
+                while i <= length(nuisance_cnames)
+                    d = nuisance_cnames[i]
+                    limit = model[d].fwhm.val * model[d].center.val / 3e5 / 2
+                    if abs(center - model[d].center.val) < limit
+                        println("Line association: $cname - $d")
+                        deleteat!(nuisance_cnames, i)
+                        if d in keys(out[:Issues])
+                            push!(assoc_lines_with_issues, d)
+                        else
+                            push!(assoc, d)
+                        end
+                    else
+                        i += 1
+                    end
+                end
+
+                if length(assoc_lines_with_issues) > 0
+                    if cname in keys(out[:Issues])
+                        out[:Issues][cname] *= ", "
+                    else
+                        out[:Issues][cname]  = ""
+                    end
+                    out[:Issues][cname] *= "Associated lines with issues (" * join(string.(assoc_lines_with_issues), ", ") * ")"
+                else
+                    if length(assoc) > 1
+                        out[Symbol(cname, :_assoc)] = measure_line_profile(coords(getdomain(fp ,ith)),
+                                                                           sum([geteval(fp, ith, assoc[i]) for i in 1:length(assoc)]),
+                                                                           model[cname].center.val,
+                                                                           [model[k] for k in assoc])
+                        out[Symbol(cname, :_assoc)][:comps] = join(string.(assoc), ", ")
+                    end
+                end
             end
         end
-        out[:Line_associations] = dict
 
         push!(outm, out)
     end

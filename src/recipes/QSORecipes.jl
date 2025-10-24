@@ -71,15 +71,17 @@ function init_recipe!(recipe::CRecipe{T}) where T <: QSOGeneric
     recipe.host_template_range = [4000., 7000.]
 
     recipe.n_nuisance = 10
-    recipe.nuisance_avoid = [4863 .+ [-1,1] .* 50,    # Angstrom
-                             6565 .+ [-1,1] .* 150]
+    recipe.nuisance_avoid = Float64[] #[4863 .+ [-1,1] .* 50,    # Angstrom
+                                      # 6565 .+ [-1,1] .* 150]
     recipe.nuisance_maxoffset_from_guess = 1e3  # km/s
     recipe.line_component = QSFit.SpecLineGauss
     recipe.instrumental_broadening = true
     recipe.solver = GModelFit.cmpfit()
     recipe.solver.config.ftol = 1.e-6
 
-    recipe.qflag_relunc_threshold = 1.
+    recipe.reliability_relunc_threshold = 1.
+
+    recipe.check_for_line_assoc = Dict(:Ha_br => [:Ha_bb], :Hb_br => [], :Hg_br => [])
 end
 
 
