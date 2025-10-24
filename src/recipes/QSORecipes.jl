@@ -340,6 +340,7 @@ function fit_nuisance_lines!(recipe::CRecipe{<: QSOGeneric}, fp::GModelFit.FitPr
     push!(model[:main].list, :NuisanceLines)
     for i in 1:recipe.n_nuisance
         model[Symbol(:nuisance, i)] = line_component(recipe, 3000., NuisanceLine)
+        model[Symbol(:nuisance, i)].norm.val = 0.  # nuisance lines are expected to have null normalization when first created
         freeze!(model, Symbol(:nuisance, i))
     end
 
@@ -361,7 +362,7 @@ function fit_nuisance_lines!(recipe::CRecipe{<: QSOGeneric}, fp::GModelFit.FitPr
             Δ[findall(rr[1] .< λ .< rr[2])] .= 0.
         end
 
-        # Do not add lines close to from the edges since these may
+        # Do not add lines close to the edges since these may
         # affect qso_cont fitting
         Δ[findall((λ .< minimum(λ)*1.02)  .|
                   (λ .> maximum(λ)*0.98))] .= 0.
@@ -389,8 +390,10 @@ function fit_nuisance_lines!(recipe::CRecipe{<: QSOGeneric}, fp::GModelFit.FitPr
             end
         end
 
+        println("Fit nuisance line at lambda: $(model[cname].center.val)")
         thaw!(model, cname)
         fit!(recipe, fp)
+        display(model[cname])
         freeze!(model, cname)
     end
 end

@@ -145,11 +145,7 @@ function analyze(recipe::CRecipe{T}, data::Vector{Measures{1}}) where T <: Type2
         end
         if :NuisanceLines in keys(model)
             for cname in model[:NuisanceLines].list
-                if model[cname].norm.val > 0
-                    thaw!(model, cname)
-                else
-                    freeze!(model, cname)
-                end
+                thaw!(model, cname)
             end
         end
     end

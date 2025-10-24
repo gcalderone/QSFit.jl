@@ -72,7 +72,6 @@ end
 function line_component(recipe::CRecipe, wl::Float64, template::Type{<: NuisanceLine})
     @track_recipe
     comp = line_component(recipe, wl)
-    comp.norm.val = 0.  # Note: do not change this (nuisance lines are expected to have null normalization when first created)
     comp.center.fixed = false
     comp.voff.fixed = true
     comp.fwhm.low, comp.fwhm.val, comp.fwhm.high = 600, 5e3, 1e4
