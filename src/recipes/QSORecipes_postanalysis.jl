@@ -75,9 +75,9 @@ function postanalysis(recipe::CRecipe{<: QSOGeneric}, fp::GModelFit.FitProblem)
             dict[:l5100] = NaN
         else
             comp = deepcopy(model[:QSOcont])
-            dict[:l1450] = comp(Domain([1450.]))[1]
-            dict[:l3000] = comp(Domain([3000.]))[1]
-            dict[:l5100] = comp(Domain([5100.]))[1]
+            dict[:l1450] = comp(Domain([1450.]))[1] * 1450 # lL_l [10^42 erg/s]
+            dict[:l3000] = comp(Domain([3000.]))[1] * 3000 # lL_l [10^42 erg/s]
+            dict[:l5100] = comp(Domain([5100.]))[1] * 5100 # lL_l [10^42 erg/s]
         end
         out[:Continuum_luminosity] = dict
 
@@ -99,6 +99,7 @@ function postanalysis(recipe::CRecipe{<: QSOGeneric}, fp::GModelFit.FitProblem)
         end
         out[:Equivalent_widths] = dict
 
+        # Line associations
         dict = OrderedDict{Symbol, Any}()
         if  (:Ha_br in keys(model))  &&
             (:Ha_bb in keys(model))
