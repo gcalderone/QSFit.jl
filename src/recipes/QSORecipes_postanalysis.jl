@@ -117,7 +117,6 @@ function postanalysis(recipe::CRecipe{<: QSOGeneric}, fp::GModelFit.FitProblem)
         end
         out[:Equivalent_widths] = dict
 
-
         # Line associations
         nuisance_cnames = (:NuisanceLines in keys(model)  ?  GModelFit.dependencies(model, :NuisanceLines)  :  Symbol[])
         for cname in keys(recipe.check_for_line_assoc)
@@ -127,12 +126,12 @@ function postanalysis(recipe::CRecipe{<: QSOGeneric}, fp::GModelFit.FitProblem)
 
                 for d in recipe.check_for_line_assoc[cname]
                     if d in keys(model)
+                        # Avoid checking if d in keys(out[:Issues])
+                        # since that component is typically patched to
+                        # the main one and one or more of its
+                        # parameters may rise issues
                         println("Line association: $cname - $d")
-                        if d in keys(out[:Issues])
-                            push!(assoc_lines_with_issues, d)
-                        else
-                            push!(assoc, d)
-                        end
+                        push!(assoc, d)
                     end
                 end
 
@@ -149,9 +148,9 @@ function postanalysis(recipe::CRecipe{<: QSOGeneric}, fp::GModelFit.FitProblem)
                         else
                             push!(assoc, d)
                         end
-                    else
-                        i += 1
+                        continue
                     end
+                    i += 1
                 end
 
                 if length(assoc_lines_with_issues) > 0
