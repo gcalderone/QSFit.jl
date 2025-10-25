@@ -87,15 +87,14 @@ function postanalysis(recipe::CRecipe{<: QSOGeneric}, fp::GModelFit.FitProblem)
 
         # Continuum
         dict = OrderedDict{Symbol, Float64}()
-        if :QSOcont in keys(out[:Issues])
-            dict[:l1450] = NaN
-            dict[:l3000] = NaN
-            dict[:l5100] = NaN
-        else
-            comp = deepcopy(model[:QSOcont])
-            dict[:l1450] = comp(Domain([1450.]))[1] * 1450 # lL_l [10^42 erg/s]
-            dict[:l3000] = comp(Domain([3000.]))[1] * 3000 # lL_l [10^42 erg/s]
-            dict[:l5100] = comp(Domain([5100.]))[1] * 5100 # lL_l [10^42 erg/s]
+        λ = coords(getdomain(fp ,ith))
+        comp = deepcopy(model[:QSOcont])
+        for wl in [1450, 3000, 5100]
+            dict[Symbol(:l, wl)] = NaN
+            if  !(:QSOcont in keys(out[:Issues]))  &&
+                (minimum(λ) <= wl <= maximum(λ))
+                dict[Symbol(:l, wl)] = comp(Domain([float(wl)]))[1] * wl # lL_l [10^42 erg/s]
+            end
         end
         out[:Continuum_luminosity] = dict
 

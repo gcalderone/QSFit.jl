@@ -6,11 +6,7 @@ function serialize(filename, res::Results; compress=false)
     push!(v, GModelFit._serialize(res.spec))
     push!(v, GModelFit._serialize(res.post))
 
-    filename = GModelFit.ensure_file_extension(filename, "json")
-
-    filename = ensure_file_extension(filename, "json")
     if compress
-        filename = ensure_file_extension(filename, "gz")
         io = GZip.open(filename, "w")
     else
         io = open(filename, "w")
