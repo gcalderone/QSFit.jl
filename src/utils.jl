@@ -172,7 +172,7 @@ end
 
 function estimate_fwhm_voff(_x, _y, center)
     x = collect(range(extrema(_x)..., length(_x) * 100)) # oversample
-    y = Dierckx.Spline1D(_x, _y, k=1)(x)                # interpolate on oversampled domain
+    y = Dierckx.Spline1D(_x, _y, k=1)(x)                 # interpolate on oversampled domain
 
     icen = argmin(abs.(x .- center))
     imax = argmax(y)
@@ -183,7 +183,8 @@ function estimate_fwhm_voff(_x, _y, center)
         (imax > length(x)-10) ||
         isnothing(ihw1)       ||
         isnothing(ihw2))
-        error("The peak is too close to the edge, could not esitmate FWHM for emission line at $(center)A")
+        println("The peak is too close to the edge, could not esitmate FWHM for emission line at $(center)A")
+        return NaN, NaN
     end
     ihw2 += imax
 
