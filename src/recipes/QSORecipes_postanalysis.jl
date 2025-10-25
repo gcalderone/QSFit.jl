@@ -52,34 +52,27 @@ function postanalysis(recipe::CRecipe{<: QSOGeneric}, fp::GModelFit.FitProblem)
         dict = OrderedDict{Symbol, String}()
         for cname in reverse(getfield.(GModelFit.flatten(GModelFit.deptree(model)), :cname))
             comp = model[cname]
-            comp_issues = String[]
+            comp_issues = OrderedDict{Symbol, String}()
             for (pname, par) in GModelFit.getparams(comp)
-                par_issues = String[]
                 if !par.fixed
-                    !isnothing(par.patch)                                                  &&  push!(par_issues, "patched value")
-                    isnan(par.unc)                                                         &&  push!(par_issues, "uncertainty is NaN")
-                    (par.val in [par.low, par.high])                                       &&  push!(par_issues, "value hit a limit")
+                    !isnothing(par.patch)                                                  &&  (comp_issues[pname] = "patched value")
+                    isnan(par.unc)                                                         &&  (comp_issues[pname] = "uncertainty is NaN")
+                    (par.val in [par.low, par.high])                                       &&  (comp_issues[pname] = "value hit a limit")
                     if (par.low < 0)  &&  (par.high > 0)
-                        ((par.unc / abs(par.val)) > recipe.reliability_relunc_threshold)   &&  push!(par_issues, "relative uncertainty exceeds threshold")
+                        ((par.unc / abs(par.val)) > recipe.reliability_relunc_threshold)   &&  (comp_issues[pname] = "relative uncertainty exceeds threshold")
                     end
-                end
-                if length(par_issues) > 0
-                    push!(comp_issues, string(pname) * " (" * join(par_issues, ", ") * ")")
                 end
             end
 
-            dep_issues = String[]
             for dep in GModelFit.dependencies(model, cname)
                 if dep in keys(dict)
-                    push!(dep_issues, string(dep))
+                    @assert !(dep in keys(comp_issues))  "Dependency has same name as one of the parameters, can't update Issues dictionary"
+                    comp_issues[dep] = "dep. has issues"
                 end
-            end
-            if length(dep_issues) > 0
-                push!(comp_issues, "Issue in depedencies: " * join(dep_issues, ", "))
             end
 
             if length(comp_issues) > 0
-                dict[cname] = join(comp_issues, ", ")
+                dict[cname] = join(string.(keys(comp_issues)) .* ": " .* values(comp_issues), " | ")
             end
         end
         kk = reverse(collect(keys(dict)))
