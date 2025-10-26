@@ -7,14 +7,14 @@ display(res.bestfit)
 display(res.fsumm)
 rm(GModelFitViewer.serialize_html(res))
 @test res.fsumm.ndata == 3309
-@test res.fsumm.nfree == 70
+@test res.fsumm.nfree == 77
 
 res = analyze(recipe, [spec, deepcopy(spec)])
 display(res.bestfit)
 display(res.fsumm)
 rm(GModelFitViewer.serialize_html(res))
 @test res.fsumm.ndata == 6618
-@test res.fsumm.nfree == 156
+@test res.fsumm.nfree == 152
 
 
 recipe = CRecipe{LineFit}(redshift=0.3806)
@@ -34,4 +34,4 @@ display(res.bestfit)
 display(res.fsumm)
 rm(GModelFitViewer.serialize_html(res))
 @test res.fsumm.ndata == 3118
-@test res.fsumm.nfree == 83
+@test res.fsumm.nfree == 89
