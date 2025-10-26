@@ -46,6 +46,7 @@ function postanalysis(recipe::CRecipe{<: QSOGeneric}, fp::GModelFit.FitProblem)
         dict[:mean_unc]   = mean(   uncerts(data))
         dict[:median_unc] = median( uncerts(data))
         dict[:SNR] = median(abs.(values(data) ./ uncerts(data)))
+        dict[:DER_SNR] = QSFit.der_snr(values(data))
         out[:Data_stats] = dict
 
         # Issues

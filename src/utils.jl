@@ -212,3 +212,17 @@ y   = QSFit.gauss(x, 3  , 0.2)
 y .+= QSFit.gauss(x, 3, 2.5)
 estimate_fwhm_voff(x, y, 2.9)
 =#
+
+
+# DER SNR: A Simple & General Spectroscopic Signal-to-Noise Measurement Algorithm, Felix Stoehr, ASP Conference Series, Vol. 394, c 2008
+# https://hla.stsci.edu/DER_SNR/der_snr.html
+function der_snr(v)
+    v = v[findall(v .> 0.)]
+    n = length(v)
+    @assert n > 4 "No DER SNR can be computed for a vector with length $(n) <= 4"
+    signal = median(v)
+    i = 3:(n-2)
+    noise  = 1.482602 / sqrt(6.0) * median(abs.(2 .* v[i] .- v[i .- 2] - v[i .+ 2]))
+    @assert noise != 0. "The estimated noise is zero!"
+    return float(signal / noise)
+end
