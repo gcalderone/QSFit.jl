@@ -57,7 +57,7 @@ function line_component(recipe::CRecipe, tid::Union{Val{TID}, Float64}, template
     @track_recipe
     comp = line_component(recipe, tid)
     comp.fwhm.low, comp.fwhm.val, comp.fwhm.high = 900, 5e3, 1.5e4
-    comp.voff.low, comp.voff.val, comp.voff.high = -3e3, 0, 3e3
+    comp.voff.low, comp.voff.val, comp.voff.high = -1e3, 0, 1e3
     return comp
 end
 

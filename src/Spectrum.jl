@@ -25,7 +25,7 @@ mutable struct Spectrum
             err = 0.05 .* (median(y) .+ abs.(y))
         end
         @assert length(x) == length(y) == length(err) == length(good)
-        @assert minimum(err) > 0 "Uncertainties must be positive!"
+        @assert minimum(err[findall(good)]) > 0 "Uncertainties must be positive!"
 
         # Ensure wavelengths are sorted
         ii = sortperm(x)
@@ -60,7 +60,7 @@ end
 
 function torestframe!(spec::Spectrum, cosmology::Cosmology.AbstractCosmology, z::Float64)
     @assert isnan(spec.localtorestfactor)
-    @assert !isnothing(z > 0)
+    @assert z > 0
     @assert dimension(spec.unit_x) == dimension(u"cm")
     spec.x ./= (1 + z)
 

@@ -66,6 +66,16 @@ function lines_dict(recipe::CRecipe{T}) where T <: Type1
     add_line!(recipe, out, :NII_6583)
     add_line!(recipe, out, :SII_6716)
     add_line!(recipe, out, :SII_6731)
+    add_line!(recipe, out, :OI_8448     , BroadLine)
+    add_line!(recipe, out, :SIII_9069   , ForbiddenLine)
+    add_line!(recipe, out, :SIII_9532   , ForbiddenLine)
+    add_line!(recipe, out, :HeI_10832   , NarrowLine, BroadLine)
+    add_line!(recipe, out, :Pa9         , BroadLine)
+    add_line!(recipe, out, :Pa8         , BroadLine)
+    add_line!(recipe, out, :Pad         , NarrowLine, BroadLine)
+    add_line!(recipe, out, :Pag         , NarrowLine, BroadLine)
+    add_line!(recipe, out, :Pab         , NarrowLine, BroadLine)
+    add_line!(recipe, out, :Paa         , NarrowLine, BroadLine)
     return out
 end
 
