@@ -42,8 +42,8 @@ line_group( recipe::CRecipe{<: QSOGeneric}, ::Type{BlueWing}) = :NarrowLines
 function line_component(recipe::CRecipe{<: QSOGeneric}, tid::Val{:OIII_5007}, ::Type{<: BlueWing})
     @track_recipe
     comp = line_component(recipe, tid, NarrowLine)
-    comp.fwhm.low, comp.fwhm.val, comp.fwhm.high = 0, 3e3, 5e3
-    comp.voff.low, comp.voff.val, comp.voff.high = 0, 0, 2e3
+    comp.fwhm.low, comp.fwhm.val, comp.fwhm.high = 0, 3e3, 6e3
+    comp.voff.low, comp.voff.val, comp.voff.high = 0, 0, 3e3
     comp.voff.patch = @fd (m, v) -> v + m[:OIII_5007].voff
     comp.fwhm.patch = @fd (m, v) -> v + m[:OIII_5007].fwhm
     return comp

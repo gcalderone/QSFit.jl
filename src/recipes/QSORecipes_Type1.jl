@@ -72,10 +72,10 @@ function lines_dict(recipe::CRecipe{T}) where T <: Type1
     add_line!(recipe, out, :HeI_10832   , NarrowLine, BroadLine)
     add_line!(recipe, out, :Pa9         , BroadLine)
     add_line!(recipe, out, :Pa8         , BroadLine)
-    add_line!(recipe, out, :Pad         , NarrowLine, BroadLine)
-    add_line!(recipe, out, :Pag         , NarrowLine, BroadLine)
-    add_line!(recipe, out, :Pab         , NarrowLine, BroadLine)
-    add_line!(recipe, out, :Paa         , NarrowLine, BroadLine)
+    add_line!(recipe, out, :Pad         , BroadLine)
+    add_line!(recipe, out, :Pag         , BroadLine)
+    add_line!(recipe, out, :Pab         , BroadLine)
+    add_line!(recipe, out, :Paa         , BroadLine)
     return out
 end
 

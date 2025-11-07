@@ -36,7 +36,7 @@ function line_component(recipe::CRecipe, tid::Union{Val{TID}, Float64}, template
     @track_recipe
     comp = line_component(recipe, tid)
     comp.fwhm.low, comp.fwhm.val, comp.fwhm.high = 100, 5e2, 2e3
-    comp.voff.low, comp.voff.val, comp.voff.high = -1e3, 0, 1e3
+    comp.voff.low, comp.voff.val, comp.voff.high =-5e2,   0, 5e2
     return comp
 end
 
@@ -49,7 +49,7 @@ function line_component(recipe::CRecipe, tid::Union{Val{TID}, Float64}, template
     @track_recipe
     comp = line_component(recipe, tid)
     comp.fwhm.low, comp.fwhm.val, comp.fwhm.high = 100, 5e2, 1e3 # avoid confusion with the broad component
-    comp.voff.low, comp.voff.val, comp.voff.high = -1e3, 0, 1e3
+    comp.voff.low, comp.voff.val, comp.voff.high =-5e2,  0, 5e2
     return comp
 end
 
@@ -57,7 +57,7 @@ function line_component(recipe::CRecipe, tid::Union{Val{TID}, Float64}, template
     @track_recipe
     comp = line_component(recipe, tid)
     comp.fwhm.low, comp.fwhm.val, comp.fwhm.high = 900, 5e3, 1.5e4
-    comp.voff.low, comp.voff.val, comp.voff.high = -1e3, 0, 1e3
+    comp.voff.low, comp.voff.val, comp.voff.high =-5e2,  0, 5e2
     return comp
 end
 
