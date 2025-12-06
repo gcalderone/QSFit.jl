@@ -15,7 +15,7 @@ function Gnuplot.recipe(res::Results)
     ctypes = [comptype(res.bestfit, cname) for cname in keys(res.bestfit)]
     i = findall(isnothing.(match.(r"SpecLine", ctypes)))
     keep = keys(res.bestfit)[i]
-    out = [Gnuplot.recipe(res.spec)..., Gnuplot.recipe(res.bestfit, keep=keep)...]
+    out = [Gnuplot.recipe(res.data)..., Gnuplot.recipe(res.bestfit, keep=keep)...]
     return out
 end
 
@@ -26,18 +26,18 @@ function Gnuplot.recipe(res::MultiResults)
         ctypes = [comptype(res.bestfit[ith], cname) for cname in keys(res.bestfit[ith])]
         i = findall(isnothing.(match.(r"SpecLine", ctypes)))
         keep = keys(res.bestfit[ith])[i]
-        append!(out, [Gnuplot.recipe(res.spec[ith])..., Gnuplot.recipe(res.bestfit[ith], keep=keep)...])
+        append!(out, [Gnuplot.recipe(res.data[ith])..., Gnuplot.recipe(res.bestfit[ith], keep=keep)...])
     end
     return out
 end
 
 
 function residuals(bestfit::GModelFit.ModelSnapshot, data::Measures)
-    resid = (values(data) .- bestfit()) ./ uncerts(data)
+    resid = (values(data) .- GModelFit.folded(bestfit)) ./ uncerts(data)
     return Gnuplot.parseSpecs(
         "set grid", "set key outside horizontal",
         coords(data.domain), resid, "with p t 'Residuals' lc rgb 'red'",
         Gnuplot.line(extrema(coords(data.domain)), 0., "with l notit dt 2 lc rgb 'black'"),
         coords(data.domain), cumsum(resid.^2), "with l t 'Cumulative residuals^2' lc rgb 'blue' axes x1y2")
 end
-residuals(res::Results) = residuals(res.bestfit, res.pspec.data)
+residuals(res::Results) = residuals(res.bestfit, res.data)

@@ -51,7 +51,7 @@ function postanalysis(recipe::CRecipe{<: QSOGeneric}, fp::GModelFit.FitProblem)
         out[:Data_stats] = dict
 
         # Issues
-        dict = OrderedDict{Symbol, String}()
+        dict = OrderedDict{Symbol, OrderedDict{Symbol, String}}()
         for cname in reverse(getfield.(GModelFit.flatten(GModelFit.deptree(model)), :cname))
             comp = model[cname]
             comp_issues = OrderedDict{Symbol, String}()
@@ -69,12 +69,12 @@ function postanalysis(recipe::CRecipe{<: QSOGeneric}, fp::GModelFit.FitProblem)
             for dep in GModelFit.dependencies(model, cname)
                 if dep in keys(dict)
                     @assert !(dep in keys(comp_issues))  "Dependency has same name as one of the parameters, can't update Issues dictionary"
-                    comp_issues[dep] = "dep. has issues"
+                    comp_issues[dep] = "this dependency has issue(s)"
                 end
             end
 
             if length(comp_issues) > 0
-                dict[cname] = join(string.(keys(comp_issues)) .* ": " .* values(comp_issues), " | ")
+                dict[cname] = comp_issues  # join(string.(keys(comp_issues)) .* ": " .* values(comp_issues), " | ")
             end
         end
         kk = reverse(collect(keys(dict)))
@@ -148,12 +148,8 @@ function postanalysis(recipe::CRecipe{<: QSOGeneric}, fp::GModelFit.FitProblem)
                 end
 
                 if length(assoc_lines_with_issues) > 0
-                    if cname in keys(out[:Issues])
-                        out[:Issues][cname] *= ", "
-                    else
-                        out[:Issues][cname]  = ""
-                    end
-                    out[:Issues][cname] *= "Associated lines with issues (" * join(string.(assoc_lines_with_issues), ", ") * ")"
+                    (cname in keys(out[:Issues]))  ||  (out[:Issues][cname]  = OrderedDict{Symbol, String}())
+                    out[:Issues][cname][:_assoc] = "Associated lines with issues (" * join(string.(assoc_lines_with_issues), ", ") * ")"
                 else
                     if length(assoc) > 1
                         out[Symbol(cname, :_assoc)] = measure_line_profile(coords(getdomain(fp ,ith)),

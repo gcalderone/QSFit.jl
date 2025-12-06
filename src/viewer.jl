@@ -16,27 +16,51 @@ end
 
 function ViewerData_extra(res::Results)
     out = OrderedDict{Symbol, Any}()
-    for (majorkey, dict) in res.post
-        out[majorkey] = OrderedDict{Symbol, Any}()
-        out[majorkey][:label] = replace(string(majorkey), "_" => " ")
-        out[majorkey][:fields] = OrderedDict{Symbol, Any}()
-        out[majorkey][:fields][:Key] = OrderedDict{Symbol, Any}()
-        out[majorkey][:fields][:Key][:meta] = OrderedDict{Symbol, Any}()
-        out[majorkey][:fields][:Key][:meta][:desc] = "Key"
-        out[majorkey][:fields][:Key][:data] = collect(keys(dict))
+    for (tab, dict) in res.post
+        @assert isa(dict, AbstractDict)
 
-        out[majorkey][:fields][:Value] = OrderedDict{Symbol, Any}()
-        out[majorkey][:fields][:Value][:meta] = OrderedDict{Symbol, Any}()
-        out[majorkey][:fields][:Value][:meta][:desc] = "Value"
-        vv = collect(values(dict))
-        if isa(vv, Vector)
-            out[majorkey][:fields][:Value][:data] = vv
-        elseif isa(vv, Vector{NTuple{2, Float64}})
-            out[majorkey][:fields][:Value][:data] = getindex.(vv, 1)
-            out[majorkey][:fields][:Uncert] = OrderedDict{Symbol, Any}()
-            out[majorkey][:fields][:Uncert][:meta] = OrderedDict{Symbol, Any}()
-            out[majorkey][:fields][:Uncert][:meta][:desc] = "Uncertainty"
-            out[majorkey][:fields][:Uncert][:data] = getindex.(vv, 2)
+        if tab == :Data_stats
+            out[tab] = OrderedDict(:label => "Data stats", :fields => OrderedDict{Symbol, Any}())
+            out[tab][:fields][:c1] = OrderedDict(:meta => Dict(:desc => "Quantity"),
+                                                 :data => collect(keys(dict)))
+            out[tab][:fields][:c2] = OrderedDict(:meta => Dict(:desc => "Value"),
+                                                 :data => collect(values(dict)))
+        elseif tab == :Issues
+            out[tab] = OrderedDict(:label => "Issues", :fields => OrderedDict{Symbol, Any}())
+            out[tab][:fields][:c1] = OrderedDict(:meta => Dict(:desc => "Component"),
+                                                 :data => Vector{Symbol}())
+            out[tab][:fields][:c2] = OrderedDict(:meta => Dict(:desc => "Parameter / dependency"),
+                                                 :data => Vector{Symbol}())
+            out[tab][:fields][:c3] = OrderedDict(:meta => Dict(:desc => "Issue"),
+                                                 :data => Vector{String}())
+            for (cname, subdict) in dict
+                for (par_or_dep, issue) in subdict
+                    push!(out[tab][:fields][:c1][:data], cname)
+                    push!(out[tab][:fields][:c2][:data], par_or_dep)
+                    push!(out[tab][:fields][:c3][:data], issue)
+                end
+            end
+        elseif tab == :Continuum_luminosity
+            out[tab] = OrderedDict(:label => "Continuum luminosities", :fields => OrderedDict{Symbol, Any}())
+            out[tab][:fields][:c1] = OrderedDict(:meta => Dict(:desc => "Wavelength [A]"),
+                                                 :data => collect(keys(dict)))
+            out[tab][:fields][:c2] = OrderedDict(:meta => Dict(:desc => "lambda L_lambda [10^42 erg/s]"),
+                                                 :data => collect(values(dict)))
+        elseif tab == :Equivalent_widths
+            out[tab] = OrderedDict(:label => "Equivalent widths", :fields => OrderedDict{Symbol, Any}())
+            out[tab][:fields][:c1] = OrderedDict(:meta => Dict(:desc => "Emission line"),
+                                                 :data => collect(keys(dict)))
+            out[tab][:fields][:c2] = OrderedDict(:meta => Dict(:desc => "[A]"),
+                                                 :data => collect(values(dict)))
+        elseif isa(dict, OrderedDict)
+            vv = string.(collect(values(dict)))
+            out[tab] = OrderedDict(:label => tab, :fields => OrderedDict{Symbol, Any}())
+            out[tab][:fields][:c1] = OrderedDict(:meta => Dict(:desc => "Key"),
+                                                 :data => collect(keys(dict)))
+            out[tab][:fields][:c2] = OrderedDict(:meta => Dict(:desc => "Value"),
+                                                 :data => collect(values(dict)))
+        else
+            @warn "Unexpected entry in post-analysis dictionary: $tab"
         end
     end
     return [out]
