@@ -1,8 +1,8 @@
 using GModelFitViewer
-import GModelFitViewer: ViewerData
+import GModelFitViewer: Meta, gmfv_lower
 
-function ViewerData_meta(res::Results; kws...)
-    ctypes = [comptype(res.bestfit, cname) for cname in keys(res.bestfit)]
+function Meta(res::Results; kws...)
+    # ctypes = [comptype(res.bestfit, cname) for cname in keys(res.bestfit)]
     return GModelFitViewer.Meta(; title=res.spec[:label],
                                 xlabel="Wavelength",
                                 xunit=res.spec[:xunit],
@@ -14,67 +14,62 @@ function ViewerData_meta(res::Results; kws...)
 end
 
 
-function ViewerData_extra(res::Results)
-    out = OrderedDict{Symbol, Any}()
+function gmfv_lower(res::Results; kws...)
+    extra = OrderedDict{Symbol, Any}()
     for (tab, dict) in res.post
         @assert isa(dict, AbstractDict)
 
         if tab == :Data_stats
-            out[tab] = OrderedDict(:label => "Data stats", :fields => OrderedDict{Symbol, Any}())
-            out[tab][:fields][:c1] = OrderedDict(:meta => Dict(:desc => "Quantity"),
-                                                 :data => collect(keys(dict)))
-            out[tab][:fields][:c2] = OrderedDict(:meta => Dict(:desc => "Value"),
-                                                 :data => collect(values(dict)))
+            extra[tab] = OrderedDict(:label => "Data stats", :fields => OrderedDict{Symbol, Any}())
+            extra[tab][:fields][:c1] = OrderedDict(:meta => Dict(:desc => "Quantity"),
+                                                   :data => string.(collect(keys(dict))))
+            extra[tab][:fields][:c2] = OrderedDict(:meta => Dict(:desc => "Value"),
+                                                   :data => collect(values(dict)))
         elseif tab == :Issues
-            out[tab] = OrderedDict(:label => "Issues", :fields => OrderedDict{Symbol, Any}())
-            out[tab][:fields][:c1] = OrderedDict(:meta => Dict(:desc => "Component"),
-                                                 :data => Vector{Symbol}())
-            out[tab][:fields][:c2] = OrderedDict(:meta => Dict(:desc => "Parameter / dependency"),
-                                                 :data => Vector{Symbol}())
-            out[tab][:fields][:c3] = OrderedDict(:meta => Dict(:desc => "Issue"),
-                                                 :data => Vector{String}())
+            extra[tab] = OrderedDict(:label => "Issues", :fields => OrderedDict{Symbol, Any}())
+            extra[tab][:fields][:c1] = OrderedDict(:meta => Dict(:desc => "Component"),
+                                                   :data => Vector{String}())
+            extra[tab][:fields][:c2] = OrderedDict(:meta => Dict(:desc => "Parameter / dependency"),
+                                                   :data => Vector{String}())
+            extra[tab][:fields][:c3] = OrderedDict(:meta => Dict(:desc => "Issue"),
+                                                   :data => Vector{String}())
             for (cname, subdict) in dict
                 for (par_or_dep, issue) in subdict
-                    push!(out[tab][:fields][:c1][:data], cname)
-                    push!(out[tab][:fields][:c2][:data], par_or_dep)
-                    push!(out[tab][:fields][:c3][:data], issue)
+                    push!(extra[tab][:fields][:c1][:data], string(cname))
+                    push!(extra[tab][:fields][:c2][:data], string(par_or_dep))
+                    push!(extra[tab][:fields][:c3][:data], issue)
                 end
             end
         elseif tab == :Continuum_luminosity
-            out[tab] = OrderedDict(:label => "Continuum luminosities", :fields => OrderedDict{Symbol, Any}())
-            out[tab][:fields][:c1] = OrderedDict(:meta => Dict(:desc => "Wavelength [A]"),
-                                                 :data => collect(keys(dict)))
-            out[tab][:fields][:c2] = OrderedDict(:meta => Dict(:desc => "lambda L_lambda [10^42 erg/s]"),
-                                                 :data => collect(values(dict)))
+            extra[tab] = OrderedDict(:label => "Continuum luminosities", :fields => OrderedDict{Symbol, Any}())
+            extra[tab][:fields][:c1] = OrderedDict(:meta => Dict(:desc => "Wavelength [A]"),
+                                                   :data => string.(collect(keys(dict))))
+            extra[tab][:fields][:c2] = OrderedDict(:meta => Dict(:desc => "lambda L_lambda [10^42 erg/s]"),
+                                                   :data => string.(collect(values(dict))))
         elseif tab == :Equivalent_widths
-            out[tab] = OrderedDict(:label => "Equivalent widths", :fields => OrderedDict{Symbol, Any}())
-            out[tab][:fields][:c1] = OrderedDict(:meta => Dict(:desc => "Emission line"),
-                                                 :data => collect(keys(dict)))
-            out[tab][:fields][:c2] = OrderedDict(:meta => Dict(:desc => "[A]"),
-                                                 :data => collect(values(dict)))
+            extra[tab] = OrderedDict(:label => "Equivalent widths", :fields => OrderedDict{Symbol, Any}())
+            extra[tab][:fields][:c1] = OrderedDict(:meta => Dict(:desc => "Emission line"),
+                                                   :data => string.(collect(keys(dict))))
+            extra[tab][:fields][:c2] = OrderedDict(:meta => Dict(:desc => "[A]"),
+                                                   :data => string.(collect(values(dict))))
         elseif isa(dict, OrderedDict)
             vv = string.(collect(values(dict)))
-            out[tab] = OrderedDict(:label => tab, :fields => OrderedDict{Symbol, Any}())
-            out[tab][:fields][:c1] = OrderedDict(:meta => Dict(:desc => "Key"),
-                                                 :data => collect(keys(dict)))
-            out[tab][:fields][:c2] = OrderedDict(:meta => Dict(:desc => "Value"),
-                                                 :data => collect(values(dict)))
+            extra[tab] = OrderedDict(:label => tab, :fields => OrderedDict{Symbol, Any}())
+            extra[tab][:fields][:c1] = OrderedDict(:meta => Dict(:desc => "Key"),
+                                                   :data => string.(collect(keys(dict))))
+            extra[tab][:fields][:c2] = OrderedDict(:meta => Dict(:desc => "Value"),
+                                                   :data => string.(collect(values(dict))))
         else
             @warn "Unexpected entry in post-analysis dictionary: $tab"
         end
     end
-    return [out]
-end
-
-
-function ViewerData(res::Results; kws...)
-    meta = ViewerData_meta(res; kws...)
-    out = GModelFitViewer.ViewerData(res.bestfit, res.fsumm, res.data, meta=meta)
-    out.data[1]["extra"] = ViewerData_extra(res)
+    out = GModelFitViewer.gmfv_lower(res.bestfit, res.fsumm, res.data, Meta(res; kws...))
+    out.dict[:extra] = TypedJSON.lower(extra)
     return out
 end
 
 
+#=
 function ViewerData(multires::MultiResults; kws...)
     N = length(multires.bestfit)
     res = [Results(multires.timestamp,
@@ -92,3 +87,4 @@ function ViewerData(multires::MultiResults; kws...)
     end
     return out
 end
+=#
