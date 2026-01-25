@@ -76,7 +76,7 @@ function init_recipe!(recipe::CRecipe{T}) where T <: QSOGeneric
     recipe.nuisance_maxoffset_from_guess = 1e3  # km/s
     recipe.line_component = QSFit.SpecLineGauss
     recipe.instrumental_broadening = true
-    recipe.solver = GModelFit.cmpfit()
+    recipe.solver = GModelFit.Solvers.cmpfit()
     recipe.solver.config.ftol = 1.e-6
 
     recipe.reliability_relunc_threshold = 1.
