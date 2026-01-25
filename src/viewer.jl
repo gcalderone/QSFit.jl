@@ -1,22 +1,22 @@
 using GModelFitViewer
 import GModelFitViewer: ViewerOpts, _priv_lower
 
-function ViewerOpts(res::Results; kws...)
+function ViewerOpts(spec::AbstractDict; kws...)
     # ctypes = [comptype(res.bestfit, cname) for cname in keys(res.bestfit)]
-    return GModelFitViewer.ViewerOpts(; title=res.spec[:label],
+    return GModelFitViewer.ViewerOpts(; title=spec[:label],
                                       xlabel="Wavelength",
-                                      xunit=res.spec[:xunit],
-                                      xscale=res.spec[:xscale],
+                                      xunit=spec[:xunit],
+                                      xscale=spec[:xscale],
                                       ylabel="Lum. density",
-                                      yunit=res.spec[:yunit],
-                                      yscale=res.spec[:yscale],
+                                      yunit=spec[:yunit],
+                                      yscale=spec[:yscale],
                                       kws...)
 end
 
 
-function _priv_lower(res::Results; kws...)
+function format_post(post::AbstractDict)
     extra = Vector{AuxTable}()
-    for (tab, dict) in res.post
+    for (tab, dict) in post
         @assert isa(dict, AbstractDict)
 
         if tab == :Data_stats
@@ -57,27 +57,18 @@ function _priv_lower(res::Results; kws...)
             @warn "Unexpected entry in post-analysis dictionary: $tab"
         end
     end
-    out = GModelFitViewer._priv_lower(res.bestfit, res.fsumm, res.data, ViewerOpts(res; kws...), extra)
+    return extra
+end
+
+function _priv_lower(res::Results; kws...)
+    extra = format_post(res.post)
+    out = GModelFitViewer._priv_lower(res.bestfit, res.fsumm, res.data, ViewerOpts(res.spec; kws...), extra)
     return out
 end
 
 
-#=
-function ViewerData(multires::MultiResults; kws...)
-    N = length(multires.bestfit)
-    res = [Results(multires.timestamp,
-                   multires.elapsed,
-                   multires.spec[i],
-                   multires.data[i],
-                   multires.bestfit[i],
-                   multires.fsumm::GModelFit.FitSummary,
-                   multires.post[i]) for i in 1:N]
-
-    meta = [ViewerData_meta(res[i]; kws...) for i in 1:N]
-    out = GModelFitViewer.ViewerData(multires.bestfit, multires.fsumm, multires.data, meta=meta)
-    for i in 1:N
-        out.data[1][i]["extra"] = ViewerData_extra(res[i])
-    end
-    return out
+function _priv_lower(res::MultiResults; kws...)
+    extra = [format_post(res.post[i]) for i in 1:length(res.post)]
+    opts  = [ViewerOpts(res.spec[i]) for i in 1:length(res.spec)]
+    out = GModelFitViewer._priv_lower(res.bestfit, res.fsumm, res.data, opts, extra)
 end
-=#
