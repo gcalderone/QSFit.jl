@@ -1,70 +1,63 @@
 using GModelFitViewer
-import GModelFitViewer: Meta, gmfv_lower
+import GModelFitViewer: ViewerOpts, _priv_lower
 
-function Meta(res::Results; kws...)
+function ViewerOpts(res::Results; kws...)
     # ctypes = [comptype(res.bestfit, cname) for cname in keys(res.bestfit)]
-    return GModelFitViewer.Meta(; title=res.spec[:label],
-                                xlabel="Wavelength",
-                                xunit=res.spec[:xunit],
-                                xscale=res.spec[:xscale],
-                                ylabel="Lum. density",
-                                yunit=res.spec[:yunit],
-                                yscale=res.spec[:yscale],
-                                kws...)
+    return GModelFitViewer.ViewerOpts(; title=res.spec[:label],
+                                      xlabel="Wavelength",
+                                      xunit=res.spec[:xunit],
+                                      xscale=res.spec[:xscale],
+                                      ylabel="Lum. density",
+                                      yunit=res.spec[:yunit],
+                                      yscale=res.spec[:yscale],
+                                      kws...)
 end
 
 
-function gmfv_lower(res::Results; kws...)
-    extra = OrderedDict{Symbol, Any}()
+function _priv_lower(res::Results; kws...)
+    extra = Vector{AuxTable}()
     for (tab, dict) in res.post
         @assert isa(dict, AbstractDict)
 
         if tab == :Data_stats
-            extra[tab] = OrderedDict(:label => "Data stats", :fields => OrderedDict{Symbol, Any}())
-            extra[tab][:fields][:c1] = OrderedDict(:meta => Dict(:desc => "Quantity"),
-                                                   :data => string.(collect(keys(dict))))
-            extra[tab][:fields][:c2] = OrderedDict(:meta => Dict(:desc => "Value"),
-                                                   :data => collect(values(dict)))
+            e = AuxTable("Data stats")
+            add_col!(e, "Quantity", collect(keys(dict)))
+            add_col!(e, "Value",    collect(values(dict)))
+            push!(extra, e)
         elseif tab == :Issues
-            extra[tab] = OrderedDict(:label => "Issues", :fields => OrderedDict{Symbol, Any}())
-            extra[tab][:fields][:c1] = OrderedDict(:meta => Dict(:desc => "Component"),
-                                                   :data => Vector{String}())
-            extra[tab][:fields][:c2] = OrderedDict(:meta => Dict(:desc => "Parameter / dependency"),
-                                                   :data => Vector{String}())
-            extra[tab][:fields][:c3] = OrderedDict(:meta => Dict(:desc => "Issue"),
-                                                   :data => Vector{String}())
+            e = AuxTable("Issues")
+            add_col!(e, "Component", String[])
+            add_col!(e, "Parameter / dependency", String[])
+            add_col!(e, "Issue",    String[])
+
             for (cname, subdict) in dict
                 for (par_or_dep, issue) in subdict
-                    push!(extra[tab][:fields][:c1][:data], string(cname))
-                    push!(extra[tab][:fields][:c2][:data], string(par_or_dep))
-                    push!(extra[tab][:fields][:c3][:data], issue)
+                    push!(e.fields[1].data, string(cname))
+                    push!(e.fields[2].data, string(par_or_dep))
+                    push!(e.fields[3].data, issue)
                 end
             end
+            push!(extra, e)
         elseif tab == :Continuum_luminosity
-            extra[tab] = OrderedDict(:label => "Continuum luminosities", :fields => OrderedDict{Symbol, Any}())
-            extra[tab][:fields][:c1] = OrderedDict(:meta => Dict(:desc => "Wavelength [A]"),
-                                                   :data => string.(collect(keys(dict))))
-            extra[tab][:fields][:c2] = OrderedDict(:meta => Dict(:desc => "lambda L_lambda [10^42 erg/s]"),
-                                                   :data => string.(collect(values(dict))))
+            e = AuxTable("Continuum luminosities")
+            add_col!(e, "Wavelength [A]", collect(keys(dict)))
+            add_col!(e, "lambda L_lambda [10^42 erg/s]", collect(values(dict)))
+            push!(extra, e)
         elseif tab == :Equivalent_widths
-            extra[tab] = OrderedDict(:label => "Equivalent widths", :fields => OrderedDict{Symbol, Any}())
-            extra[tab][:fields][:c1] = OrderedDict(:meta => Dict(:desc => "Emission line"),
-                                                   :data => string.(collect(keys(dict))))
-            extra[tab][:fields][:c2] = OrderedDict(:meta => Dict(:desc => "[A]"),
-                                                   :data => string.(collect(values(dict))))
+            e = AuxTable("Equivalent widths")
+            add_col!(e, "Emission line", collect(keys(dict)))
+            add_col!(e, "[A]", collect(values(dict)))
+            push!(extra, e)
         elseif isa(dict, OrderedDict)
-            vv = string.(collect(values(dict)))
-            extra[tab] = OrderedDict(:label => tab, :fields => OrderedDict{Symbol, Any}())
-            extra[tab][:fields][:c1] = OrderedDict(:meta => Dict(:desc => "Key"),
-                                                   :data => string.(collect(keys(dict))))
-            extra[tab][:fields][:c2] = OrderedDict(:meta => Dict(:desc => "Value"),
-                                                   :data => string.(collect(values(dict))))
+            e = AuxTable(string(tab))
+            add_col!(e, "Key", collect(keys(dict)))
+            add_col!(e, "Value", collect(values(dict)))
+            push!(extra, e)
         else
             @warn "Unexpected entry in post-analysis dictionary: $tab"
         end
     end
-    out = GModelFitViewer.gmfv_lower(res.bestfit, res.fsumm, res.data, Meta(res; kws...))
-    out.dict[:extra] = TypedJSON.lower(extra)
+    out = GModelFitViewer._priv_lower(res.bestfit, res.fsumm, res.data, ViewerOpts(res; kws...), extra)
     return out
 end
 
