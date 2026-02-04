@@ -16,7 +16,7 @@ recipe = CRecipe{Type1}(redshift=0.3806, Av=0.21)
 res = analyze(recipe, spec)
 
 # Display best fit parameter values:
-show(res.bestfit)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">Timestamp: 2026-02-05T00:17:45.535
+show(res.bestfit)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">Timestamp: 2026-02-05T00:22:48.027
 
 Spectrum: My SDSS source
   resol.: 2000.000
@@ -187,12 +187,14 @@ Fit nuisance line at lambda: 5984.558344198174
 <span class="sgr32">Fit summary:</span> #data: 3309, #free pars: 3, red. fit stat.: 1.4181, status: <span class="sgr32">OK      </span>
 
 Last run with all parameters free...
-<span class="sgr90">Nfree=80, evaluations: 3433    Time: 0:00:00 ( 0.15 ms/it)</span>
-<span class="sgr34">   fitstat: 1.1932533133735148</span>
-<span class="sgr90">Nfree=80, evaluations: 6825    Time: 0:00:01 ( 0.15 ms/it)</span>
-<span class="sgr34">   fitstat: 1.1929356306701608</span>
-<span class="sgr90">Nfree=80, evaluations: 10213    Time: 0:00:01 ( 0.16 ms/it)</span>
-<span class="sgr34">   fitstat: 1.1928181284205</span>
+<span class="sgr90">Nfree=80, evaluations: 3286    Time: 0:00:00 ( 0.15 ms/it)</span>
+<span class="sgr34">   fitstat: 1.1932693055438939</span>
+<span class="sgr90">Nfree=80, evaluations: 6561    Time: 0:00:01 ( 0.16 ms/it)</span>
+<span class="sgr34">   fitstat: 1.1929598180242798</span>
+<span class="sgr90">Nfree=80, evaluations: 9730    Time: 0:00:01 ( 0.16 ms/it)</span>
+<span class="sgr34">   fitstat: 1.1928232977060187</span>
+<span class="sgr90">Nfree=80, evaluations: 12977    Time: 0:00:02 ( 0.16 ms/it)</span>
+<span class="sgr34">   fitstat: 1.1927849149260883</span>
 <span class="sgr90">Nfree=80, evaluations: 13292    Time: 0:00:02 ( 0.16 ms/it)</span>
 <span class="sgr32">Fit summary:</span> #data: 3309, #free pars: 80, red. fit stat.: 1.1928, status: <span class="sgr32">OK      </span>
 Disabling nuisance8 (unc. / norm. &gt; 3)
@@ -201,7 +203,7 @@ Disabling nuisance10 (unc. / norm. &gt; 3)
 Re-run fit...
 <span class="sgr32">Fit summary:</span> #data: 3309, #free pars: 74, red. fit stat.: 1.1895, status: <span class="sgr32">OK      </span>
 
-Total elapsed time: 2.521 s
+Total elapsed time: 2.512 s
 <span class="sgr32">Components:
 </span><span class="sgr94">╭────────────────────┬─────────────────────┬───────┬─────────────┬───────────┬───────────┬───────────┬─────────╮</span></span>
 <span class="sgr94">│</span><span class="sgr94"><span class="sgr7"><span class="sgr1">     Component      </span></span></span><span class="sgr94">│</span><span class="sgr94"><span class="sgr7"><span class="sgr1">        Type         </span></span></span><span class="sgr94">│</span><span class="sgr94"><span class="sgr7"><span class="sgr1"> #Free </span></span></span><span class="sgr94">│</span><span class="sgr94"><span class="sgr7"><span class="sgr1"> Eval. count </span></span></span><span class="sgr94">│</span><span class="sgr94"><span class="sgr7"><span class="sgr1">    Min    </span></span></span><span class="sgr94">│</span><span class="sgr94"><span class="sgr7"><span class="sgr1">    Max    </span></span></span><span class="sgr94">│</span><span class="sgr94"><span class="sgr7"><span class="sgr1">   Mean    </span></span></span><span class="sgr94">│</span><span class="sgr94"><span class="sgr7"><span class="sgr1"> NaN/Inf </span></span></span><span class="sgr94">│</span>
@@ -402,4 +404,4 @@ println(&quot;Host galaxy lum. density at 5500A: &quot;,
         res.bestfit[:Galaxy].norm.unc, &quot; 10^42 erg s^-1 A^-1&quot;)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">Fit statistic: 1.18952287011719
 Hb integrated luminosity: 1.7487471165895134 +/- 0.08395820021144035 10^42 erg s^-1
 Hb full width at half maximum: 4962.947891894394 +/- 267.2568487217171 km/s
-Host galaxy lum. density at 5500A: 0.02042826746628911 +/- 0.0017071073237381576 10^42 erg s^-1 A^-1</code></pre></article><nav class="docs-footer"><a class="docs-footer-nextpage" href="components/">Components »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.16.1 on <span class="colophon-date" title="Thursday 5 February 2026 00:17">Thursday 5 February 2026</span>. Using Julia version 1.12.4.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+Host galaxy lum. density at 5500A: 0.02042826746628911 +/- 0.0017071073237381576 10^42 erg s^-1 A^-1</code></pre></article><nav class="docs-footer"><a class="docs-footer-nextpage" href="components/">Components »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.16.1 on <span class="colophon-date" title="Thursday 5 February 2026 00:22">Thursday 5 February 2026</span>. Using Julia version 1.12.4.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
