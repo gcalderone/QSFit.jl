@@ -9,9 +9,6 @@ include("setup.jl")
 [![Stars](https://img.shields.io/github/stars/gcalderone/QSFit.jl?style=social)](https://github.com/gcalderone/QSFit.jl)
 
 
-!!! warn
-    This software is under active development and details may change at any time without notice.  Also, documentation is not yet exhaustive.
-
 QSFit started as an attempt to perform automatic analysis of optical spectra of AGNs and QSOs in a simple, replicable and shareable way. The first implementation in IDL language (see repo [here](https://github.com/gcalderone/qsfit) has been used to analyze 71261 AGN and QSO spectra from SDSS DR10.  The resulting spectral properties (such as emission line luminosities and widths, continuum slopes, etc.) are collected in a catalog in FITS format, as well as being publicly available here: [https://qsfit.inaf.it/](https://qsfit.inaf.it/).
 
 The details of the spectral analysis are presented in a paper: [Calderone et al. 2017](http://adsabs.harvard.edu/abs/2017MNRAS.472.4051C) (also available on [arXiv](https://arxiv.org/abs/1612.01580)).
@@ -81,6 +78,7 @@ println() # hide
 
 Also, the best fit parameter values can be accessed for any component with (e.g.):
 ```@example abc
+println("Fit statistic: ", res.fsumm.fitstat)
 println("Hb integrated luminosity: ",
         res.bestfit[:Hb_br].norm.val, " +/- ",
         res.bestfit[:Hb_br].norm.unc, " 10^42 erg s^-1")

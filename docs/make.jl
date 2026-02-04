@@ -10,6 +10,7 @@ makedocs(sitename="QSFit.jl",
              "QSFit" => "index.md",
              "Components" => "components.md",
              "Recipes" => "recipes.md",
+             "Use with Python" => "python.md"
          ])
 Gnuplot.quitall()
 
