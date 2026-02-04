@@ -4,7 +4,6 @@ QSFit can also be invoked from Python using [JuliaCall](https://juliapy.github.i
 - Install [Julia](https://julialang.org/downloads/) as usual;
 - Install [QSFit](https://gcalderone.github.io/QSFit.jl/#Installation);
 - Install the JuliaCall Python package with: `pip install juliacall`;
-- Start Python specifying the path to the Julia installation `bin` directory, e.g. `python -X juliacall-home=/usr/local/julia-1.12.4/bin`.
 
 The simple example presented [here](https://gcalderone.github.io/QSFit.jl/#Basic-usage) can then be executed from Python as follows:
 ```python

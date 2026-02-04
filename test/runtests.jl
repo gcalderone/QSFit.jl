@@ -5,14 +5,14 @@ recipe = CRecipe{Type1}(redshift=0.3806, Av=3.1 * 0.06846)
 res = analyze(recipe, spec)
 display(res.bestfit)
 display(res.fsumm)
-rm(GModelFitViewer.serialize_html(res))
+rm(GModelFitViewer.export_html(tempname(), res))
 @test res.fsumm.ndata == 3309
 @test res.fsumm.nfree == 74
 
 res = analyze(recipe, [spec, deepcopy(spec)])
 display(res.bestfit)
 display(res.fsumm)
-rm(GModelFitViewer.serialize_html(res))
+rm(GModelFitViewer.export_html(tempname(), res))
 @test res.fsumm.ndata == 6618
 @test res.fsumm.nfree == 158
 
@@ -32,6 +32,6 @@ recipe = CRecipe{Type1}(redshift=0.0999, Av=3.1 * 0.0209587)
 res = analyze(recipe, spec)
 display(res.bestfit)
 display(res.fsumm)
-rm(GModelFitViewer.serialize_html(res))
+rm(GModelFitViewer.export_html(tempname(), res))
 @test res.fsumm.ndata == 3118
 @test res.fsumm.nfree == 89
