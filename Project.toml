@@ -1,6 +1,6 @@
 name = "QSFit"
 uuid = "fea25315-b951-4667-83c9-50e53efab241"
-version = "0.7.2"
+version = "0.7.3"
 authors = ["Giorgio Calderone <giorgio.calderone@gmail.com>"]
 
 [deps]
