@@ -60,7 +60,7 @@ function postanalysis(recipe::CRecipe{<: QSOGeneric}, fp::GModelFit.FitProblem)
                     !isnothing(par.patch)                                                  &&  (comp_issues[pname] = "patched value")
                     isnan(par.unc)                                                         &&  (comp_issues[pname] = "uncertainty is NaN")
                     (par.val in [par.low, par.high])                                       &&  (comp_issues[pname] = "value hit a limit")
-                    if (par.low < 0)  &&  (par.high > 0)
+                    if (par.low >= 0)  &&  (par.high > 0)
                         ((par.unc / abs(par.val)) > recipe.reliability_relunc_threshold)   &&  (comp_issues[pname] = "relative uncertainty exceeds threshold")
                     end
                 end
